@@ -1,14 +1,10 @@
 import { NextRequest } from "next/server";
 import { redirect } from "next/navigation";
 import { nanoid } from "nanoid";
+import { eq } from "drizzle-orm";
 import { db, socialAccount } from "@/lib/db";
 import { getRedis } from "@/lib/queue/connection";
-
-// Simple encryption (in production, use a proper encryption library)
-function encrypt(text: string): string {
-  // TODO: Implement proper encryption using crypto
-  return Buffer.from(text).toString("base64");
-}
+import { encrypt } from "@/lib/utils";
 
 export async function GET(
   request: NextRequest,
@@ -95,7 +91,7 @@ export async function GET(
           isActive: true,
           updatedAt: new Date(),
         })
-        .where((sa, { eq }) => eq(sa.id, existingAccount.id));
+        .where(eq(socialAccount.id, existingAccount.id));
     } else {
       // Create new account
       await db.insert(socialAccount).values({

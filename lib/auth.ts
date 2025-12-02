@@ -28,14 +28,16 @@ export const auth = betterAuth({
       maxAge: 5 * 60, // 5 minutes
     },
   },
-
-  // Optional: Add social login for YOUR app (not for social posting)
-  // socialProviders: {
-  //   google: {
-  //     clientId: process.env.GOOGLE_CLIENT_ID!,
-  //     clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-  //   },
-  // },
+  socialProviders: {
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    },
+    twitter: {
+      clientId: process.env.TWITTER_CLIENT_ID!,
+      clientSecret: process.env.TWITTER_CLIENT_SECRET!,
+    },
+  },
 });
 
 export type Session = typeof auth.$Infer.Session;

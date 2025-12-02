@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { NextRequest } from "next/server";
 import { nanoid } from "nanoid";
+import { createHash } from "crypto";
 import { auth } from "@/lib/auth";
 import { getRedis } from "@/lib/queue/connection";
 
@@ -65,11 +66,19 @@ export async function GET(
   authUrl.searchParams.set("scope", config.scopes.join(" "));
   authUrl.searchParams.set("state", state);
 
-  // PKCE for Twitter
+  // PKCE for Twitter - requires S256
   if (platform === "twitter") {
-    authUrl.searchParams.set("code_challenge", codeVerifier);
-    authUrl.searchParams.set("code_challenge_method", "plain");
+    authUrl.searchParams.set(
+      "code_challenge",
+      generateCodeChallenge(codeVerifier)
+    );
+    authUrl.searchParams.set("code_challenge_method", "S256");
   }
 
   redirect(authUrl.toString());
+}
+
+function generateCodeChallenge(verifier: string) {
+  const hashed = createHash("sha256").update(verifier).digest("base64");
+  return hashed.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
