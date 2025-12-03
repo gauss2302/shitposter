@@ -252,42 +252,48 @@ export function AccountsClient({ accounts }: AccountsClientProps) {
                 }
 
                 return (
-                  <div className="space-y-4">
-                    {connectedAccounts.map((account) => (
-                      <div
-                        key={account.id}
-                        className="p-6 border border-zinc-200 rounded-xl hover:border-violet-300 transition bg-zinc-50"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-4 flex-1">
-                            {/* Avatar */}
-                            <div className="w-14 h-14 rounded-xl bg-white border border-zinc-200 flex items-center justify-center overflow-hidden flex-shrink-0">
+                  <div className="rounded-2xl border border-zinc-200 bg-white shadow-sm">
+                    <div className="hidden grid-cols-[minmax(220px,1fr),150px,150px,auto] gap-4 border-b border-zinc-100 px-6 py-3 text-xs font-semibold uppercase tracking-wide text-zinc-500 md:grid">
+                      <span>Account</span>
+                      <span>Followers</span>
+                      <span>Connected</span>
+                      <span className="text-right">Actions</span>
+                    </div>
+                    <div className="divide-y divide-zinc-100">
+                      {connectedAccounts.map((account) => (
+                        <div
+                          key={account.id}
+                          className="flex flex-col gap-4 px-4 py-4 md:grid md:grid-cols-[minmax(220px,1fr),150px,150px,auto] md:items-center md:gap-4 md:px-6"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50">
                               {account.profileImageUrl ? (
                                 // eslint-disable-next-line @next/next/no-img-element
                                 <img
                                   src={account.profileImageUrl}
                                   alt={account.platformUsername}
-                                  className="w-full h-full object-cover"
+                                  className="h-full w-full object-cover"
                                 />
                               ) : (
-                                <span className="text-2xl">
+                                <div className="flex h-full w-full items-center justify-center text-xl">
                                   {
                                     platforms.find(
                                       (p) => p.id === account.platform
                                     )?.icon
                                   }
-                                </span>
+                                </div>
                               )}
                             </div>
-
-                            {/* Account Info */}
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-1">
-                                <h3 className="font-bold text-zinc-900 text-lg">
-                                  @{account.platformUsername}
-                                </h3>
+                            <div className="min-w-0">
+                              <p className="truncate text-lg font-semibold text-zinc-900">
+                                @{account.platformUsername}
+                              </p>
+                              <div className="mt-1 flex items-center gap-2 text-xs text-zinc-500">
+                                <span className="capitalize">
+                                  {account.platform}
+                                </span>
                                 <span
-                                  className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                                  className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
                                     account.isActive
                                       ? "bg-green-100 text-green-700"
                                       : "bg-red-100 text-red-700"
@@ -296,36 +302,33 @@ export function AccountsClient({ accounts }: AccountsClientProps) {
                                   {account.isActive ? "Active" : "Disconnected"}
                                 </span>
                               </div>
-                              <div className="flex items-center gap-4 text-sm text-zinc-500">
-                                <span>
-                                  Connected{" "}
-                                  {account.createdAt.toLocaleDateString()}
-                                </span>
-                                {account.followerCount && (
-                                  <span>
-                                    {account.followerCount.toLocaleString()}{" "}
-                                    followers
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-
-                            {/* Actions */}
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => handleDisconnectClick(account)}
-                                disabled={disconnectingId === account.id}
-                                className="px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition disabled:opacity-50"
-                              >
-                                {disconnectingId === account.id
-                                  ? "Disconnecting..."
-                                  : "Disconnect"}
-                              </button>
+                              <p className="mt-1 text-xs text-zinc-400 md:hidden">
+                                Connected {account.createdAt.toLocaleDateString()}
+                              </p>
                             </div>
                           </div>
+                          <div className="text-sm text-zinc-500">
+                            {account.followerCount
+                              ? `${account.followerCount.toLocaleString()} followers`
+                              : "—"}
+                          </div>
+                          <div className="text-sm text-zinc-500">
+                            {account.createdAt.toLocaleDateString()}
+                          </div>
+                          <div className="flex w-full justify-end md:justify-end">
+                            <button
+                              onClick={() => handleDisconnectClick(account)}
+                              disabled={disconnectingId === account.id}
+                              className="rounded-lg border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-600 transition hover:border-red-200 hover:text-red-600 disabled:opacity-50"
+                            >
+                              {disconnectingId === account.id
+                                ? "Disconnecting..."
+                                : "Disconnect"}
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
                 );
               })()}

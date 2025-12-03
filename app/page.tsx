@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
@@ -12,34 +13,6 @@ export default async function HomePage() {
 
   return (
     <div className="min-h-screen bg-[#FBFBFB] text-zinc-900 selection:bg-[#C5BAFF] selection:text-white overflow-x-hidden">
-      {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-[#FBFBFB]/80 backdrop-blur-md border-b border-[#E8F9FF]">
-        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-linear-to-r from-[#C5BAFF] to-[#C4D9FF] rounded-xl flex items-center justify-center shadow-lg shadow-[#C5BAFF]/20">
-              <span className="text-white font-black text-xl">S</span>
-            </div>
-            <span className="font-bold text-xl tracking-tight">
-              shitpost.art
-            </span>
-          </div>
-          <div className="flex items-center gap-6">
-            <Link
-              href="/sign-in"
-              className="text-sm font-semibold text-zinc-600 hover:text-zinc-900 transition-colors"
-            >
-              Log in
-            </Link>
-            <Link
-              href="/sign-up"
-              className="px-5 py-2.5 bg-[#C5BAFF] hover:bg-[#b4a5ff] text-white text-sm font-bold rounded-full transition-all shadow-lg shadow-[#C5BAFF]/30 hover:shadow-[#C5BAFF]/50 hover:-translate-y-0.5"
-            >
-              Get Started
-            </Link>
-          </div>
-        </div>
-      </nav>
-
       {/* Hero Section */}
       <section className="relative pt-40 pb-20 lg:pt-52 lg:pb-32 px-6 overflow-hidden">
         {/* Background Blobs */}
@@ -49,67 +22,53 @@ export default async function HomePage() {
           <div className="absolute -bottom-32 left-1/2 -translate-x-1/2 w-96 h-96 bg-[#C5BAFF] rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob animation-delay-4000"></div>
         </div>
 
-        <div className="relative max-w-7xl mx-auto text-center z-10">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-[#E8F9FF] shadow-sm mb-8 animate-fade-in-up">
-            <span className="w-2 h-2 rounded-full bg-[#C5BAFF]"></span>
-            <span className="text-sm font-medium text-zinc-600">
-              The new era of posting is here
-            </span>
+        <div className="relative z-10 mx-auto flex max-w-7xl flex-col items-center gap-12 lg:flex-row lg:text-left">
+          <div className="flex-1 text-center lg:text-left">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-[#E8F9FF] shadow-sm mb-8 animate-fade-in-up">
+              <span className="w-2 h-2 rounded-full bg-[#C5BAFF]"></span>
+              <span className="text-sm font-medium text-zinc-600">
+                The new era of posting is here
+              </span>
+            </div>
+
+            <h1 className="text-6xl lg:text-8xl font-black tracking-tighter mb-8 leading-[1.1]">
+              One place to <br className="hidden md:block" />
+              <span className="text-transparent bg-clip-text bg-linear-to-r from-[#C5BAFF] via-[#C4D9FF] to-[#C5BAFF] animate-gradient bg-300%">
+                shitpost everywhere
+              </span>
+            </h1>
+
+            <p className="text-xl lg:text-2xl text-zinc-500 max-w-2xl mb-12 leading-relaxed">
+              Manage your chaos. Schedule, analyze, and dominate every social
+              platform from a single, beautiful dashboard.
+            </p>
+
+            <div className="flex flex-col sm:flex-row items-center gap-4">
+              <Link
+                href="/sign-up"
+                className="w-full sm:w-auto px-8 py-4 bg-[#C5BAFF] hover:bg-[#b4a5ff] text-white text-lg font-bold rounded-2xl transition-all shadow-xl shadow-[#C5BAFF]/30 hover:shadow-[#C5BAFF]/50 hover:-translate-y-1"
+              >
+                Start Shitposting Free
+              </Link>
+              <Link
+                href="#demo"
+                className="w-full sm:w-auto px-8 py-4 bg-white hover:bg-zinc-50 text-zinc-900 border border-zinc-200 text-lg font-bold rounded-2xl transition-all hover:-translate-y-1"
+              >
+                View Demo
+              </Link>
+            </div>
           </div>
 
-          <h1 className="text-6xl lg:text-8xl font-black tracking-tighter mb-8 leading-[1.1]">
-            One place to <br className="hidden md:block" />
-            <span className="text-transparent bg-clip-text bg-linear-to-r from-[#C5BAFF] via-[#C4D9FF] to-[#C5BAFF] animate-gradient bg-300%">
-              shitpost everywhere
-            </span>
-          </h1>
-
-          <p className="text-xl lg:text-2xl text-zinc-500 max-w-2xl mx-auto mb-12 leading-relaxed">
-            Manage your chaos. Schedule, analyze, and dominate every social
-            platform from a single, beautiful dashboard.
-          </p>
-
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link
-              href="/sign-up"
-              className="w-full sm:w-auto px-8 py-4 bg-[#C5BAFF] hover:bg-[#b4a5ff] text-white text-lg font-bold rounded-2xl transition-all shadow-xl shadow-[#C5BAFF]/30 hover:shadow-[#C5BAFF]/50 hover:-translate-y-1"
-            >
-              Start Shitposting Free
-            </Link>
-            <Link
-              href="#demo"
-              className="w-full sm:w-auto px-8 py-4 bg-white hover:bg-zinc-50 text-zinc-900 border border-zinc-200 text-lg font-bold rounded-2xl transition-all hover:-translate-y-1"
-            >
-              View Demo
-            </Link>
-          </div>
-
-          {/* Hero Image / Dashboard Preview */}
-          <div className="mt-20 relative mx-auto max-w-5xl">
-            <div className="relative bg-white rounded-3xl border border-[#E8F9FF] shadow-2xl shadow-[#C4D9FF]/20 p-2 overflow-hidden">
-              <div className="absolute top-0 left-0 w-full h-full bg-linear-to-b from-transparent to-[#FBFBFB]/50 z-10 pointer-events-none"></div>
-              <div className="bg-[#FBFBFB] rounded-2xl overflow-hidden aspect-video flex items-center justify-center relative">
-                {/* Abstract UI Representation */}
-                <div className="absolute inset-0 grid grid-cols-12 gap-4 p-8 opacity-50">
-                  <div className="col-span-3 bg-white rounded-xl shadow-sm h-full"></div>
-                  <div className="col-span-9 grid grid-rows-3 gap-4 h-full">
-                    <div className="row-span-2 bg-white rounded-xl shadow-sm"></div>
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="bg-white rounded-xl shadow-sm"></div>
-                      <div className="bg-white rounded-xl shadow-sm"></div>
-                      <div className="bg-white rounded-xl shadow-sm"></div>
-                    </div>
-                  </div>
-                </div>
-                <div className="z-20 text-center">
-                  <div className="w-20 h-20 bg-linear-to-tr from-[#C5BAFF] to-[#C4D9FF] rounded-2xl mx-auto mb-4 shadow-lg flex items-center justify-center text-3xl">
-                    🚀
-                  </div>
-                  <h3 className="text-2xl font-bold text-zinc-900">
-                    Your Empire Center
-                  </h3>
-                </div>
-              </div>
+          <div className="flex-1">
+            <div className="relative mx-auto max-w-lg rounded-3xl border border-[#E8F9FF] bg-white p-4 shadow-2xl shadow-[#C4D9FF]/20">
+              <Image
+                src="/hero_main_sm.png"
+                alt="shitpost.art dashboard preview"
+                width={800}
+                height={600}
+                priority
+                className="rounded-2xl border border-[#E8F9FF]/50 object-cover"
+              />
             </div>
           </div>
         </div>

@@ -25,6 +25,12 @@ const statusColors: Record<string, string> = {
   failed: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
 };
 
+const headerMenu = [
+  { label: "Overview", href: "/dashboard/posts" },
+  { label: "Calendar", href: "/dashboard" },
+  { label: "Accounts", href: "/dashboard/accounts" },
+];
+
 export default async function PostsPage() {
   const session = await auth.api.getSession({ headers: await headers() });
 
@@ -59,26 +65,266 @@ export default async function PostsPage() {
     })
   );
 
+  const totalPosts = postsWithTargets.length;
+  const publishedPosts = postsWithTargets.filter(
+    (p) => p.status === "published"
+  ).length;
+  const scheduledPosts = postsWithTargets.filter(
+    (p) => p.status === "scheduled"
+  ).length;
+  const failedPosts = postsWithTargets.filter(
+    (p) => p.status === "failed"
+  ).length;
+
+  const totalTargets = postsWithTargets.reduce(
+    (acc, p) => acc + p.targets.length,
+    0
+  );
+
+  const targetStatusCounts = postsWithTargets.reduce<Record<string, number>>(
+    (acc, p) => {
+      p.targets.forEach((target) => {
+        acc[target.status] = (acc[target.status] || 0) + 1;
+      });
+      return acc;
+    },
+    {}
+  );
+
+  const publishedTargets = targetStatusCounts["published"] || 0;
+  const successRate =
+    totalTargets === 0 ? 0 : Math.round((publishedTargets / totalTargets) * 100);
+  const avgPlatformsPerPost =
+    totalPosts === 0 ? "0" : (totalTargets / totalPosts).toFixed(1);
+
+  const platformStats = postsWithTargets.reduce<
+    Record<string, { count: number; published: number }>
+  >((acc, p) => {
+    p.targets.forEach((target) => {
+      const platform = target.account?.platform || "unknown";
+      if (!acc[platform]) {
+        acc[platform] = { count: 0, published: 0 };
+      }
+      acc[platform].count += 1;
+      if (target.status === "published") {
+        acc[platform].published += 1;
+      }
+    });
+    return acc;
+  }, {});
+
+  const platformEntries = Object.entries(platformStats).sort(
+    (a, b) => b[1].count - a[1].count
+  );
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
+      <div className="rounded-3xl border border-zinc-200/80 dark:border-zinc-800 bg-gradient-to-r from-violet-600/5 via-white to-fuchsia-600/5 dark:from-violet-500/10 dark:via-zinc-950 dark:to-fuchsia-500/10 p-8">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-wider text-violet-600 dark:text-violet-300">
+              Analytics overview
+            </p>
+            <h1 className="mt-2 text-3xl font-bold text-zinc-900 dark:text-white">
+              Posts & Performance
+            </h1>
+            <p className="mt-2 text-zinc-600 dark:text-zinc-400 max-w-2xl">
+              Track how your content performs across every platform, spot
+              failures early, and jump straight into composing something new.
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="text-right">
+              <p className="text-sm uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                Success rate
+              </p>
+              <p className="text-3xl font-semibold text-zinc-900 dark:text-white">
+                {successRate}%
+              </p>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                {publishedTargets} / {totalTargets || 1} targets
+              </p>
+            </div>
+            <div className="h-full border-l border-zinc-200 dark:border-zinc-800" />
+            <Link
+              href="/dashboard"
+              className="inline-flex items-center gap-2 rounded-xl bg-zinc-900 px-4 py-2 text-white transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-900"
+            >
+              <span>Open Dashboard</span>
+              <span className="text-lg">🗂️</span>
+            </Link>
+          </div>
+        </div>
+
+        <div className="mt-6 flex flex-wrap gap-2">
+          {headerMenu.map((item) => {
+            const isActive = item.href === "/dashboard/posts";
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`rounded-full border px-4 py-2 text-sm font-medium transition ${
+                  isActive
+                    ? "border-violet-500 bg-white text-violet-600 shadow-sm dark:bg-zinc-900 dark:text-violet-300"
+                    : "border-transparent text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
+                }`}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+
       <PostsNotification />
 
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
-            Your Posts
-          </h1>
-          <p className="text-zinc-500 dark:text-zinc-400 mt-1">
-            View and manage all your scheduled and published posts
-          </p>
+      <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {[
+          {
+            label: "Total posts",
+            value: totalPosts,
+            helper: `${scheduledPosts} scheduled`,
+          },
+          {
+            label: "Published",
+            value: publishedPosts,
+            helper: `${successRate}% success rate`,
+          },
+          {
+            label: "Failed jobs",
+            value: failedPosts,
+            helper:
+              failedPosts === 0
+                ? "All clear"
+                : `${failedPosts} post${failedPosts === 1 ? "" : "s"} need attention`,
+          },
+          {
+            label: "Avg. platforms/post",
+            value: avgPlatformsPerPost,
+            helper: `${platformEntries.length} active platforms`,
+          },
+        ].map((card) => (
+          <div
+            key={card.label}
+            className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900"
+          >
+            <p className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+              {card.label}
+            </p>
+            <p className="mt-2 text-3xl font-semibold text-zinc-900 dark:text-white">
+              {card.value}
+            </p>
+            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+              {card.helper}
+            </p>
+          </div>
+        ))}
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-3">
+        <div className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900 lg:col-span-2">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                Platform performance
+              </p>
+              <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">
+                Where you publish
+              </h2>
+            </div>
+            <span className="text-sm text-zinc-500 dark:text-zinc-400">
+              {totalTargets} total targets
+            </span>
+          </div>
+          <div className="mt-4 space-y-4">
+            {platformEntries.length === 0 && (
+              <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                Connect a social account to start collecting platform insights.
+              </p>
+            )}
+            {platformEntries.slice(0, 6).map(([platform, stats]) => {
+              const completion =
+                stats.count === 0
+                  ? 0
+                  : Math.round((stats.published / stats.count) * 100);
+              return (
+                <div key={platform}>
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">
+                        {platformIcons[platform] || "🌐"}
+                      </span>
+                      <span className="capitalize text-zinc-900 dark:text-white">
+                        {platform === "unknown" ? "Unknown platform" : platform}
+                      </span>
+                    </div>
+                    <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                      {completion}% success • {stats.count} posts
+                    </span>
+                  </div>
+                  <div className="mt-2 h-2 rounded-full bg-zinc-100 dark:bg-zinc-800">
+                    <div
+                      className="h-2 rounded-full bg-violet-500"
+                      style={{ width: `${completion}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
-        <Link
-          href="/dashboard/compose"
-          className="px-4 py-2 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white font-medium rounded-lg transition"
-        >
-          Create Post
-        </Link>
-      </div>
+        <div className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
+          <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+            Status distribution
+          </p>
+          <h3 className="mt-1 text-lg font-semibold text-zinc-900 dark:text-white">
+            Target health
+          </h3>
+          <div className="mt-4 space-y-4">
+            {["published", "scheduled", "publishing", "failed"].map((status) => {
+              const count = targetStatusCounts[status] || 0;
+              const percentage =
+                totalTargets === 0 ? 0 : Math.round((count / totalTargets) * 100);
+              const barColor =
+                status === "published"
+                  ? "bg-green-500"
+                  : status === "failed"
+                  ? "bg-red-500"
+                  : status === "publishing"
+                  ? "bg-yellow-500"
+                  : "bg-blue-500";
+              return (
+                <div key={status}>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="capitalize text-zinc-900 dark:text-white">
+                      {status}
+                    </span>
+                    <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                      {count} targets • {percentage}%
+                    </span>
+                  </div>
+                  <div className="mt-2 h-2 rounded-full bg-zinc-100 dark:bg-zinc-800">
+                    <div
+                      className={`h-2 rounded-full ${barColor}`}
+                      style={{ width: `${percentage}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="mt-6 rounded-xl border border-dashed border-zinc-200 p-4 text-sm text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
+            Need higher success rates? Double-check tokens in{" "}
+            <Link
+              href="/dashboard/accounts"
+              className="font-medium text-violet-600 hover:underline dark:text-violet-400"
+            >
+              Accounts
+            </Link>{" "}
+            or clean failed jobs in the queue.
+          </div>
+        </div>
+      </section>
 
       {postsWithTargets.length === 0 ? (
         <div className="bg-white dark:bg-zinc-900 rounded-xl p-12 border border-zinc-200 dark:border-zinc-800 text-center">
@@ -92,10 +338,10 @@ export default async function PostsPage() {
             Create your first post to get started
           </p>
           <Link
-            href="/dashboard/compose"
+            href="/dashboard"
             className="inline-flex px-4 py-2 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white font-medium rounded-lg transition"
           >
-            Create Post
+            Go to Dashboard
           </Link>
         </div>
       ) : (
