@@ -1,9 +1,13 @@
 import { Worker, Job } from "bullmq";
 
-import { socialAccount, postTarget, post } from "../db/schema";
+import {
+  workerDb,
+  socialAccount,
+  postTarget,
+  post,
+} from "../db/worker-connection";
 import { eq } from "drizzle-orm";
 
-import { db } from "../db";
 import { decrypt } from "../utils";
 import { createRedisConnection } from "./connection";
 // Platform publishers
@@ -13,7 +17,10 @@ import { publishToLinkedIn } from "./publishers/linkedin";
 import { publishToTikTok } from "./publishers/tiktok";
 import { PublishPostJobData } from "./queues";
 
+const db = workerDb;
+
 export function createPostWorker() {
+  const db = workerDb;
   const worker = new Worker<PublishPostJobData>(
     "post-publishing",
     async (job: Job<PublishPostJobData>) => {
@@ -24,50 +31,56 @@ export function createPostWorker() {
         `📤 Processing job ${job.id}: Post ${postId} to account ${socialAccountId}`
       );
 
-      // Update status to publishing
-      await db
-        .update(postTarget)
-        .set({ status: "publishing" })
-        .where(eq(postTarget.id, targetId));
-
-      // Get social account details
-      const account = await db.query.socialAccount.findFirst({
-        where: eq(socialAccount.id, socialAccountId),
-      });
-
-      if (!account) {
-        throw new Error(`Social account ${socialAccountId} not found`);
-      }
-
-      if (!account.isActive) {
-        throw new Error(`Social account ${socialAccountId} is not active`);
-      }
-
-      // Decrypt access token
-      const accessToken = decrypt(account.accessToken);
-      const refreshToken = account.refreshToken
-        ? decrypt(account.refreshToken)
-        : undefined;
-
-      // Check if token needs refresh
-      if (account.tokenExpiresAt && account.tokenExpiresAt < new Date()) {
-        if (!refreshToken) {
-          // Mark account as inactive
-          await db
-            .update(socialAccount)
-            .set({ isActive: false })
-            .where(eq(socialAccount.id, socialAccountId));
-          throw new Error(
-            `Token expired and no refresh token available. User must reconnect.`
-          );
-        }
-        // TODO: Implement token refresh logic per platform
-      }
-
-      // Publish based on platform
-      let platformPostId: string;
-
       try {
+        // Update status to publishing
+        await db
+          .update(postTarget)
+          .set({ status: "publishing" })
+          .where(eq(postTarget.id, targetId));
+
+        console.log(`✅ Updated target ${targetId} to publishing`);
+
+        // Get social account details
+        const account = await db.query.socialAccount.findFirst({
+          where: eq(socialAccount.id, socialAccountId),
+        });
+
+        if (!account) {
+          throw new Error(`Social account ${socialAccountId} not found`);
+        }
+
+        if (!account.isActive) {
+          throw new Error(`Social account ${socialAccountId} is not active`);
+        }
+
+        console.log(`✅ Found account: @${account.platformUsername}`);
+
+        // Decrypt access token
+        const accessToken = decrypt(account.accessToken);
+        const refreshToken = account.refreshToken
+          ? decrypt(account.refreshToken)
+          : undefined;
+
+        // Check if token needs refresh
+        if (account.tokenExpiresAt && account.tokenExpiresAt < new Date()) {
+          if (!refreshToken) {
+            // Mark account as inactive
+            await db
+              .update(socialAccount)
+              .set({ isActive: false })
+              .where(eq(socialAccount.id, socialAccountId));
+            throw new Error(
+              `Token expired and no refresh token available. User must reconnect.`
+            );
+          }
+          // TODO: Implement token refresh logic per platform
+        }
+
+        // Publish based on platform
+        let platformPostId: string;
+
+        console.log(`🚀 Publishing to ${account.platform}...`);
+
         switch (account.platform) {
           case "twitter":
             platformPostId = await publishToTwitter({
@@ -102,6 +115,8 @@ export function createPostWorker() {
             throw new Error(`Unsupported platform: ${account.platform}`);
         }
 
+        console.log(`✅ Published! Platform post ID: ${platformPostId}`);
+
         // Update target status to published
         await db
           .update(postTarget)
@@ -124,6 +139,8 @@ export function createPostWorker() {
         const errorMessage =
           error instanceof Error ? error.message : "Unknown error";
 
+        console.error(`❌ Error publishing:`, errorMessage);
+
         // Update target status to failed
         await db
           .update(postTarget)
@@ -137,7 +154,7 @@ export function createPostWorker() {
         await updatePostStatus(postId);
 
         console.error(
-          `❌ Failed to publish to ${account.platform}:`,
+          `❌ Failed to publish to account ${socialAccountId}:`,
           errorMessage
         );
 
@@ -146,7 +163,7 @@ export function createPostWorker() {
     },
     {
       connection: createRedisConnection(),
-      concurrency: 5,
+      concurrency: 3, // Reduced from 5 to be safer
       limiter: {
         max: 10,
         duration: 1000,
@@ -167,11 +184,11 @@ export function createPostWorker() {
   });
 
   worker.on("error", (err) => {
-    console.error("Worker error:", err);
+    console.error("❌ Worker error:", err);
   });
 
   worker.on("stalled", (jobId) => {
-    console.warn(`⚠️ Job ${jobId} stalled`);
+    console.warn(`⚠️  Job ${jobId} stalled`);
   });
 
   return worker;
@@ -203,4 +220,6 @@ async function updatePostStatus(postId: string) {
     .update(post)
     .set({ status: newStatus, updatedAt: new Date() })
     .where(eq(post.id, postId));
+
+  console.log(`✅ Updated post ${postId} status to: ${newStatus}`);
 }

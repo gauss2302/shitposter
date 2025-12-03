@@ -56,8 +56,40 @@ export async function POST(request: NextRequest) {
 
     // Create the post
     const postId = nanoid();
-    const scheduledFor = data.scheduledFor ? new Date(data.scheduledFor) : null;
 
+    // Parse and validate scheduled time
+    let scheduledFor: Date | null = null;
+    if (data.scheduledFor) {
+      scheduledFor = new Date(data.scheduledFor);
+
+      // Validate the date is valid
+      if (isNaN(scheduledFor.getTime())) {
+        return NextResponse.json(
+          { error: "Invalid scheduled date format" },
+          { status: 400 }
+        );
+      }
+
+      // Check if date is too far in the past (more than 1 minute)
+      const oneMinuteAgo = Date.now() - 60000;
+      if (scheduledFor.getTime() < oneMinuteAgo) {
+        console.warn(
+          `⚠️ Scheduled time ${scheduledFor.toISOString()} is in the past, will publish immediately`
+        );
+        scheduledFor = null; // Treat as immediate publish
+      }
+
+      // Check if date is too far in the future (more than 1 year)
+      const oneYearFromNow = Date.now() + 365 * 24 * 60 * 60 * 1000;
+      if (scheduledFor!.getTime() > oneYearFromNow) {
+        return NextResponse.json(
+          { error: "Scheduled date cannot be more than 1 year in the future" },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Insert post
     await db.insert(post).values({
       id: postId,
       userId: session.user.id,
@@ -67,7 +99,9 @@ export async function POST(request: NextRequest) {
       status: scheduledFor ? "scheduled" : "publishing",
     });
 
-    // Create post targets and queue jobs
+    console.log(`✅ Created post: ${postId}`);
+
+    // Create post targets first, THEN queue jobs
     const targets = [];
     for (const account of accounts) {
       const targetId = nanoid();
@@ -78,25 +112,42 @@ export async function POST(request: NextRequest) {
         socialAccountId: account.id,
         status: "pending",
       });
+    }
+
+    // Insert all targets at once
+    await db.insert(postTarget).values(targets);
+    console.log(`✅ Created ${targets.length} post targets`);
+
+    // NOW queue the jobs - after database inserts are complete
+    const jobPromises = [];
+    for (let i = 0; i < targets.length; i++) {
+      const target = targets[i];
+      const account = accounts[i];
 
       const jobData = {
         postId,
         userId: session.user.id,
-        targetId,
+        targetId: target.id,
         socialAccountId: account.id,
         content: data.content,
         mediaUrls: data.mediaUrls,
       };
 
+      console.log(
+        `📋 Queuing job for target: ${target.id} (account: @${account.platformUsername})`
+      );
+
       // Schedule or publish immediately
       if (scheduledFor && scheduledFor > new Date()) {
-        await schedulePost(jobData, scheduledFor);
+        jobPromises.push(schedulePost(jobData, scheduledFor));
       } else {
-        await publishPostNow(jobData);
+        jobPromises.push(publishPostNow(jobData));
       }
     }
 
-    await db.insert(postTarget).values(targets);
+    // Wait for all jobs to be queued
+    await Promise.all(jobPromises);
+    console.log(`✅ Queued ${jobPromises.length} jobs`);
 
     return NextResponse.json({
       success: true,
@@ -110,14 +161,17 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: "Invalid request", details: error._zod.output },
+        { error: "Invalid request", details: error.message },
         { status: 400 }
       );
     }
 
-    console.error("Error creating post:", error);
+    console.error("❌ Error creating post:", error);
     return NextResponse.json(
-      { error: "Failed to create post" },
+      {
+        error: "Failed to create post",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
       { status: 500 }
     );
   }

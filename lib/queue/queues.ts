@@ -35,7 +35,25 @@ export async function schedulePost(
   data: PublishPostJobData,
   scheduledFor: Date
 ) {
-  const delay = Math.max(0, scheduledFor.getTime() - Date.now());
+  const now = Date.now();
+  const scheduledTime = scheduledFor.getTime();
+
+  // Calculate delay, ensuring it's positive
+  let delay = scheduledTime - now;
+
+  // If scheduled time is in the past, publish immediately
+  if (delay < 0) {
+    console.warn(
+      `⚠️ Scheduled time is in the past (${scheduledFor.toISOString()}), publishing immediately`
+    );
+    delay = 1000; // 1 second delay
+  }
+
+  console.log(
+    `📅 Scheduling post for ${scheduledFor.toISOString()} (in ${Math.round(
+      delay / 1000
+    )}s)`
+  );
 
   return postQueue.add("publish", data, {
     delay,
@@ -43,9 +61,12 @@ export async function schedulePost(
   });
 }
 
-// Helper to publish immediately
+// Helper to publish immediately (with small safety delay)
 export async function publishPostNow(data: PublishPostJobData) {
+  console.log(`🚀 Publishing post immediately (with 1s delay)`);
+
   return postQueue.add("publish", data, {
+    delay: 1000, // 1 second delay to ensure DB commit completes
     jobId: `post-${data.postId}-${data.targetId}`,
   });
 }

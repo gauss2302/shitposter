@@ -16,7 +16,7 @@ export default async function HomePage() {
       <nav className="fixed top-0 left-0 right-0 z-50 bg-[#FBFBFB]/80 backdrop-blur-md border-b border-[#E8F9FF]">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-gradient-to-br from-[#C5BAFF] to-[#C4D9FF] rounded-xl flex items-center justify-center shadow-lg shadow-[#C5BAFF]/20">
+            <div className="w-10 h-10 bg-linear-to-r from-[#C5BAFF] to-[#C4D9FF] rounded-xl flex items-center justify-center shadow-lg shadow-[#C5BAFF]/20">
               <span className="text-white font-black text-xl">S</span>
             </div>
             <span className="font-bold text-xl tracking-tight">
@@ -59,7 +59,7 @@ export default async function HomePage() {
 
           <h1 className="text-6xl lg:text-8xl font-black tracking-tighter mb-8 leading-[1.1]">
             One place to <br className="hidden md:block" />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#C5BAFF] via-[#C4D9FF] to-[#C5BAFF] animate-gradient bg-300%">
+            <span className="text-transparent bg-clip-text bg-linear-to-r from-[#C5BAFF] via-[#C4D9FF] to-[#C5BAFF] animate-gradient bg-300%">
               shitpost everywhere
             </span>
           </h1>
@@ -124,7 +124,7 @@ export default async function HomePage() {
               <span className="text-[#C5BAFF]">go viral</span>
             </h2>
             <p className="text-lg text-zinc-500 max-w-2xl mx-auto">
-              Powerful tools wrapped in a design so clean you'll actually want
+              Powerful tools wrapped in a design so clean you will actually want
               to use them.
             </p>
           </div>
@@ -210,7 +210,7 @@ export default async function HomePage() {
 
             {/* Visual Flow Diagram */}
             <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-[#C5BAFF]/20 to-[#C4D9FF]/20 blur-3xl rounded-full"></div>
+              <div className="absolute inset-0 bg-linear-to-r from-[#C5BAFF]/20 to-[#C4D9FF]/20 blur-3xl rounded-full"></div>
               <div className="relative bg-white p-10 rounded-3xl border border-[#E8F9FF] shadow-xl">
                 <div className="flex flex-col items-center gap-8">
                   {/* User Node */}
