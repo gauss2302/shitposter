@@ -15,6 +15,7 @@
   "dependencies": {
     "better-auth": "^1.4.4",
     "bullmq": "^5.65.1",
+    "date-fns": "^4.1.0",
     "dotenv": "^17.2.3",
     "drizzle-orm": "^0.44.7",
     "ioredis": "^5.8.2",
@@ -22,6 +23,7 @@
     "next": "16.0.6",
     "postgres": "^3.4.7",
     "react": "19.2.0",
+    "react-big-calendar": "^1.19.4",
     "react-dom": "19.2.0",
     "zod": "^4.1.13"
   },
