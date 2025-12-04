@@ -1,8 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// lib/queue/worker.ts
 import dotenv from "dotenv";
 import { Worker, Job } from "bullmq";
-import postgres from "postgres";
 import * as crypto from "crypto";
 import { createRedisConnection } from "@/lib/queue/connection";
 import {
@@ -12,6 +10,9 @@ import {
   publishToLinkedIn,
 } from "@/lib/queue/publishers";
 import { PublishPostJobData } from "@/lib/queue/queues";
+import { db, post, postTarget, socialAccount } from "@/lib/db";
+import { eq } from "drizzle-orm";
+import { uploadMultipleMedia } from "@/lib/social/twitter-media";
 
 dotenv.config();
 dotenv.config({ path: ".env.local", override: true });
@@ -51,88 +52,109 @@ export function createPostWorker() {
   const worker = new Worker<PublishPostJobData>(
     "post-publishing",
     async (job: Job<PublishPostJobData>) => {
-      // Create a FRESH database connection for each job
-      const connectionString = process.env.DATABASE_URL!;
-      const sql = postgres(connectionString, {
-        max: 1,
-        idle_timeout: 20,
-        connect_timeout: 10,
-        prepare: false, // IMPORTANT: Disable prepared statements to avoid parameter caching
-      });
-
-      const { postId, targetId, socialAccountId, content, mediaUrls } =
+      const { postId, targetId, socialAccountId, content, mediaData } =
         job.data;
 
       console.log(
-        `📤 Processing job ${job.id}: Post ${postId} to account ${socialAccountId}, target: ${targetId}`
+        `📤 Processing job ${
+          job.id
+        }: Post ${postId} to account ${socialAccountId}${
+          mediaData?.length ? ` with ${mediaData.length} media files` : ""
+        }`
       );
 
       try {
-        // Update status to publishing - using raw SQL to avoid Drizzle parameter issues
-        console.log(`✏️ Updating target ${targetId} to publishing...`);
+        // Verify target exists
+        const target = await db.query.postTarget.findFirst({
+          where: eq(postTarget.id, targetId),
+        });
 
-        await sql`
-          UPDATE post_target 
-          SET status = 'publishing'
-          WHERE id = ${targetId}
-        `;
+        if (!target) {
+          throw new Error(
+            `Post target ${targetId} not found in database. This may indicate a race condition.`
+          );
+        }
+
+        console.log(`✅ Found target ${targetId} for post ${postId}`);
+
+        // Update status to publishing
+        await db
+          .update(postTarget)
+          .set({ status: "publishing" })
+          .where(eq(postTarget.id, targetId));
 
         console.log(`✅ Updated target ${targetId} to publishing`);
 
-        // Get social account details - using raw SQL
-        console.log(`🔍 Fetching account ${socialAccountId}...`);
+        // Get social account details
+        const account = await db.query.socialAccount.findFirst({
+          where: eq(socialAccount.id, socialAccountId),
+        });
 
-        const accountRows = await sql`
-          SELECT * FROM social_account 
-          WHERE id = ${socialAccountId}
-          LIMIT 1
-        `;
-
-        if (accountRows.length === 0) {
+        if (!account) {
           throw new Error(`Social account ${socialAccountId} not found`);
         }
 
-        const account = accountRows[0];
-
-        if (!account.is_active) {
+        if (!account.isActive) {
           throw new Error(`Social account ${socialAccountId} is not active`);
         }
 
-        console.log(
-          `✅ Found account: @${account.platform_username} (${account.platform})`
-        );
+        console.log(`✅ Found account: @${account.platformUsername}`);
 
         // Decrypt access token
-        console.log(`🔓 Decrypting access token for ${account.platform}...`);
-        const accessToken = decrypt(account.access_token);
-        console.log(
-          `✅ Access token decrypted (length: ${accessToken.length})`
-        );
-
-        const refreshToken = account.refresh_token
-          ? decrypt(account.refresh_token)
+        const accessToken = decrypt(account.accessToken);
+        const refreshToken = account.refreshToken
+          ? decrypt(account.refreshToken)
           : undefined;
 
         // Check if token needs refresh
-        if (
-          account.token_expires_at &&
-          new Date(account.token_expires_at) < new Date()
-        ) {
+        if (account.tokenExpiresAt && account.tokenExpiresAt < new Date()) {
           if (!refreshToken) {
-            // Mark account as inactive
-            await sql`
-              UPDATE social_account 
-              SET is_active = false 
-              WHERE id = ${socialAccountId}
-            `;
-
+            await db
+              .update(socialAccount)
+              .set({ isActive: false })
+              .where(eq(socialAccount.id, socialAccountId));
             throw new Error(
               `Token expired and no refresh token available. User must reconnect.`
             );
           }
-          console.warn(
-            `⚠️ Token expired for account ${socialAccountId}, needs refresh`
+          // TODO: Implement token refresh logic per platform
+        }
+
+        // Handle media upload for Twitter
+        let mediaIds: string[] = [];
+
+        if (
+          mediaData &&
+          mediaData.length > 0 &&
+          account.platform === "twitter"
+        ) {
+          console.log(
+            `📸 Uploading ${mediaData.length} media files to Twitter...`
           );
+
+          try {
+            // Convert base64 back to buffers and upload
+            const files = mediaData.map((media) => ({
+              buffer: Buffer.from(media.data, "base64"),
+              mimeType: media.mimeType,
+            }));
+
+            mediaIds = await uploadMultipleMedia({ accessToken }, files);
+            console.log(
+              `✅ Uploaded ${mediaIds.length} media files, IDs: ${mediaIds.join(
+                ", "
+              )}`
+            );
+          } catch (uploadError) {
+            console.error(`❌ Media upload failed:`, uploadError);
+            throw new Error(
+              `Failed to upload media: ${
+                uploadError instanceof Error
+                  ? uploadError.message
+                  : "Unknown error"
+              }`
+            );
+          }
         }
 
         // Publish based on platform
@@ -145,29 +167,30 @@ export function createPostWorker() {
             platformPostId = await publishToTwitter({
               accessToken,
               content,
-              mediaUrls,
+              mediaIds, // Pass media IDs
             });
             break;
           case "instagram":
+            // For Instagram, you'd need to convert mediaData to URLs first
             platformPostId = await publishToInstagram({
               accessToken,
               content,
-              mediaUrls,
+              mediaUrls: [], // Instagram requires URLs, not IDs
             });
             break;
           case "tiktok":
             platformPostId = await publishToTikTok({
               accessToken,
               content,
-              mediaUrls,
+              mediaUrls: [], // TikTok requires URLs
             });
             break;
           case "linkedin":
             platformPostId = await publishToLinkedIn({
               accessToken,
-              accountId: account.platform_user_id,
+              accountId: account.platformUserId,
               content,
-              mediaUrls,
+              mediaUrls: [],
             });
             break;
           default:
@@ -176,67 +199,48 @@ export function createPostWorker() {
 
         console.log(`✅ Published! Platform post ID: ${platformPostId}`);
 
-        // Update target status to published - using raw SQL
-        const now = new Date();
-        await sql`
-          UPDATE post_target 
-          SET 
-            status = 'published',
-            platform_post_id = ${platformPostId},
-            published_at = ${now.toISOString()}
-          WHERE id = ${targetId}
-        `;
+        // Update target status to published
+        await db
+          .update(postTarget)
+          .set({
+            status: "published",
+            platformPostId,
+            publishedAt: new Date(),
+          })
+          .where(eq(postTarget.id, targetId));
 
-        console.log(`✅ Updated target ${targetId} to published`);
-
-        // Check if all targets are published, update post status
-        await updatePostStatus(sql, postId);
+        // Update post status
+        await updatePostStatus(postId);
 
         console.log(
           `✅ Successfully published to ${account.platform}: ${platformPostId}`
         );
-
-        // Clean up connection
-        await sql.end();
 
         return { success: true, platformPostId };
       } catch (error) {
         const errorMessage =
           error instanceof Error ? error.message : "Unknown error";
 
-        console.error(`❌ Error publishing target ${targetId}:`, errorMessage);
-        console.error(`❌ Stack trace:`, error);
+        console.error(`❌ Error publishing:`, errorMessage);
 
-        try {
-          // Update target status to failed - using raw SQL
-          await sql`
-            UPDATE post_target 
-            SET 
-              status = 'failed',
-              error_message = ${errorMessage}
-            WHERE id = ${targetId}
-          `;
+        // Update target status to failed
+        await db
+          .update(postTarget)
+          .set({
+            status: "failed",
+            errorMessage,
+          })
+          .where(eq(postTarget.id, targetId));
 
-          console.log(`✅ Updated target ${targetId} to failed`);
+        // Update post status
+        await updatePostStatus(postId);
 
-          // Update post status
-          await updatePostStatus(sql, postId);
-        } catch (updateError) {
-          console.error(
-            `❌ Failed to update target ${targetId} status to failed:`,
-            updateError
-          );
-        }
+        console.error(
+          `❌ Failed to publish to account ${socialAccountId}:`,
+          errorMessage
+        );
 
-        // Clean up connection even on error
-        try {
-          await sql.end();
-        } catch (endError) {
-          console.error(`❌ Failed to close database connection:`, endError);
-        }
-
-        // Re-throw to trigger retry
-        throw error;
+        throw error; // Re-throw to trigger retry
       }
     },
     {
@@ -259,7 +263,6 @@ export function createPostWorker() {
       `❌ Job ${job?.id} failed after ${job?.attemptsMade} attempts:`,
       err.message
     );
-    console.error(`❌ Job data:`, job?.data);
   });
 
   worker.on("error", (err) => {
@@ -267,82 +270,38 @@ export function createPostWorker() {
   });
 
   worker.on("stalled", (jobId) => {
-    console.warn(`⚠️ Job ${jobId} stalled`);
+    console.warn(`⚠️  Job ${jobId} stalled`);
   });
 
   return worker;
 }
 
 // Helper to update post status based on all targets
-async function updatePostStatus(sql: any, postId: string) {
-  console.log(`🔄 Updating post ${postId} status...`);
+async function updatePostStatus(postId: string) {
+  const targets = await db.query.postTarget.findMany({
+    where: eq(postTarget.postId, postId),
+  });
 
-  // Get all targets for this post - using raw SQL
-  const targets = await sql`
-    SELECT * FROM post_target 
-    WHERE post_id = ${postId}
-  `;
-
-  console.log(`📊 Found ${targets.length} targets for post ${postId}`);
-
-  const statuses = targets.map((t: any) => t.status);
+  const statuses = targets.map((t) => t.status);
 
   let newStatus: string;
 
-  if (statuses.every((s: string) => s === "published")) {
+  if (statuses.every((s) => s === "published")) {
     newStatus = "published";
-  } else if (statuses.some((s: string) => s === "failed")) {
-    newStatus = statuses.some((s: string) => s === "published")
+  } else if (statuses.some((s) => s === "failed")) {
+    newStatus = statuses.some((s) => s === "published")
       ? "published"
       : "failed";
-  } else if (statuses.some((s: string) => s === "publishing")) {
+  } else if (statuses.some((s) => s === "publishing")) {
     newStatus = "publishing";
   } else {
     newStatus = "scheduled";
   }
 
-  console.log(`✅ Setting post ${postId} status to: ${newStatus}`);
-
-  // Update post status - using raw SQL
-  const now = new Date();
-  await sql`
-    UPDATE post 
-    SET 
-      status = ${newStatus},
-      updated_at = ${now.toISOString()}
-    WHERE id = ${postId}
-  `;
+  await db
+    .update(post)
+    .set({ status: newStatus, updatedAt: new Date() })
+    .where(eq(post.id, postId));
 
   console.log(`✅ Updated post ${postId} status to: ${newStatus}`);
 }
-
-console.log("🚀 Starting Social Poster worker...");
-console.log(`📅 ${new Date().toISOString()}`);
-const activeWorker = createPostWorker();
-console.log("👀 Waiting for jobs...");
-
-let shuttingDown = false;
-async function shutdown(signal: NodeJS.Signals | "uncaughtException") {
-  if (shuttingDown) return;
-  shuttingDown = true;
-
-  console.log(`🛑 Received ${signal}, closing worker...`);
-  try {
-    await activeWorker.close();
-    console.log("✅ Worker closed cleanly");
-  } catch (error) {
-    console.error("❌ Error while closing worker:", error);
-  } finally {
-    process.exit(signal === "uncaughtException" ? 1 : 0);
-  }
-}
-
-process.on("SIGTERM", () => shutdown("SIGTERM"));
-process.on("SIGINT", () => shutdown("SIGINT"));
-process.on("uncaughtException", (err) => {
-  console.error("❌ Uncaught exception:", err);
-  shutdown("uncaughtException");
-});
-process.on("unhandledRejection", (reason, promise) => {
-  console.error("❌ Unhandled rejection at:", promise, "reason:", reason);
-});

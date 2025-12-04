@@ -37,8 +37,7 @@ export default async function DashboardPage() {
           email={session!.user.email}
           avatarUrl={session!.user.image}
           stats={stats}
-          accounts={accounts}
-          posts={recentPosts}
+          accounts={accounts} // ← Add this
         />
 
         {/* Top Row: Stats & Quick Actions */}
@@ -110,7 +109,7 @@ export default async function DashboardPage() {
             <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-3">
               Quick Actions
             </p>
-            <QuickActions accounts={accounts} posts={recentPosts} />
+            <QuickActions />
           </div>
         </section>
 
@@ -160,7 +159,7 @@ export default async function DashboardPage() {
                 ))}
               </div>
             ) : (
-              <EmptyState accounts={accounts} posts={recentPosts} />
+              <EmptyState accounts={accounts} />
             )}
           </div>
 

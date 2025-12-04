@@ -1,19 +1,11 @@
-import { eq, inArray } from "drizzle-orm";
 import { headers } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { nanoid } from "nanoid";
+import { eq, inArray } from "drizzle-orm";
 
-import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { db, post, postTarget, socialAccount } from "@/lib/db";
 import { schedulePost, publishPostNow } from "@/lib/queue/queues";
-
-const createPostSchema = z.object({
-  content: z.string().min(1).max(5000),
-  mediaUrls: z.array(z.string().url()).optional(),
-  socialAccountIds: z.array(z.string()).min(1),
-  scheduledFor: z.string().datetime().optional(), // ISO string
-});
 
 export async function POST(request: NextRequest) {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -22,19 +14,44 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const body = await request.json();
-    const data = createPostSchema.parse(body);
+    // Parse form data (for file uploads)
+    const formData = await request.formData();
+
+    const content = formData.get("content") as string;
+    const socialAccountIdsJson = formData.get("socialAccountIds") as string;
+    const scheduledForStr = formData.get("scheduledFor") as string | null;
+
+    // Get media files
+    const mediaFiles = formData.getAll("media") as File[];
+
+    // Validate content
+    if (!content?.trim() && mediaFiles.length === 0) {
+      return NextResponse.json(
+        { error: "Content or media is required" },
+        { status: 400 }
+      );
+    }
+
+    // Parse social account IDs
+    const socialAccountIds = JSON.parse(socialAccountIdsJson);
+
+    if (!Array.isArray(socialAccountIds) || socialAccountIds.length === 0) {
+      return NextResponse.json(
+        { error: "At least one account is required" },
+        { status: 400 }
+      );
+    }
 
     // Verify all social accounts belong to the user
     const accounts = await db.query.socialAccount.findMany({
       where: (sa, { and, eq: eqOp, inArray: inArrayOp }) =>
         and(
           eqOp(sa.userId, session.user.id),
-          inArrayOp(sa.id, data.socialAccountIds)
+          inArrayOp(sa.id, socialAccountIds)
         ),
     });
 
-    if (accounts.length !== data.socialAccountIds.length) {
+    if (accounts.length !== socialAccountIds.length) {
       return NextResponse.json(
         { error: "One or more accounts not found or not owned by you" },
         { status: 400 }
@@ -54,15 +71,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Process media files and convert to base64
+    const mediaData: Array<{ data: string; mimeType: string }> = [];
+
+    for (const file of mediaFiles) {
+      const bytes = await file.arrayBuffer();
+      const buffer = Buffer.from(bytes);
+      const base64 = buffer.toString("base64");
+
+      mediaData.push({
+        data: base64,
+        mimeType: file.type,
+      });
+    }
+
     // Create the post
     const postId = nanoid();
 
     // Parse and validate scheduled time
     let scheduledFor: Date | null = null;
-    if (data.scheduledFor) {
-      scheduledFor = new Date(data.scheduledFor);
+    if (scheduledForStr) {
+      scheduledFor = new Date(scheduledForStr);
 
-      // Validate the date is valid
       if (isNaN(scheduledFor.getTime())) {
         return NextResponse.json(
           { error: "Invalid scheduled date format" },
@@ -70,16 +100,14 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Check if date is too far in the past (more than 1 minute)
       const oneMinuteAgo = Date.now() - 60000;
       if (scheduledFor.getTime() < oneMinuteAgo) {
         console.warn(
-          `⚠️ Scheduled time ${scheduledFor.toISOString()} is in the past, will publish immediately`
+          `⚠️ Scheduled time ${scheduledFor.toISOString()} is in the past`
         );
-        scheduledFor = null; // Treat as immediate publish
+        scheduledFor = null;
       }
 
-      // Check if date is too far in the future (more than 1 year)
       const oneYearFromNow = Date.now() + 365 * 24 * 60 * 60 * 1000;
       if (scheduledFor!.getTime() > oneYearFromNow) {
         return NextResponse.json(
@@ -89,19 +117,23 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Insert post
+    // Insert post (don't store media in DB, send in job data)
     await db.insert(post).values({
       id: postId,
       userId: session.user.id,
-      content: data.content,
-      mediaUrls: data.mediaUrls || [],
+      content: content || "",
+      mediaUrls: [], // We'll generate URLs after upload
       scheduledFor,
       status: scheduledFor ? "scheduled" : "publishing",
     });
 
-    console.log(`✅ Created post: ${postId}`);
+    console.log(
+      `✅ Created post: ${postId}${
+        mediaData.length > 0 ? ` with ${mediaData.length} media files` : ""
+      }`
+    );
 
-    // Create post targets first, THEN queue jobs
+    // Create post targets
     const targets = [];
     for (const account of accounts) {
       const targetId = nanoid();
@@ -118,7 +150,7 @@ export async function POST(request: NextRequest) {
     await db.insert(postTarget).values(targets);
     console.log(`✅ Created ${targets.length} post targets`);
 
-    // NOW queue the jobs - after database inserts are complete
+    // Queue the jobs with media data
     const jobPromises = [];
     for (let i = 0; i < targets.length; i++) {
       const target = targets[i];
@@ -129,8 +161,8 @@ export async function POST(request: NextRequest) {
         userId: session.user.id,
         targetId: target.id,
         socialAccountId: account.id,
-        content: data.content,
-        mediaUrls: data.mediaUrls,
+        content: content || "",
+        mediaData, // Include media data in job
       };
 
       console.log(
@@ -156,16 +188,10 @@ export async function POST(request: NextRequest) {
         status: scheduledFor ? "scheduled" : "publishing",
         scheduledFor: scheduledFor?.toISOString(),
         targetCount: targets.length,
+        mediaCount: mediaData.length,
       },
     });
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: "Invalid request", details: error.message },
-        { status: 400 }
-      );
-    }
-
     console.error("❌ Error creating post:", error);
     return NextResponse.json(
       {
@@ -177,7 +203,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// GET - List posts for the current user
+// Keep your existing GET handler...
 export async function GET(request: NextRequest) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) {
@@ -190,14 +216,12 @@ export async function GET(request: NextRequest) {
     limit: 50,
   });
 
-  // Get targets for each post
   const postsWithTargets = await Promise.all(
     posts.map(async (p) => {
       const targets = await db.query.postTarget.findMany({
         where: eq(postTarget.postId, p.id),
       });
 
-      // Get account info for each target
       const targetAccountIds = targets.map((t) => t.socialAccountId);
       const accounts =
         targetAccountIds.length > 0

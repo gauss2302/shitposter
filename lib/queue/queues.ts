@@ -27,7 +27,7 @@ export interface PublishPostJobData {
   targetId: string; // postTarget.id
   socialAccountId: string;
   content: string;
-  mediaUrls?: string[];
+  mediaData?: Array<{ data: string; mimeType: string }>; // Base64 media
 }
 
 // Helper to schedule a post

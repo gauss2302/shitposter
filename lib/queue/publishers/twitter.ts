@@ -1,36 +1,390 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { createHmac } from "crypto";
+// lib/social/twitter.ts
+// All functions use user-context auth (connected user's token)
+// This does NOT consume your app's rate limits!
+
+interface TwitterUserContext {
+  accessToken: string; // The connected user's OAuth token
+}
+
+// ============================================
+// PROFILE & USER INFO
+// ============================================
+
+export interface TwitterUserProfile {
+  id: string;
+  username: string;
+  name: string;
+  followersCount: number;
+  followingCount: number;
+  tweetCount: number;
+  listedCount: number;
+  profileImageUrl: string;
+}
+
+/**
+ * Get authenticated user's profile
+ * Uses /users/me endpoint - counts against user's quota, not yours!
+ */
+export async function getUserProfile(
+  context: TwitterUserContext
+): Promise<TwitterUserProfile> {
+  const response = await fetch(
+    "https://api.twitter.com/2/users/me?user.fields=public_metrics,profile_image_url",
+    {
+      headers: {
+        Authorization: `Bearer ${context.accessToken}`,
+      },
+    }
+  );
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(
+      `Twitter API error: ${
+        error.detail || error.title || JSON.stringify(error)
+      }`
+    );
+  }
+
+  const data = await response.json();
+  const user = data.data;
+
+  return {
+    id: user.id,
+    username: user.username,
+    name: user.name,
+    followersCount: user.public_metrics.followers_count,
+    followingCount: user.public_metrics.following_count,
+    tweetCount: user.public_metrics.tweet_count,
+    listedCount: user.public_metrics.listed_count,
+    profileImageUrl: user.profile_image_url,
+  };
+}
+
+// ============================================
+// TWEETS & POSTING
+// ============================================
+
+export interface TwitterTweetMetrics {
+  id: string;
+  text: string;
+  createdAt: string;
+  publicMetrics: {
+    retweetCount: number;
+    replyCount: number;
+    likeCount: number;
+    quoteCount: number;
+    bookmarkCount: number;
+    impressionCount: number;
+  };
+  organicMetrics?: {
+    impressionCount: number;
+    likeCount: number;
+    replyCount: number;
+    retweetCount: number;
+    urlLinkClicks: number;
+    userProfileClicks: number;
+  };
+  nonPublicMetrics?: {
+    impressionCount: number;
+    urlLinkClicks: number;
+    userProfileClicks: number;
+  };
+}
+
+/**
+ * Get user's own tweets with full metrics
+ * Uses /users/me/tweets endpoint
+ */
+export async function getUserTweets(
+  context: TwitterUserContext,
+  options?: {
+    maxResults?: number;
+    sinceId?: string;
+    untilId?: string;
+  }
+): Promise<TwitterTweetMetrics[]> {
+  const params = new URLSearchParams({
+    max_results: String(Math.min(options?.maxResults || 100, 100)),
+    // Only request basic fields that work with Free tier
+    "tweet.fields": "created_at,public_metrics",
+  });
+
+  if (options?.sinceId) params.append("since_id", options.sinceId);
+  if (options?.untilId) params.append("until_id", options.untilId);
+  // Don't use exclude parameter - it may not be supported
+
+  const response = await fetch(
+    `https://api.twitter.com/2/users/me/tweets?${params}`,
+    {
+      headers: {
+        Authorization: `Bearer ${context.accessToken}`,
+      },
+    }
+  );
+
+  if (!response.ok) {
+    const error = await response.json();
+
+    // Provide more helpful error messages
+    let errorMessage = error.detail || error.title || "Unknown error";
+
+    if (response.status === 429) {
+      errorMessage = "Rate limit exceeded. Please try again in 15 minutes.";
+    } else if (response.status === 401 || response.status === 403) {
+      errorMessage =
+        "Authentication failed. Please reconnect your Twitter account.";
+    } else if (error.errors && error.errors.length > 0) {
+      errorMessage = error.errors[0].message;
+    }
+
+    throw new Error(`Twitter API error: ${errorMessage}`);
+  }
+
+  const data = await response.json();
+
+  if (!data.data || data.data.length === 0) {
+    return [];
+  }
+
+  return data.data.map((tweet: any) => ({
+    id: tweet.id,
+    text: tweet.text,
+    createdAt: tweet.created_at,
+    publicMetrics: {
+      retweetCount: tweet.public_metrics?.retweet_count || 0,
+      replyCount: tweet.public_metrics?.reply_count || 0,
+      likeCount: tweet.public_metrics?.like_count || 0,
+      quoteCount: tweet.public_metrics?.quote_count || 0,
+      bookmarkCount: tweet.public_metrics?.bookmark_count || 0,
+      impressionCount: tweet.public_metrics?.impression_count || 0,
+    },
+    // organic_metrics and non_public_metrics not available on Free tier
+    organicMetrics: undefined,
+    nonPublicMetrics: undefined,
+  }));
+}
+
+/**
+ * Get a specific tweet by ID with metrics
+ */
+export async function getTweetById(
+  context: TwitterUserContext,
+  tweetId: string
+): Promise<TwitterTweetMetrics> {
+  const params = new URLSearchParams({
+    // Only request fields available on Free tier
+    "tweet.fields": "created_at,public_metrics",
+  });
+
+  const response = await fetch(
+    `https://api.twitter.com/2/tweets/${tweetId}?${params}`,
+    {
+      headers: {
+        Authorization: `Bearer ${context.accessToken}`,
+      },
+    }
+  );
+
+  if (!response.ok) {
+    const error = await response.json();
+
+    let errorMessage = error.detail || error.title || "Unknown error";
+
+    if (response.status === 429) {
+      errorMessage = "Rate limit exceeded. Please try again in 15 minutes.";
+    } else if (response.status === 401 || response.status === 403) {
+      errorMessage =
+        "Authentication failed. Please reconnect your Twitter account.";
+    } else if (error.errors && error.errors.length > 0) {
+      errorMessage = error.errors[0].message;
+    }
+
+    throw new Error(`Twitter API error: ${errorMessage}`);
+  }
+
+  const data = await response.json();
+  const tweet = data.data;
+
+  return {
+    id: tweet.id,
+    text: tweet.text,
+    createdAt: tweet.created_at,
+    publicMetrics: {
+      retweetCount: tweet.public_metrics?.retweet_count || 0,
+      replyCount: tweet.public_metrics?.reply_count || 0,
+      likeCount: tweet.public_metrics?.like_count || 0,
+      quoteCount: tweet.public_metrics?.quote_count || 0,
+      bookmarkCount: tweet.public_metrics?.bookmark_count || 0,
+      impressionCount: tweet.public_metrics?.impression_count || 0,
+    },
+    // These metrics not available on Free tier
+    organicMetrics: undefined,
+    nonPublicMetrics: undefined,
+  };
+}
+
+/**
+ * Post a tweet
+ */
+export async function postTweet(
+  context: TwitterUserContext,
+  content: string,
+  mediaIds?: string[]
+): Promise<string> {
+  const response = await fetch("https://api.twitter.com/2/tweets", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${context.accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      text: content,
+      ...(mediaIds &&
+        mediaIds.length > 0 && {
+          media: { media_ids: mediaIds },
+        }),
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(
+      `Twitter API error: ${
+        error.detail || error.title || JSON.stringify(error)
+      }`
+    );
+  }
+
+  const data = await response.json();
+  return data.data.id;
+}
+
+/**
+ * Delete a tweet (user can only delete their own)
+ */
+export async function deleteTweet(
+  context: TwitterUserContext,
+  tweetId: string
+): Promise<void> {
+  const response = await fetch(`https://api.twitter.com/2/tweets/${tweetId}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${context.accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(
+      `Twitter API error: ${
+        error.detail || error.title || JSON.stringify(error)
+      }`
+    );
+  }
+}
+
+// ============================================
+// ANALYTICS
+// ============================================
+
+export interface TwitterAnalytics {
+  user: TwitterUserProfile;
+  tweets: TwitterTweetMetrics[];
+  summary: {
+    totalTweets: number;
+    totalImpressions: number;
+    totalEngagements: number;
+    totalLikes: number;
+    totalRetweets: number;
+    totalReplies: number;
+    avgEngagementRate: number;
+  };
+}
+
+/**
+ * Get comprehensive analytics for authenticated user
+ * All data fetched using user's token - counts against THEIR quota!
+ */
+export async function getTwitterAnalytics(
+  context: TwitterUserContext,
+  tweetLimit: number = 100
+): Promise<TwitterAnalytics> {
+  // Fetch user profile and tweets in parallel
+  const [user, tweets] = await Promise.all([
+    getUserProfile(context),
+    getUserTweets(context, { maxResults: tweetLimit }),
+  ]);
+
+  // Calculate summary statistics
+  // Note: impressionCount may be 0 on Free tier
+  const totalImpressions = tweets.reduce(
+    (sum, tweet) => sum + (tweet.publicMetrics.impressionCount || 0),
+    0
+  );
+
+  const totalEngagements = tweets.reduce(
+    (sum, tweet) =>
+      sum +
+      tweet.publicMetrics.likeCount +
+      tweet.publicMetrics.retweetCount +
+      tweet.publicMetrics.replyCount +
+      tweet.publicMetrics.quoteCount,
+    0
+  );
+
+  const totalLikes = tweets.reduce(
+    (sum, tweet) => sum + tweet.publicMetrics.likeCount,
+    0
+  );
+
+  const totalRetweets = tweets.reduce(
+    (sum, tweet) => sum + tweet.publicMetrics.retweetCount,
+    0
+  );
+
+  const totalReplies = tweets.reduce(
+    (sum, tweet) => sum + tweet.publicMetrics.replyCount,
+    0
+  );
+
+  // Calculate engagement rate
+  // If impressions data is not available (Free tier), calculate based on total engagement
+  const avgEngagementRate =
+    totalImpressions > 0
+      ? (totalEngagements / totalImpressions) * 100
+      : tweets.length > 0
+      ? totalEngagements / tweets.length // Avg engagements per tweet instead
+      : 0;
+
+  return {
+    user,
+    tweets,
+    summary: {
+      totalTweets: tweets.length,
+      totalImpressions,
+      totalEngagements,
+      totalLikes,
+      totalRetweets,
+      totalReplies,
+      avgEngagementRate,
+    },
+  };
+}
 
 interface PublishOptions {
   accessToken: string;
   content: string;
-  mediaUrls?: string[];
+  mediaIds?: string[]; // Changed from mediaUrls to mediaIds
 }
 
-/**
- * Twitter API v2 POST tweet endpoint
- * Uses OAuth 2.0 Bearer token for authentication
- */
 export async function publishToTwitter({
   accessToken,
   content,
-  mediaUrls,
+  mediaIds,
 }: PublishOptions): Promise<string> {
-  const mediaIds: string[] = [];
-
-  // Upload media first if present
-  // Note: Media upload requires OAuth 1.0a, not OAuth 2.0
-  // For now, we'll skip media upload if using OAuth 2.0 tokens
-  // You'll need to implement OAuth 1.0a credentials for media upload
-  if (mediaUrls && mediaUrls.length > 0) {
-    console.warn(
-      "⚠️ Media upload requires OAuth 1.0a credentials. Posting without media."
-    );
-    // TODO: Implement OAuth 1.0a media upload
-    // mediaIds = await uploadMediaToTwitterV1(mediaUrls);
-  }
-
-  // Create tweet using v2 API
+  // Create tweet with media IDs (already uploaded)
   const response = await fetch("https://api.twitter.com/2/tweets", {
     method: "POST",
     headers: {
@@ -39,9 +393,10 @@ export async function publishToTwitter({
     },
     body: JSON.stringify({
       text: content,
-      ...(mediaIds.length > 0 && {
-        media: { media_ids: mediaIds },
-      }),
+      ...(mediaIds &&
+        mediaIds.length > 0 && {
+          media: { media_ids: mediaIds },
+        }),
     }),
   });
 
@@ -56,334 +411,7 @@ export async function publishToTwitter({
   return data.data.id;
 }
 
-/**
- * Upload media to Twitter using v1.1 API with OAuth 1.0a
- * This is a simplified version - for production, use chunked upload for files > 5MB
- *
- * IMPORTANT: This requires OAuth 1.0a credentials (consumer key/secret + access token/secret)
- * NOT the OAuth 2.0 Bearer token
- */
-async function uploadMediaToTwitterV1Simple(
-  oauthCredentials: {
-    consumerKey: string;
-    consumerSecret: string;
-    accessToken: string;
-    accessTokenSecret: string;
-  },
-  mediaUrls: string[]
-): Promise<string[]> {
-  const mediaIds: string[] = [];
-
-  for (const url of mediaUrls) {
-    try {
-      // Download the media
-      const mediaResponse = await fetch(url);
-      const mediaBuffer = await mediaResponse.arrayBuffer();
-      const mediaBase64 = Buffer.from(mediaBuffer).toString("base64");
-
-      // Build OAuth 1.0a signature
-      const oauth = generateOAuth1Header(
-        "POST",
-        "https://upload.twitter.com/1.1/media/upload.json",
-        {},
-        oauthCredentials
-      );
-
-      // Upload to Twitter v1.1 media endpoint
-      const uploadResponse = await fetch(
-        "https://upload.twitter.com/1.1/media/upload.json",
-        {
-          method: "POST",
-          headers: {
-            Authorization: oauth,
-            "Content-Type": "application/x-www-form-urlencoded",
-          },
-          body: new URLSearchParams({
-            media_data: mediaBase64,
-          }),
-        }
-      );
-
-      if (!uploadResponse.ok) {
-        const errorText = await uploadResponse.text();
-        console.error("Failed to upload media to Twitter:", errorText);
-        continue;
-      }
-
-      const uploadData = await uploadResponse.json();
-      mediaIds.push(uploadData.media_id_string);
-    } catch (error) {
-      console.error("Error uploading media:", error);
-      continue;
-    }
-  }
-
-  return mediaIds;
-}
-
-/**
- * Chunked upload for larger files (recommended for files > 5MB)
- * Supports videos, GIFs, and large images
- */
-async function uploadMediaToTwitterV1Chunked(
-  oauthCredentials: {
-    consumerKey: string;
-    consumerSecret: string;
-    accessToken: string;
-    accessTokenSecret: string;
-  },
-  mediaUrl: string
-): Promise<string | null> {
-  try {
-    // Download the media
-    const mediaResponse = await fetch(mediaUrl);
-    const mediaBuffer = await mediaResponse.arrayBuffer();
-    const mediaType = mediaResponse.headers.get("content-type") || "image/jpeg";
-    const totalBytes = mediaBuffer.byteLength;
-
-    // Step 1: INIT
-    const initOauth = generateOAuth1Header(
-      "POST",
-      "https://upload.twitter.com/1.1/media/upload.json",
-      {
-        command: "INIT",
-        total_bytes: totalBytes.toString(),
-        media_type: mediaType,
-      },
-      oauthCredentials
-    );
-
-    const initResponse = await fetch(
-      `https://upload.twitter.com/1.1/media/upload.json?command=INIT&total_bytes=${totalBytes}&media_type=${encodeURIComponent(
-        mediaType
-      )}`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: initOauth,
-        },
-      }
-    );
-
-    if (!initResponse.ok) {
-      throw new Error(`INIT failed: ${await initResponse.text()}`);
-    }
-
-    const initData = await initResponse.json();
-    const mediaId = initData.media_id_string;
-
-    // Step 2: APPEND - Upload in chunks (max 5MB per chunk)
-    const chunkSize = 5 * 1024 * 1024; // 5MB
-    const chunks = Math.ceil(totalBytes / chunkSize);
-
-    for (let i = 0; i < chunks; i++) {
-      const start = i * chunkSize;
-      const end = Math.min(start + chunkSize, totalBytes);
-      const chunk = Buffer.from(mediaBuffer.slice(start, end));
-
-      const appendOauth = generateOAuth1Header(
-        "POST",
-        "https://upload.twitter.com/1.1/media/upload.json",
-        {
-          command: "APPEND",
-          media_id: mediaId,
-          segment_index: i.toString(),
-        },
-        oauthCredentials
-      );
-
-      const formData = new URLSearchParams();
-      formData.append("command", "APPEND");
-      formData.append("media_id", mediaId);
-      formData.append("segment_index", i.toString());
-      formData.append("media", chunk.toString("base64"));
-
-      const appendResponse = await fetch(
-        "https://upload.twitter.com/1.1/media/upload.json",
-        {
-          method: "POST",
-          headers: {
-            Authorization: appendOauth,
-            "Content-Type": "application/x-www-form-urlencoded",
-          },
-          body: formData,
-        }
-      );
-
-      if (!appendResponse.ok) {
-        throw new Error(
-          `APPEND failed at chunk ${i}: ${await appendResponse.text()}`
-        );
-      }
-    }
-
-    // Step 3: FINALIZE
-    const finalizeOauth = generateOAuth1Header(
-      "POST",
-      "https://upload.twitter.com/1.1/media/upload.json",
-      {
-        command: "FINALIZE",
-        media_id: mediaId,
-      },
-      oauthCredentials
-    );
-
-    const finalizeResponse = await fetch(
-      `https://upload.twitter.com/1.1/media/upload.json?command=FINALIZE&media_id=${mediaId}`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: finalizeOauth,
-        },
-      }
-    );
-
-    if (!finalizeResponse.ok) {
-      throw new Error(`FINALIZE failed: ${await finalizeResponse.text()}`);
-    }
-
-    const finalizeData = await finalizeResponse.json();
-
-    // Step 4: Check processing status (for videos/GIFs)
-    if (finalizeData.processing_info) {
-      await waitForMediaProcessing(mediaId, oauthCredentials);
-    }
-
-    return mediaId;
-  } catch (error) {
-    console.error("Chunked upload error:", error);
-    return null;
-  }
-}
-
-/**
- * Wait for media processing to complete (for videos/GIFs)
- */
-async function waitForMediaProcessing(
-  mediaId: string,
-  oauthCredentials: {
-    consumerKey: string;
-    consumerSecret: string;
-    accessToken: string;
-    accessTokenSecret: string;
-  },
-  maxAttempts = 30
-): Promise<void> {
-  for (let i = 0; i < maxAttempts; i++) {
-    const statusOauth = generateOAuth1Header(
-      "GET",
-      "https://upload.twitter.com/1.1/media/upload.json",
-      {
-        command: "STATUS",
-        media_id: mediaId,
-      },
-      oauthCredentials
-    );
-
-    const response = await fetch(
-      `https://upload.twitter.com/1.1/media/upload.json?command=STATUS&media_id=${mediaId}`,
-      {
-        method: "GET",
-        headers: {
-          Authorization: statusOauth,
-        },
-      }
-    );
-
-    if (response.ok) {
-      const data = await response.json();
-      const state = data.processing_info?.state;
-
-      if (state === "succeeded") return;
-      if (state === "failed") throw new Error("Media processing failed");
-
-      // Wait before checking again
-      const checkAfterSecs = data.processing_info?.check_after_secs || 2;
-      await new Promise((resolve) =>
-        setTimeout(resolve, checkAfterSecs * 1000)
-      );
-    } else {
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-    }
-  }
-
-  throw new Error("Media processing timeout");
-}
-
-/**
- * Generate OAuth 1.0a authorization header
- * Required for v1.1 API endpoints
- */
-function generateOAuth1Header(
-  method: string,
-  url: string,
-  params: Record<string, string>,
-  credentials: {
-    consumerKey: string;
-    consumerSecret: string;
-    accessToken: string;
-    accessTokenSecret: string;
-  }
-): string {
-  const timestamp = Math.floor(Date.now() / 1000).toString();
-  const nonce = Buffer.from(Math.random().toString()).toString("base64");
-
-  const oauthParams: Record<string, string> = {
-    oauth_consumer_key: credentials.consumerKey,
-    oauth_nonce: nonce,
-    oauth_signature_method: "HMAC-SHA1",
-    oauth_timestamp: timestamp,
-    oauth_token: credentials.accessToken,
-    oauth_version: "1.0",
-  };
-
-  // Combine OAuth params with request params
-  const allParams: Record<string, string> = { ...oauthParams, ...params };
-
-  // Create signature base string
-  const sortedKeys = Object.keys(allParams).sort();
-  const paramString = sortedKeys
-    .map(
-      (key) =>
-        `${encodeURIComponent(key)}=${encodeURIComponent(allParams[key])}`
-    )
-    .join("&");
-
-  const signatureBase = `${method.toUpperCase()}&${encodeURIComponent(
-    url
-  )}&${encodeURIComponent(paramString)}`;
-
-  // Create signing key
-  const signingKey = `${encodeURIComponent(
-    credentials.consumerSecret
-  )}&${encodeURIComponent(credentials.accessTokenSecret)}`;
-
-  // Generate signature
-  const signature = createHmac("sha1", signingKey)
-    .update(signatureBase)
-    .digest("base64");
-
-  // Build authorization header
-  const authParams: Record<string, string> = {
-    ...oauthParams,
-    oauth_signature: signature,
-  };
-
-  const authHeader =
-    "OAuth " +
-    Object.keys(authParams)
-      .map(
-        (key) =>
-          `${encodeURIComponent(key)}="${encodeURIComponent(authParams[key])}"`
-      )
-      .join(", ");
-
-  return authHeader;
-}
-
-/**
- * Refresh Twitter OAuth 2.0 access token
- */
+// Refresh Twitter access token
 export async function refreshTwitterToken(refreshToken: string): Promise<{
   accessToken: string;
   refreshToken: string;
