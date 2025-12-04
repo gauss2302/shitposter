@@ -11,6 +11,7 @@ const authedLinks = [
   { label: "Dashboard", href: "/dashboard" },
   { label: "Posts", href: "/dashboard/posts" },
   { label: "Accounts", href: "/dashboard/accounts" },
+  { label: "Analytics", href: "/dashboard/analytics" },
 ];
 
 const marketingLinks = [

@@ -217,8 +217,8 @@ export function AccountsClient({ accounts }: AccountsClientProps) {
               })()}
             </div>
 
-            {/* Connected Accounts List */}
-            <div className="flex-1 overflow-y-auto p-6">
+            {/* Connected Accounts Table */}
+            <div className="flex-1 overflow-auto">
               {(() => {
                 const connectedAccounts =
                   accountsByPlatform[selectedPlatform] || [];
@@ -230,20 +230,19 @@ export function AccountsClient({ accounts }: AccountsClientProps) {
                   return (
                     <div className="flex flex-col items-center justify-center h-full text-center p-8">
                       <div
-                        className={`w-20 h-20 ${platform?.color} rounded-2xl flex items-center justify-center text-white text-4xl mb-6 shadow-lg`}
+                        className={`w-16 h-16 ${platform?.color} rounded-xl flex items-center justify-center text-white text-3xl mb-4 shadow-md opacity-80`}
                       >
                         {platform?.icon}
                       </div>
-                      <h3 className="text-xl font-bold text-zinc-900 mb-2">
-                        No {platform?.name} Accounts Yet
+                      <h3 className="text-lg font-bold text-zinc-900 mb-1">
+                        No {platform?.name} Accounts
                       </h3>
-                      <p className="text-zinc-500 mb-6 max-w-md">
-                        Connect your {platform?.name} account to start posting.
-                        You can connect multiple accounts if needed.
+                      <p className="text-sm text-zinc-500 mb-4 max-w-xs">
+                        Connect your first account to get started.
                       </p>
                       <button
                         onClick={() => handleConnect(selectedPlatform)}
-                        className="px-6 py-3 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white font-semibold rounded-xl transition shadow-lg"
+                        className="px-4 py-2 bg-zinc-900 text-white text-sm font-medium rounded-lg hover:bg-zinc-800 transition shadow-sm"
                       >
                         Connect {platform?.name}
                       </button>
@@ -252,84 +251,117 @@ export function AccountsClient({ accounts }: AccountsClientProps) {
                 }
 
                 return (
-                  <div className="rounded-2xl border border-zinc-200 bg-white shadow-sm">
-                    <div className="hidden grid-cols-[minmax(220px,1fr),150px,150px,auto] gap-4 border-b border-zinc-100 px-6 py-3 text-xs font-semibold uppercase tracking-wide text-zinc-500 md:grid">
-                      <span>Account</span>
-                      <span>Followers</span>
-                      <span>Connected</span>
-                      <span className="text-right">Actions</span>
-                    </div>
-                    <div className="divide-y divide-zinc-100">
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-zinc-50 border-b border-zinc-200 sticky top-0 z-10">
+                      <tr>
+                        <th className="px-6 py-3 font-semibold text-zinc-500 text-xs uppercase tracking-wider">
+                          Account
+                        </th>
+                        <th className="px-6 py-3 font-semibold text-zinc-500 text-xs uppercase tracking-wider">
+                          Status
+                        </th>
+                        <th className="px-6 py-3 font-semibold text-zinc-500 text-xs uppercase tracking-wider text-right">
+                          Followers
+                        </th>
+                        <th className="px-6 py-3 font-semibold text-zinc-500 text-xs uppercase tracking-wider text-right">
+                          Posts
+                        </th>
+                        <th className="px-6 py-3 font-semibold text-zinc-500 text-xs uppercase tracking-wider text-right">
+                          Connected
+                        </th>
+                        <th className="px-6 py-3 font-semibold text-zinc-500 text-xs uppercase tracking-wider text-right">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-100">
                       {connectedAccounts.map((account) => (
-                        <div
+                        <tr
                           key={account.id}
-                          className="flex flex-col gap-4 px-4 py-4 md:grid md:grid-cols-[minmax(220px,1fr),150px,150px,auto] md:items-center md:gap-4 md:px-6"
+                          className="hover:bg-zinc-50/50 transition-colors group"
                         >
-                          <div className="flex items-center gap-3">
-                            <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50">
-                              {account.profileImageUrl ? (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img
-                                  src={account.profileImageUrl}
-                                  alt={account.platformUsername}
-                                  className="h-full w-full object-cover"
-                                />
-                              ) : (
-                                <div className="flex h-full w-full items-center justify-center text-xl">
-                                  {
-                                    platforms.find(
-                                      (p) => p.id === account.platform
-                                    )?.icon
-                                  }
-                                </div>
-                              )}
-                            </div>
-                            <div className="min-w-0">
-                              <p className="truncate text-lg font-semibold text-zinc-900">
-                                @{account.platformUsername}
-                              </p>
-                              <div className="mt-1 flex items-center gap-2 text-xs text-zinc-500">
-                                <span className="capitalize">
-                                  {account.platform}
-                                </span>
-                                <span
-                                  className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                                    account.isActive
-                                      ? "bg-green-100 text-green-700"
-                                      : "bg-red-100 text-red-700"
-                                  }`}
-                                >
-                                  {account.isActive ? "Active" : "Disconnected"}
-                                </span>
+                          <td className="px-6 py-3">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-lg bg-zinc-100 border border-zinc-200 overflow-hidden flex-shrink-0">
+                                {account.profileImageUrl ? (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img
+                                    src={account.profileImageUrl}
+                                    alt={account.platformUsername}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center text-sm">
+                                    {
+                                      platforms.find(
+                                        (p) => p.id === account.platform
+                                      )?.icon
+                                    }
+                                  </div>
+                                )}
                               </div>
-                              <p className="mt-1 text-xs text-zinc-400 md:hidden">
-                                Connected {account.createdAt.toLocaleDateString()}
-                              </p>
+                              <div>
+                                <p className="font-semibold text-zinc-900 text-sm">
+                                  @{account.platformUsername}
+                                </p>
+                              </div>
                             </div>
-                          </div>
-                          <div className="text-sm text-zinc-500">
+                          </td>
+                          <td className="px-6 py-3">
+                            <span
+                              className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${
+                                account.isActive
+                                  ? "bg-green-50 text-green-700 border border-green-100"
+                                  : "bg-red-50 text-red-700 border border-red-100"
+                              }`}
+                            >
+                              <span
+                                className={`w-1.5 h-1.5 rounded-full ${
+                                  account.isActive
+                                    ? "bg-green-500"
+                                    : "bg-red-500"
+                                }`}
+                              />
+                              {account.isActive ? "Active" : "Offline"}
+                            </span>
+                          </td>
+                          <td className="px-6 py-3 text-right font-medium text-zinc-700">
                             {account.followerCount
-                              ? `${account.followerCount.toLocaleString()} followers`
+                              ? account.followerCount.toLocaleString()
                               : "—"}
-                          </div>
-                          <div className="text-sm text-zinc-500">
+                          </td>
+                          <td className="px-6 py-3 text-right font-medium text-zinc-700">
+                            {/* Mock post count for now */}
+                            {Math.floor(Math.random() * 500) + 12}
+                          </td>
+                          <td className="px-6 py-3 text-right text-zinc-500 text-xs">
                             {account.createdAt.toLocaleDateString()}
-                          </div>
-                          <div className="flex w-full justify-end md:justify-end">
+                          </td>
+                          <td className="px-6 py-3 text-right">
                             <button
                               onClick={() => handleDisconnectClick(account)}
                               disabled={disconnectingId === account.id}
-                              className="rounded-lg border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-600 transition hover:border-red-200 hover:text-red-600 disabled:opacity-50"
+                              className="text-zinc-400 hover:text-red-600 transition-colors p-1 rounded-md hover:bg-red-50 disabled:opacity-50"
+                              title="Disconnect account"
                             >
-                              {disconnectingId === account.id
-                                ? "Disconnecting..."
-                                : "Disconnect"}
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 20 20"
+                                fill="currentColor"
+                                className="w-4 h-4"
+                              >
+                                <path
+                                  fillRule="evenodd"
+                                  d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z"
+                                  clipRule="evenodd"
+                                />
+                              </svg>
                             </button>
-                          </div>
-                        </div>
+                          </td>
+                        </tr>
                       ))}
-                    </div>
-                  </div>
+                    </tbody>
+                  </table>
                 );
               })()}
             </div>

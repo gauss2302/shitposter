@@ -27,7 +27,7 @@ export default async function HomePage() {
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-[#E8F9FF] shadow-sm mb-8 animate-fade-in-up">
               <span className="w-2 h-2 rounded-full bg-[#C5BAFF]"></span>
               <span className="text-sm font-medium text-zinc-600">
-                The new era of posting is here
+                The new era of posting is here!
               </span>
             </div>
 
@@ -140,18 +140,18 @@ export default async function HomePage() {
                 {[
                   {
                     step: "01",
-                    title: "Create",
-                    text: "Draft your masterpiece in our rich editor.",
+                    title: "Connect everything",
+                    text: "Securely add unlimited Instagram, TikTok, LinkedIn, X and more in seconds. Each profile stays isolated but manageable from one place.",
                   },
                   {
                     step: "02",
-                    title: "Distribute",
-                    text: "Select platforms and customize for each audience.",
+                    title: "Plan visually",
+                    text: "Drag and drop content on the universal calendar, preview per-network tweaks, and keep an eye on the posting queue before it fires.",
                   },
                   {
                     step: "03",
-                    title: "Dominate",
-                    text: "Watch the engagement roll in from everywhere.",
+                    title: "Queue & automate",
+                    text: "Posts enter a smart queue with per-platform throttling, retries, and delivery tracking so campaigns run while you sleep.",
                   },
                 ].map((item, i) => (
                   <div key={i} className="flex gap-6">
@@ -162,6 +162,32 @@ export default async function HomePage() {
                       <h3 className="text-xl font-bold mb-2">{item.title}</h3>
                       <p className="text-zinc-500">{item.text}</p>
                     </div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-10 grid gap-4 text-sm text-zinc-600 sm:grid-cols-3">
+                {[
+                  {
+                    title: "Many accounts",
+                    desc: "Handle agencies, brands, and alter-egos from a single login.",
+                  },
+                  {
+                    title: "Useful calendar",
+                    desc: "Smart reminders, conflict warnings, and timezone-aware slots.",
+                  },
+                  {
+                    title: "Queue intelligence",
+                    desc: "Automatic retries and pacing so no post is left behind.",
+                  },
+                ].map((card) => (
+                  <div
+                    key={card.title}
+                    className="rounded-2xl border border-[#E8F9FF] bg-white/60 p-4 shadow-sm"
+                  >
+                    <p className="text-sm font-semibold text-zinc-900">
+                      {card.title}
+                    </p>
+                    <p className="mt-1 text-zinc-500">{card.desc}</p>
                   </div>
                 ))}
               </div>
@@ -196,15 +222,34 @@ export default async function HomePage() {
                   </div>
 
                   {/* Destination Nodes */}
-                  <div className="grid grid-cols-3 gap-4 w-full pt-4">
-                    {["𝕏", "📸", "💼"].map((icon, i) => (
+                  <div className="grid grid-cols-2 gap-3 w-full pt-4 sm:grid-cols-4">
+                    {[
+                      { icon: "📸", label: "Instagram" },
+                      { icon: "🎵", label: "TikTok" },
+                      { icon: "💼", label: "LinkedIn" },
+                      { icon: "𝕏", label: "X / Twitter" },
+                    ].map((item) => (
                       <div
-                        key={i}
-                        className="h-16 bg-[#FBFBFB] border border-[#E8F9FF] rounded-xl flex items-center justify-center text-2xl shadow-sm hover:-translate-y-1 transition-transform"
+                        key={item.label}
+                        className="flex flex-col items-center gap-1 rounded-xl border border-[#E8F9FF] bg-[#FBFBFB] px-3 py-4 text-center text-sm shadow-sm hover:-translate-y-1 transition-transform"
                       >
-                        {icon}
+                        <span className="text-2xl">{item.icon}</span>
+                        <span className="text-xs text-zinc-500">
+                          {item.label}
+                        </span>
                       </div>
                     ))}
+                  </div>
+                  <div className="mt-6 flex flex-wrap items-center justify-center gap-3 text-xs font-medium text-zinc-600">
+                    <span className="rounded-full border border-[#E8F9FF] px-3 py-1">
+                      Calendar view
+                    </span>
+                    <span className="rounded-full border border-[#E8F9FF] px-3 py-1">
+                      Queue management
+                    </span>
+                    <span className="rounded-full border border-[#E8F9FF] px-3 py-1">
+                      Token-safe accounts
+                    </span>
                   </div>
                 </div>
               </div>
