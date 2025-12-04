@@ -5,6 +5,7 @@ import * as crypto from "crypto";
 import { createRedisConnection } from "@/lib/queue/connection";
 import {
   publishToTwitter,
+  refreshTwitterToken,
   publishToInstagram,
   publishToTikTok,
   publishToLinkedIn,
@@ -16,6 +17,7 @@ import { uploadMultipleMedia } from "@/lib/social/twitter-media";
 
 dotenv.config();
 dotenv.config({ path: ".env.local", override: true });
+
 const ALGORITHM = "aes-256-gcm";
 const IV_LENGTH = 16;
 const AUTH_TAG_LENGTH = 16;
@@ -30,8 +32,6 @@ function getEncryptionKey(): Buffer {
 
 function decrypt(encryptedText: string): string {
   const key = getEncryptionKey();
-
-  // Extract iv, authTag, and encrypted data
   const iv = Buffer.from(encryptedText.slice(0, IV_LENGTH * 2), "hex");
   const authTag = Buffer.from(
     encryptedText.slice(IV_LENGTH * 2, (IV_LENGTH + AUTH_TAG_LENGTH) * 2),
@@ -48,6 +48,19 @@ function decrypt(encryptedText: string): string {
   return decrypted;
 }
 
+function encrypt(text: string): string {
+  const key = getEncryptionKey();
+  const iv = crypto.randomBytes(IV_LENGTH);
+  const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
+
+  let encrypted = cipher.update(text, "utf8", "hex");
+  encrypted += cipher.final("hex");
+
+  const authTag = cipher.getAuthTag();
+
+  return iv.toString("hex") + authTag.toString("hex") + encrypted;
+}
+
 export function createPostWorker() {
   const worker = new Worker<PublishPostJobData>(
     "post-publishing",
@@ -58,13 +71,14 @@ export function createPostWorker() {
       console.log(
         `📤 Processing job ${
           job.id
-        }: Post ${postId} to account ${socialAccountId}${
+        }: Post ${postId} to account ${socialAccountId}, target: ${targetId}${
           mediaData?.length ? ` with ${mediaData.length} media files` : ""
         }`
       );
 
       try {
         // Verify target exists
+        console.log(`🔍 Verifying target ${targetId}...`);
         const target = await db.query.postTarget.findFirst({
           where: eq(postTarget.id, targetId),
         });
@@ -78,6 +92,7 @@ export function createPostWorker() {
         console.log(`✅ Found target ${targetId} for post ${postId}`);
 
         // Update status to publishing
+        console.log(`✏️ Updating target ${targetId} to publishing...`);
         await db
           .update(postTarget)
           .set({ status: "publishing" })
@@ -86,6 +101,7 @@ export function createPostWorker() {
         console.log(`✅ Updated target ${targetId} to publishing`);
 
         // Get social account details
+        console.log(`🔍 Fetching account ${socialAccountId}...`);
         const account = await db.query.socialAccount.findFirst({
           where: eq(socialAccount.id, socialAccountId),
         });
@@ -98,17 +114,27 @@ export function createPostWorker() {
           throw new Error(`Social account ${socialAccountId} is not active`);
         }
 
-        console.log(`✅ Found account: @${account.platformUsername}`);
+        console.log(
+          `✅ Found account: @${account.platformUsername} (${account.platform})`
+        );
 
         // Decrypt access token
-        const accessToken = decrypt(account.accessToken);
-        const refreshToken = account.refreshToken
-          ? decrypt(account.refreshToken)
-          : undefined;
+        console.log(`🔓 Decrypting access token for ${account.platform}...`);
+        let accessToken = decrypt(account.accessToken);
+        console.log(
+          `✅ Access token decrypted (length: ${accessToken.length})`
+        );
 
         // Check if token needs refresh
         if (account.tokenExpiresAt && account.tokenExpiresAt < new Date()) {
-          if (!refreshToken) {
+          console.log(
+            `⚠️ Token expired for account ${socialAccountId}, attempting refresh...`
+          );
+
+          if (!account.refreshToken) {
+            console.error(
+              `❌ No refresh token available for ${account.platform}`
+            );
             await db
               .update(socialAccount)
               .set({ isActive: false })
@@ -117,7 +143,65 @@ export function createPostWorker() {
               `Token expired and no refresh token available. User must reconnect.`
             );
           }
-          // TODO: Implement token refresh logic per platform
+
+          try {
+            const refreshToken = decrypt(account.refreshToken);
+            console.log(`🔄 Refreshing ${account.platform} token...`);
+
+            let newTokens: {
+              accessToken: string;
+              refreshToken: string;
+              expiresIn: number;
+            };
+
+            // Refresh based on platform
+            switch (account.platform) {
+              case "twitter":
+                newTokens = await refreshTwitterToken(refreshToken);
+                break;
+              default:
+                throw new Error(
+                  `Token refresh not implemented for ${account.platform}`
+                );
+            }
+
+            console.log(
+              `✅ Token refreshed successfully for ${account.platform}`
+            );
+
+            // Update database with new tokens
+            await db
+              .update(socialAccount)
+              .set({
+                accessToken: encrypt(newTokens.accessToken),
+                refreshToken: encrypt(newTokens.refreshToken),
+                tokenExpiresAt: new Date(
+                  Date.now() + newTokens.expiresIn * 1000
+                ),
+                updatedAt: new Date(),
+              })
+              .where(eq(socialAccount.id, socialAccountId));
+
+            console.log(`✅ Updated database with new tokens`);
+
+            // Use new access token
+            accessToken = newTokens.accessToken;
+          } catch (refreshError) {
+            console.error(`❌ Failed to refresh token:`, refreshError);
+            await db
+              .update(socialAccount)
+              .set({ isActive: false })
+              .where(eq(socialAccount.id, socialAccountId));
+            throw new Error(
+              `Failed to refresh token: ${
+                refreshError instanceof Error
+                  ? refreshError.message
+                  : "Unknown error"
+              }`
+            );
+          }
+        } else {
+          console.log(`✅ Token is still valid for ${account.platform}`);
         }
 
         // Handle media upload for Twitter
@@ -161,13 +245,17 @@ export function createPostWorker() {
         let platformPostId: string;
 
         console.log(`🚀 Publishing to ${account.platform}...`);
+        console.log(`   Content: "${content || "(empty)"}"`);
+        console.log(
+          `   Media IDs: ${mediaIds.length > 0 ? mediaIds.join(", ") : "none"}`
+        );
 
         switch (account.platform) {
           case "twitter":
             platformPostId = await publishToTwitter({
               accessToken,
-              content,
-              mediaIds, // Pass media IDs
+              content: content || "", // Twitter requires at least empty string
+              mediaIds, // Pass media IDs instead of URLs
             });
             break;
           case "instagram":
@@ -209,6 +297,8 @@ export function createPostWorker() {
           })
           .where(eq(postTarget.id, targetId));
 
+        console.log(`✅ Updated target ${targetId} to published`);
+
         // Update post status
         await updatePostStatus(postId);
 
@@ -221,7 +311,8 @@ export function createPostWorker() {
         const errorMessage =
           error instanceof Error ? error.message : "Unknown error";
 
-        console.error(`❌ Error publishing:`, errorMessage);
+        console.error(`❌ Error publishing target ${targetId}:`, errorMessage);
+        console.error(`❌ Stack trace:`, error);
 
         // Update target status to failed
         await db
@@ -231,6 +322,8 @@ export function createPostWorker() {
             errorMessage,
           })
           .where(eq(postTarget.id, targetId));
+
+        console.log(`✅ Updated target ${targetId} to failed`);
 
         // Update post status
         await updatePostStatus(postId);
@@ -263,6 +356,7 @@ export function createPostWorker() {
       `❌ Job ${job?.id} failed after ${job?.attemptsMade} attempts:`,
       err.message
     );
+    console.error(`❌ Job data:`, JSON.stringify(job?.data, null, 2));
   });
 
   worker.on("error", (err) => {
@@ -278,9 +372,13 @@ export function createPostWorker() {
 
 // Helper to update post status based on all targets
 async function updatePostStatus(postId: string) {
+  console.log(`🔄 Updating post ${postId} status...`);
+
   const targets = await db.query.postTarget.findMany({
     where: eq(postTarget.postId, postId),
   });
+
+  console.log(`📊 Found ${targets.length} targets for post ${postId}`);
 
   const statuses = targets.map((t) => t.status);
 
@@ -297,6 +395,8 @@ async function updatePostStatus(postId: string) {
   } else {
     newStatus = "scheduled";
   }
+
+  console.log(`✅ Setting post ${postId} status to: ${newStatus}`);
 
   await db
     .update(post)

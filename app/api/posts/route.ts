@@ -24,8 +24,28 @@ export async function POST(request: NextRequest) {
     // Get media files
     const mediaFiles = formData.getAll("media") as File[];
 
+    // 🔍 DEBUG: Log what we received
+    console.log("═══════════════════════════════════════");
+    console.log("📥 POST /api/posts - Request received");
+    console.log("═══════════════════════════════════════");
+    console.log("👤 User ID:", session.user.id);
+    console.log("📝 Content length:", content?.length || 0);
+    console.log("📸 Media files count:", mediaFiles.length);
+
+    if (mediaFiles.length > 0) {
+      console.log("📸 Media files details:");
+      mediaFiles.forEach((file, i) => {
+        console.log(`  ${i + 1}. ${file.name}`);
+        console.log(`     Type: ${file.type}`);
+        console.log(`     Size: ${(file.size / 1024 / 1024).toFixed(2)} MB`);
+      });
+    } else {
+      console.log("📸 No media files attached");
+    }
+
     // Validate content
     if (!content?.trim() && mediaFiles.length === 0) {
+      console.log("❌ Validation failed: No content or media");
       return NextResponse.json(
         { error: "Content or media is required" },
         { status: 400 }
@@ -34,8 +54,10 @@ export async function POST(request: NextRequest) {
 
     // Parse social account IDs
     const socialAccountIds = JSON.parse(socialAccountIdsJson);
+    console.log("🎯 Target accounts:", socialAccountIds.length);
 
     if (!Array.isArray(socialAccountIds) || socialAccountIds.length === 0) {
+      console.log("❌ Validation failed: No accounts selected");
       return NextResponse.json(
         { error: "At least one account is required" },
         { status: 400 }
@@ -52,15 +74,22 @@ export async function POST(request: NextRequest) {
     });
 
     if (accounts.length !== socialAccountIds.length) {
+      console.log("❌ Validation failed: Account ownership mismatch");
       return NextResponse.json(
         { error: "One or more accounts not found or not owned by you" },
         { status: 400 }
       );
     }
 
+    console.log("✅ Account verification passed");
+    accounts.forEach((acc) => {
+      console.log(`  - @${acc.platformUsername} (${acc.platform})`);
+    });
+
     // Check for inactive accounts
     const inactiveAccounts = accounts.filter((a) => !a.isActive);
     if (inactiveAccounts.length > 0) {
+      console.log("❌ Validation failed: Inactive accounts found");
       return NextResponse.json(
         {
           error: `Some accounts are disconnected: ${inactiveAccounts
@@ -72,9 +101,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Process media files and convert to base64
+    console.log("🔄 Processing media files...");
     const mediaData: Array<{ data: string; mimeType: string }> = [];
 
-    for (const file of mediaFiles) {
+    for (let i = 0; i < mediaFiles.length; i++) {
+      const file = mediaFiles[i];
+      console.log(
+        `  Processing file ${i + 1}/${mediaFiles.length}: ${file.name}`
+      );
+
       const bytes = await file.arrayBuffer();
       const buffer = Buffer.from(bytes);
       const base64 = buffer.toString("base64");
@@ -83,10 +118,17 @@ export async function POST(request: NextRequest) {
         data: base64,
         mimeType: file.type,
       });
+
+      console.log(
+        `  ✅ Converted to base64: ${base64.length.toLocaleString()} characters`
+      );
     }
+
+    console.log(`✅ Total media data items: ${mediaData.length}`);
 
     // Create the post
     const postId = nanoid();
+    console.log("📝 Creating post with ID:", postId);
 
     // Parse and validate scheduled time
     let scheduledFor: Date | null = null;
@@ -94,6 +136,7 @@ export async function POST(request: NextRequest) {
       scheduledFor = new Date(scheduledForStr);
 
       if (isNaN(scheduledFor.getTime())) {
+        console.log("❌ Invalid scheduled date format");
         return NextResponse.json(
           { error: "Invalid scheduled date format" },
           { status: 400 }
@@ -103,18 +146,25 @@ export async function POST(request: NextRequest) {
       const oneMinuteAgo = Date.now() - 60000;
       if (scheduledFor.getTime() < oneMinuteAgo) {
         console.warn(
-          `⚠️ Scheduled time ${scheduledFor.toISOString()} is in the past`
+          `⚠️ Scheduled time ${scheduledFor.toISOString()} is in the past, posting immediately`
         );
         scheduledFor = null;
       }
 
       const oneYearFromNow = Date.now() + 365 * 24 * 60 * 60 * 1000;
-      if (scheduledFor!.getTime() > oneYearFromNow) {
+      if (scheduledFor && scheduledFor.getTime() > oneYearFromNow) {
+        console.log("❌ Scheduled date too far in future");
         return NextResponse.json(
           { error: "Scheduled date cannot be more than 1 year in the future" },
           { status: 400 }
         );
       }
+
+      if (scheduledFor) {
+        console.log(`📅 Scheduled for: ${scheduledFor.toISOString()}`);
+      }
+    } else {
+      console.log("🚀 Publishing immediately");
     }
 
     // Insert post (don't store media in DB, send in job data)
@@ -134,6 +184,7 @@ export async function POST(request: NextRequest) {
     );
 
     // Create post targets
+    console.log("🎯 Creating post targets...");
     const targets = [];
     for (const account of accounts) {
       const targetId = nanoid();
@@ -142,8 +193,12 @@ export async function POST(request: NextRequest) {
         id: targetId,
         postId,
         socialAccountId: account.id,
-        status: "pending",
+        status: "pending" as const,
       });
+
+      console.log(
+        `  Created target: ${targetId} for @${account.platformUsername}`
+      );
     }
 
     // Insert all targets at once
@@ -151,6 +206,7 @@ export async function POST(request: NextRequest) {
     console.log(`✅ Created ${targets.length} post targets`);
 
     // Queue the jobs with media data
+    console.log("📋 Queueing jobs...");
     const jobPromises = [];
     for (let i = 0; i < targets.length; i++) {
       const target = targets[i];
@@ -166,7 +222,11 @@ export async function POST(request: NextRequest) {
       };
 
       console.log(
-        `📋 Queuing job for target: ${target.id} (account: @${account.platformUsername})`
+        `📋 Queuing job ${i + 1}/${targets.length}: target ${target.id} → @${
+          account.platformUsername
+        } (${account.platform})${
+          mediaData.length > 0 ? ` with ${mediaData.length} media` : ""
+        }`
       );
 
       // Schedule or publish immediately
@@ -179,7 +239,8 @@ export async function POST(request: NextRequest) {
 
     // Wait for all jobs to be queued
     await Promise.all(jobPromises);
-    console.log(`✅ Queued ${jobPromises.length} jobs`);
+    console.log(`✅ Queued ${jobPromises.length} jobs successfully`);
+    console.log("═══════════════════════════════════════");
 
     return NextResponse.json({
       success: true,
@@ -192,7 +253,9 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
+    console.error("═══════════════════════════════════════");
     console.error("❌ Error creating post:", error);
+    console.error("═══════════════════════════════════════");
     return NextResponse.json(
       {
         error: "Failed to create post",
@@ -203,7 +266,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Keep your existing GET handler...
+// GET handler remains the same
 export async function GET(request: NextRequest) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) {

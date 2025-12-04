@@ -10,7 +10,7 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "worker": "npx tsx workers/index.ts",
+    "worker": "bun x tsx workers/start.ts",
     "queueclean": "npx tsx scripts/clean-queue.ts",
     "queuestatus": "npx tsx scripts/queue-status.ts"
   },
