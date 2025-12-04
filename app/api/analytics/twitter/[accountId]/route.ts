@@ -1,10 +1,12 @@
+// app/api/analytics/twitter/[accountId]/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { db, socialAccount } from "@/lib/db";
 import { and, eq } from "drizzle-orm";
 import { decrypt } from "@/lib/utils";
-import { getTwitterAnalytics } from "@/lib/analytics/twitter";
+import { getTwitterAnalytics } from "@/lib/social/twitter";
+import { getRedis } from "@/lib/queue/connection";
 
 export async function GET(
   request: NextRequest,
@@ -42,29 +44,85 @@ export async function GET(
       );
     }
 
-    // Decrypt access token
-    const accessToken = decrypt(account.accessToken);
-
     // Get tweet limit from query params (default 50)
     const tweetLimit = Math.min(
       parseInt(request.nextUrl.searchParams.get("limit") || "50"),
       100
     );
 
-    // Fetch analytics
-    const analytics = await getTwitterAnalytics(
-      accessToken,
-      account.platformUserId,
-      tweetLimit
+    // Check cache first (to avoid rate limits)
+    const redis = getRedis();
+    const cacheKey = `twitter:analytics:${accountId}:${tweetLimit}`;
+
+    try {
+      const cached = await redis.get(cacheKey);
+      if (cached) {
+        console.log(`✅ Returning cached analytics for ${accountId}`);
+        return NextResponse.json(JSON.parse(cached));
+      }
+    } catch (cacheError) {
+      console.warn("Cache error (continuing without cache):", cacheError);
+    }
+
+    // Decrypt access token
+    const accessToken = decrypt(account.accessToken);
+
+    // Fetch analytics - pass context object and limit
+    console.log(
+      `📊 Fetching fresh analytics for ${accountId} (${tweetLimit} tweets)`
     );
+    const analytics = await getTwitterAnalytics({ accessToken }, tweetLimit);
+
+    // Cache the result for 5 minutes to avoid rate limits
+    try {
+      await redis.setex(cacheKey, 300, JSON.stringify(analytics));
+      console.log(`✅ Cached analytics for ${accountId}`);
+    } catch (cacheError) {
+      console.warn("Failed to cache analytics:", cacheError);
+    }
 
     return NextResponse.json(analytics);
   } catch (error) {
     console.error("Error fetching Twitter analytics:", error);
+
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
+
+    // Handle rate limit errors specifically
+    if (errorMessage.includes("429") || errorMessage.includes("Rate limit")) {
+      return NextResponse.json(
+        {
+          error: "Rate limit exceeded. Please try again in 15 minutes.",
+          retryAfter: 900, // 15 minutes in seconds
+        },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": "900",
+          },
+        }
+      );
+    }
+
+    // Handle auth errors
+    if (
+      errorMessage.includes("401") ||
+      errorMessage.includes("403") ||
+      errorMessage.includes("Authentication failed")
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Authentication failed. Please reconnect your Twitter account.",
+        },
+        { status: 401 }
+      );
+    }
+
     return NextResponse.json(
       {
         error: "Failed to fetch analytics",
-        details: error instanceof Error ? error.message : "Unknown error",
+        details: errorMessage,
       },
       { status: 500 }
     );

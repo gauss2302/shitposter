@@ -1,41 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
-import { db, socialAccount, postTarget } from "@/lib/db";
-import { and, eq } from "drizzle-orm";
+import { db } from "@/lib/db";
 import { decrypt } from "@/lib/utils";
-import { getTwitterTweetMetrics } from "@/lib/analytics/twitter";
+import { getTwitterAnalytics } from "@/lib/social/twitter";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ tweetId: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { tweetId } = await params;
-
-  // Verify user is authenticated
+  const { id: accountId } = await params;
   const session = await auth.api.getSession({ headers: await headers() });
+
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const searchParams = request.nextUrl.searchParams;
+  const limit = parseInt(searchParams.get("limit") || "50", 10);
+
   try {
-    // Get account ID from query params
-    const accountId = request.nextUrl.searchParams.get("accountId");
-
-    if (!accountId) {
-      return NextResponse.json(
-        { error: "accountId query parameter required" },
-        { status: 400 }
-      );
-    }
-
-    // Get the social account
+    // Get the connected Twitter account
     const account = await db.query.socialAccount.findFirst({
-      where: and(
-        eq(socialAccount.id, accountId),
-        eq(socialAccount.userId, session.user.id),
-        eq(socialAccount.platform, "twitter")
-      ),
+      where: (sa, { and: andOp, eq: eqOp }) =>
+        andOp(
+          eqOp(sa.id, accountId),
+          eqOp(sa.userId, session.user.id),
+          eqOp(sa.platform, "twitter")
+        ),
     });
 
     if (!account) {
@@ -47,94 +39,50 @@ export async function GET(
 
     if (!account.isActive) {
       return NextResponse.json(
-        { error: "Twitter account is not active. Please reconnect." },
-        { status: 400 }
+        { error: "Twitter account is disconnected. Please reconnect." },
+        { status: 403 }
       );
     }
 
-    // Decrypt access token
+    // Decrypt the user's access token
     const accessToken = decrypt(account.accessToken);
 
-    // Fetch tweet metrics
-    const metrics = await getTwitterTweetMetrics(accessToken, tweetId);
+    // Fetch analytics using the user's token
+    // This counts against THEIR quota (1,667/month), not your app's quota (100/month)!
+    const analytics = await getTwitterAnalytics(
+      { accessToken },
+      Math.min(limit, 100) // Cap at 100
+    );
 
-    return NextResponse.json(metrics);
+    return NextResponse.json(analytics);
   } catch (error) {
-    console.error("Error fetching tweet metrics:", error);
-    return NextResponse.json(
-      {
-        error: "Failed to fetch tweet metrics",
-        details: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 }
-    );
-  }
-}
+    console.error("Error fetching Twitter analytics:", error);
 
-// Batch endpoint to fetch metrics for multiple tweets
-export async function POST(request: NextRequest) {
-  // Verify user is authenticated
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+    const errorMessage =
+      error instanceof Error ? error.message : "Failed to fetch analytics";
 
-  try {
-    const body = await request.json();
-    const { accountId, tweetIds } = body;
-
-    if (!accountId || !tweetIds || !Array.isArray(tweetIds)) {
+    // Check for rate limit errors
+    if (errorMessage.includes("429") || errorMessage.includes("rate limit")) {
       return NextResponse.json(
-        { error: "accountId and tweetIds array required" },
-        { status: 400 }
+        {
+          error:
+            "Rate limit exceeded. Please try again later or reduce the number of tweets.",
+        },
+        { status: 429 }
       );
     }
 
-    // Get the social account
-    const account = await db.query.socialAccount.findFirst({
-      where: and(
-        eq(socialAccount.id, accountId),
-        eq(socialAccount.userId, session.user.id),
-        eq(socialAccount.platform, "twitter")
-      ),
-    });
-
-    if (!account) {
+    // Check for auth errors
+    if (errorMessage.includes("401") || errorMessage.includes("403")) {
       return NextResponse.json(
-        { error: "Twitter account not found" },
-        { status: 404 }
+        {
+          error:
+            "Authentication failed. Please reconnect your Twitter account.",
+        },
+        { status: 401 }
       );
     }
 
-    if (!account.isActive) {
-      return NextResponse.json(
-        { error: "Twitter account is not active. Please reconnect." },
-        { status: 400 }
-      );
-    }
-
-    // Decrypt access token
-    const accessToken = decrypt(account.accessToken);
-
-    // Fetch metrics for all tweets
-    const metricsPromises = tweetIds.map((tweetId: string) =>
-      getTwitterTweetMetrics(accessToken, tweetId).catch((err) => ({
-        id: tweetId,
-        error: err.message,
-      }))
-    );
-
-    const metrics = await Promise.all(metricsPromises);
-
-    return NextResponse.json({ metrics });
-  } catch (error) {
-    console.error("Error fetching batch tweet metrics:", error);
-    return NextResponse.json(
-      {
-        error: "Failed to fetch batch tweet metrics",
-        details: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
