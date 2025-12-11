@@ -33,7 +33,7 @@ export function EmptyState({ accounts }: EmptyStateProps) {
         here.
       </p>
       <Link
-        href="/dashboard/compose"
+        href="/dashboard/posts"
         className="inline-flex px-6 py-3 rounded-2xl bg-[#566BFF] text-white font-semibold shadow-lg shadow-[#566BFF]/30 hover:bg-[#4555ef] transition"
       >
         Start Writing

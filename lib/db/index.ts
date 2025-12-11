@@ -2,11 +2,15 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "./schema";
 
-const connectionString = process.env.DATABASE_URL!;
+const dbConfig = {
+  host: process.env.DB_HOST || "localhost",
+  port: parseInt(process.env.DB_PORT || "5432"),
+  database: process.env.DB_NAME || "socialposter",
+  username: process.env.DB_USER || "postgres",
+  password: process.env.DB_PASSWORD || "postgres",
+};
 
-// For query purposes
-const queryClient = postgres(connectionString);
+const queryClient = postgres(dbConfig);
 export const db = drizzle(queryClient, { schema });
 
-// Export schema for convenience
 export * from "./schema";

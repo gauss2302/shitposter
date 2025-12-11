@@ -172,12 +172,27 @@ export function ComposeForm({ accounts }: ComposeFormProps) {
 
     try {
       let scheduledFor: string | undefined;
+      let timezone: string | undefined;
 
       if (scheduleDate && scheduleTime) {
-        scheduledFor = new Date(
-          `${scheduleDate}T${scheduleTime}`
-        ).toISOString();
-        console.log(`📅 Scheduled for: ${scheduledFor}`);
+        // Get user's timezone
+        timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        
+        // Create date string in user's local timezone
+        const localDateTimeString = `${scheduleDate}T${scheduleTime}`;
+        
+        // Create a date object - this will interpret the string in the user's local timezone
+        const localDate = new Date(localDateTimeString);
+        
+        // Convert to UTC ISO string for storage
+        scheduledFor = localDate.toISOString();
+        
+        console.log(`📅 Scheduled for:`, {
+          local: localDateTimeString,
+          timezone,
+          utc: scheduledFor,
+          localDate: localDate.toString(),
+        });
       }
 
       // Create FormData for file upload
@@ -186,6 +201,9 @@ export function ComposeForm({ accounts }: ComposeFormProps) {
       formData.append("socialAccountIds", JSON.stringify(selectedAccounts));
       if (scheduledFor) {
         formData.append("scheduledFor", scheduledFor);
+        if (timezone) {
+          formData.append("timezone", timezone);
+        }
       }
 
       // Append media files

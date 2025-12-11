@@ -1,9 +1,10 @@
+// Load environment variables FIRST, before any other imports
 import dotenv from "dotenv";
-import { createPostWorker } from "./index";
-
-// Load environment variables
 dotenv.config();
 dotenv.config({ path: ".env.local", override: true });
+
+// NOW import everything else
+import { createPostWorker } from "./index";
 
 console.log("═══════════════════════════════════════");
 console.log("🚀 Starting BullMQ Worker for shitpost.art");

@@ -3,8 +3,11 @@ import { auth } from "@/lib/auth";
 import { db, post, postTarget, socialAccount } from "@/lib/db";
 import { eq, desc, inArray } from "drizzle-orm";
 import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import Link from "next/link";
 import { PostsNotification } from "./notification";
+import { ScheduledTime } from "./scheduled-time";
+import { PostsClient } from "./posts-client";
 
 const platformIcons: Record<string, string> = {
   twitter: "𝕏",
@@ -34,34 +37,53 @@ const headerMenu = [
 export default async function PostsPage() {
   const session = await auth.api.getSession({ headers: await headers() });
 
+  if (!session) {
+    redirect("/sign-in");
+  }
+
   const posts = await db.query.post.findMany({
-    where: eq(post.userId, session!.user.id),
+    where: eq(post.userId, session.user.id),
     orderBy: desc(post.createdAt),
     limit: 50,
+  });
+
+  // Fetch all user's social accounts for the compose modal
+  const allAccounts = await db.query.socialAccount.findMany({
+    where: eq(socialAccount.userId, session.user.id),
+    orderBy: desc(socialAccount.createdAt),
   });
 
   // Get targets for each post
   const postsWithTargets = await Promise.all(
     posts.map(async (p) => {
-      const targets = await db.query.postTarget.findMany({
-        where: eq(postTarget.postId, p.id),
-      });
+      try {
+        const targets = await db.query.postTarget.findMany({
+          where: eq(postTarget.postId, p.id),
+        });
 
-      const targetAccountIds = targets.map((t) => t.socialAccountId);
-      const accounts =
-        targetAccountIds.length > 0
-          ? await db.query.socialAccount.findMany({
-              where: inArray(socialAccount.id, targetAccountIds),
-            })
-          : [];
+        const targetAccountIds = targets.map((t) => t.socialAccountId);
+        const accounts =
+          targetAccountIds.length > 0
+            ? await db.query.socialAccount.findMany({
+                where: inArray(socialAccount.id, targetAccountIds),
+              })
+            : [];
 
-      return {
-        ...p,
-        targets: targets.map((t) => ({
-          ...t,
-          account: accounts.find((a) => a.id === t.socialAccountId),
-        })),
-      };
+        return {
+          ...p,
+          targets: targets.map((t) => ({
+            ...t,
+            account: accounts.find((a) => a.id === t.socialAccountId),
+          })),
+        };
+      } catch (error) {
+        console.error(`Error fetching targets for post ${p.id}:`, error);
+        // Return post without targets if query fails
+        return {
+          ...p,
+          targets: [],
+        };
+      }
     })
   );
 
@@ -93,7 +115,9 @@ export default async function PostsPage() {
 
   const publishedTargets = targetStatusCounts["published"] || 0;
   const successRate =
-    totalTargets === 0 ? 0 : Math.round((publishedTargets / totalTargets) * 100);
+    totalTargets === 0
+      ? 0
+      : Math.round((publishedTargets / totalTargets) * 100);
   const avgPlatformsPerPost =
     totalPosts === 0 ? "0" : (totalTargets / totalPosts).toFixed(1);
 
@@ -146,13 +170,16 @@ export default async function PostsPage() {
               </p>
             </div>
             <div className="h-full border-l border-zinc-200 dark:border-zinc-800" />
-            <Link
-              href="/dashboard"
-              className="inline-flex items-center gap-2 rounded-xl bg-zinc-900 px-4 py-2 text-white transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-900"
-            >
-              <span>Open Dashboard</span>
-              <span className="text-lg">🗂️</span>
-            </Link>
+            <div className="flex items-center gap-3">
+              <PostsClient accounts={allAccounts} />
+              <Link
+                href="/dashboard"
+                className="inline-flex items-center gap-2 rounded-xl bg-zinc-900 px-4 py-2 text-white transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-900"
+              >
+                <span>Open Dashboard</span>
+                <span className="text-lg">🗂️</span>
+              </Link>
+            </div>
           </div>
         </div>
 
@@ -196,7 +223,9 @@ export default async function PostsPage() {
             helper:
               failedPosts === 0
                 ? "All clear"
-                : `${failedPosts} post${failedPosts === 1 ? "" : "s"} need attention`,
+                : `${failedPosts} post${
+                    failedPosts === 1 ? "" : "s"
+                  } need attention`,
           },
           {
             label: "Avg. platforms/post",
@@ -281,37 +310,41 @@ export default async function PostsPage() {
             Target health
           </h3>
           <div className="mt-4 space-y-4">
-            {["published", "scheduled", "publishing", "failed"].map((status) => {
-              const count = targetStatusCounts[status] || 0;
-              const percentage =
-                totalTargets === 0 ? 0 : Math.round((count / totalTargets) * 100);
-              const barColor =
-                status === "published"
-                  ? "bg-green-500"
-                  : status === "failed"
-                  ? "bg-red-500"
-                  : status === "publishing"
-                  ? "bg-yellow-500"
-                  : "bg-blue-500";
-              return (
-                <div key={status}>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="capitalize text-zinc-900 dark:text-white">
-                      {status}
-                    </span>
-                    <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                      {count} targets • {percentage}%
-                    </span>
+            {["published", "scheduled", "publishing", "failed"].map(
+              (status) => {
+                const count = targetStatusCounts[status] || 0;
+                const percentage =
+                  totalTargets === 0
+                    ? 0
+                    : Math.round((count / totalTargets) * 100);
+                const barColor =
+                  status === "published"
+                    ? "bg-green-500"
+                    : status === "failed"
+                    ? "bg-red-500"
+                    : status === "publishing"
+                    ? "bg-yellow-500"
+                    : "bg-blue-500";
+                return (
+                  <div key={status}>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="capitalize text-zinc-900 dark:text-white">
+                        {status}
+                      </span>
+                      <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                        {count} targets • {percentage}%
+                      </span>
+                    </div>
+                    <div className="mt-2 h-2 rounded-full bg-zinc-100 dark:bg-zinc-800">
+                      <div
+                        className={`h-2 rounded-full ${barColor}`}
+                        style={{ width: `${percentage}%` }}
+                      />
+                    </div>
                   </div>
-                  <div className="mt-2 h-2 rounded-full bg-zinc-100 dark:bg-zinc-800">
-                    <div
-                      className={`h-2 rounded-full ${barColor}`}
-                      style={{ width: `${percentage}%` }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
+                );
+              }
+            )}
           </div>
           <div className="mt-6 rounded-xl border border-dashed border-zinc-200 p-4 text-sm text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
             Need higher success rates? Double-check tokens in{" "}
@@ -345,11 +378,11 @@ export default async function PostsPage() {
           </Link>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {postsWithTargets.map((postItem) => (
             <div
               key={postItem.id}
-              className="bg-white dark:bg-zinc-900 rounded-xl p-6 border border-zinc-200 dark:border-zinc-800 hover:border-violet-300 dark:hover:border-violet-700 transition"
+              className="bg-white dark:bg-zinc-900 rounded-xl p-4 border border-zinc-200 dark:border-zinc-800 hover:border-violet-300 dark:hover:border-violet-700 transition flex flex-col"
             >
               <div className="flex items-start justify-between gap-4 mb-4">
                 <div className="flex-1">
@@ -362,11 +395,10 @@ export default async function PostsPage() {
                       {postItem.status}
                     </span>
                     {postItem.scheduledFor && (
-                      <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                        {postItem.status === "scheduled"
-                          ? `Scheduled for ${postItem.scheduledFor.toLocaleString()}`
-                          : `Was scheduled for ${postItem.scheduledFor.toLocaleString()}`}
-                      </span>
+                      <ScheduledTime
+                        date={postItem.scheduledFor}
+                        status={postItem.status}
+                      />
                     )}
                   </div>
                   <p className="text-zinc-900 dark:text-white leading-relaxed">
@@ -376,15 +408,15 @@ export default async function PostsPage() {
               </div>
 
               {/* Targets */}
-              <div className="border-t border-zinc-100 dark:border-zinc-800 pt-4">
-                <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-3">
+              <div className="border-t border-zinc-100 dark:border-zinc-800 pt-3 mt-auto">
+                <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-2">
                   Publishing To
                 </p>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-1.5">
                   {postItem.targets.map((target) => (
                     <div
                       key={target.id}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${
+                      className={`flex items-center gap-1.5 px-2 py-1 rounded-md border text-xs ${
                         target.status === "published"
                           ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
                           : target.status === "failed"
@@ -394,13 +426,13 @@ export default async function PostsPage() {
                           : "bg-zinc-50 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700"
                       }`}
                     >
-                      <span className="text-lg">
+                      <span className="text-sm">
                         {target.account
                           ? platformIcons[target.account.platform] || "🌐"
                           : "❓"}
                       </span>
-                      <div className="text-xs">
-                        <p className="font-semibold text-zinc-900 dark:text-white">
+                      <div className="min-w-0">
+                        <p className="font-semibold text-zinc-900 dark:text-white truncate">
                           @{target.account?.platformUsername || "Unknown"}
                         </p>
                         <p
@@ -424,10 +456,13 @@ export default async function PostsPage() {
                           )}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="ml-1 text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300"
+                          className="ml-1 text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 flex-shrink-0"
+                          title={`View on ${
+                            target.account?.platform || "platform"
+                          }`}
                         >
                           <svg
-                            className="w-4 h-4"
+                            className="w-3 h-3"
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -441,11 +476,24 @@ export default async function PostsPage() {
                           </svg>
                         </a>
                       )}
+                      {target.status === "publishing" && (
+                        <div className="ml-1 flex items-center gap-1 text-yellow-600 dark:text-yellow-400">
+                          <div className="w-2.5 h-2.5 border-2 border-yellow-600 border-t-transparent rounded-full animate-spin"></div>
+                        </div>
+                      )}
+                      {target.status === "pending" && (
+                        <div
+                          className="ml-1 text-zinc-500 dark:text-zinc-400"
+                          data-status="pending"
+                        >
+                          ⏳
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
                 {postItem.targets.some((t) => t.errorMessage) && (
-                  <div className="mt-3 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
+                  <div className="mt-2 p-2 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
                     <p className="text-xs font-semibold text-red-700 dark:text-red-300 mb-1">
                       Errors:
                     </p>
@@ -454,7 +502,7 @@ export default async function PostsPage() {
                       .map((t) => (
                         <p
                           key={t.id}
-                          className="text-xs text-red-600 dark:text-red-400"
+                          className="text-xs text-red-600 dark:text-red-400 line-clamp-1"
                         >
                           • {t.account?.platformUsername}: {t.errorMessage}
                         </p>
@@ -463,8 +511,10 @@ export default async function PostsPage() {
                 )}
               </div>
 
-              <div className="border-t border-zinc-100 dark:border-zinc-800 pt-4 mt-4 flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400">
-                <span>Created {postItem.createdAt.toLocaleString()}</span>
+              <div className="border-t border-zinc-100 dark:border-zinc-800 pt-2 mt-2 flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400">
+                <span className="truncate">
+                  {new Date(postItem.createdAt).toLocaleDateString()}
+                </span>
               </div>
             </div>
           ))}

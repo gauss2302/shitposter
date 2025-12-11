@@ -384,6 +384,36 @@ export async function publishToTwitter({
   content,
   mediaIds,
 }: PublishOptions): Promise<string> {
+  // Validate content - Twitter requires at least some content or media
+  if (!content?.trim() && (!mediaIds || mediaIds.length === 0)) {
+    throw new Error("Twitter requires either text content or media");
+  }
+
+  // Validate content length
+  if (content && content.length > 280) {
+    throw new Error("Twitter content exceeds 280 character limit");
+  }
+
+  // Validate media count
+  if (mediaIds && mediaIds.length > 4) {
+    throw new Error("Twitter allows maximum 4 media items per tweet");
+  }
+
+  const requestBody = {
+    text: content || "",
+    ...(mediaIds &&
+      mediaIds.length > 0 && {
+        media: { media_ids: mediaIds },
+      }),
+  };
+
+  console.log("📤 Twitter API Request:", {
+    contentLength: content?.length || 0,
+    mediaCount: mediaIds?.length || 0,
+    hasContent: !!content?.trim(),
+    hasMedia: !!(mediaIds && mediaIds.length > 0),
+  });
+
   // Create tweet with media IDs (already uploaded)
   const response = await fetch("https://api.twitter.com/2/tweets", {
     method: "POST",
@@ -391,24 +421,99 @@ export async function publishToTwitter({
       Authorization: `Bearer ${accessToken}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      text: content,
-      ...(mediaIds &&
-        mediaIds.length > 0 && {
-          media: { media_ids: mediaIds },
-        }),
-    }),
+    body: JSON.stringify(requestBody),
   });
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(
-      `Twitter API error: ${error.detail || error.title || response.statusText}`
-    );
+  const responseText = await response.text();
+  let errorData: any = null;
+
+  try {
+    errorData = JSON.parse(responseText);
+  } catch {
+    // Response is not JSON
   }
 
-  const data = await response.json();
-  return data.data.id;
+  if (!response.ok) {
+    console.error("❌ Twitter API Error Response:", {
+      status: response.status,
+      statusText: response.statusText,
+      body: responseText,
+      parsed: errorData,
+    });
+
+    const errorMessage =
+      errorData?.detail ||
+      errorData?.title ||
+      (errorData?.errors && errorData.errors[0]?.message) ||
+      response.statusText ||
+      "Unknown Twitter API error";
+
+    throw new Error(`Twitter API error: ${errorMessage}`);
+  }
+
+  let data: any;
+  try {
+    data = JSON.parse(responseText);
+  } catch (parseError) {
+    console.error("❌ Failed to parse Twitter API response:", responseText);
+    throw new Error("Invalid response from Twitter API");
+  }
+
+  // Validate response structure
+  if (!data) {
+    console.error("❌ Twitter API returned empty response");
+    throw new Error("Empty response from Twitter API");
+  }
+
+  if (!data.data) {
+    console.error("❌ Twitter API response missing 'data' field:", data);
+    throw new Error("Invalid response structure from Twitter API");
+  }
+
+  if (!data.data.id) {
+    console.error("❌ Twitter API response missing 'data.id' field:", data);
+    throw new Error("Twitter API did not return a tweet ID");
+  }
+
+  const tweetId = data.data.id;
+  console.log("✅ Twitter API Success:", {
+    tweetId,
+    responseStructure: {
+      hasData: !!data.data,
+      hasId: !!data.data.id,
+      fullResponse: data,
+    },
+  });
+
+  // Verify the tweet was actually created by fetching it back
+  try {
+    const verifyResponse = await fetch(
+      `https://api.twitter.com/2/tweets/${tweetId}?tweet.fields=created_at,text`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+
+    if (verifyResponse.ok) {
+      const verifyData = await verifyResponse.json();
+      console.log("✅ Tweet verification successful:", {
+        tweetId,
+        text: verifyData.data?.text,
+        createdAt: verifyData.data?.created_at,
+      });
+    } else {
+      console.warn("⚠️ Could not verify tweet (may still be processing):", {
+        status: verifyResponse.status,
+        tweetId,
+      });
+    }
+  } catch (verifyError) {
+    console.warn("⚠️ Tweet verification failed (tweet may still exist):", verifyError);
+  }
+
+  return tweetId;
 }
 
 // Refresh Twitter access token

@@ -1,11 +1,9 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
-import type { Session } from "@/lib/auth";
+import { useSession } from "@/lib/auth-client";
 import { LogoutButton } from "@/app/ui/logout-button";
-
-interface SiteHeaderProps {
-  session: Session | null;
-}
 
 const authedLinks = [
   { label: "Dashboard", href: "/dashboard" },
@@ -20,7 +18,8 @@ const marketingLinks = [
   { label: "Demo", href: "/#demo" },
 ];
 
-export function SiteHeader({ session }: SiteHeaderProps) {
+export function SiteHeader() {
+  const { data: session } = useSession();
   const links = session ? authedLinks : marketingLinks;
   const initials =
     session?.user.name?.slice(0, 1)?.toUpperCase() ||

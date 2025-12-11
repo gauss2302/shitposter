@@ -2,24 +2,44 @@ interface PublishOptions {
   accessToken: string;
   content: string;
   mediaUrls?: string[];
+  videoBuffer?: Buffer; // For direct upload
+  videoMimeType?: string; // For direct upload
 }
 
-// TikTok Content Posting API
-// Note: TikTok requires video content - no text-only or image posts
-export async function publishToTikTok({
-  accessToken,
-  content,
-  mediaUrls,
-}: PublishOptions): Promise<string> {
-  if (!mediaUrls || mediaUrls.length === 0) {
-    throw new Error("TikTok requires a video to post");
+// Validate video file
+function validateVideo(buffer: Buffer, mimeType: string): void {
+  // Check format
+  const allowedTypes = ["video/mp4", "video/quicktime", "video/x-msvideo", "video/webm"];
+  const isValidType = allowedTypes.some((type) => mimeType.toLowerCase().includes(type.split("/")[1]));
+  if (!isValidType) {
+    throw new Error(
+      `Invalid video format. TikTok supports: MP4, MOV, AVI, WebM. Got: ${mimeType}`
+    );
   }
 
-  const videoUrl = mediaUrls[0];
+  // Check size (4GB = 4 * 1024 * 1024 * 1024 bytes)
+  const maxSize = 4 * 1024 * 1024 * 1024;
+  if (buffer.length > maxSize) {
+    throw new Error(
+      `Video file too large. Maximum size is 4GB. Got: ${(buffer.length / 1024 / 1024).toFixed(2)}MB`
+    );
+  }
 
-  // Step 1: Initialize video upload
+  // Note: Duration and resolution validation would require video metadata parsing
+  // TikTok API will validate these on their end
+}
+
+// Upload video directly to TikTok
+async function uploadVideoToTikTok(
+  accessToken: string,
+  videoBuffer: Buffer,
+  mimeType: string
+): Promise<string> {
+  console.log(`📤 Uploading video to TikTok: ${(videoBuffer.length / 1024 / 1024).toFixed(2)}MB, type: ${mimeType}`);
+
+  // Step 1: Initialize inbox upload
   const initResponse = await fetch(
-    "https://open.tiktokapis.com/v2/post/publish/video/init/",
+    "https://open.tiktokapis.com/v2/post/publish/inbox/video/init/",
     {
       method: "POST",
       headers: {
@@ -27,25 +47,26 @@ export async function publishToTikTok({
         "Content-Type": "application/json; charset=UTF-8",
       },
       body: JSON.stringify({
-        post_info: {
-          title: content.slice(0, 150), // TikTok title limit
-          privacy_level: "PUBLIC_TO_EVERYONE",
-          disable_duet: false,
-          disable_comment: false,
-          disable_stitch: false,
-        },
         source_info: {
-          source: "PULL_FROM_URL",
-          video_url: videoUrl,
+          source: "FILE_UPLOAD",
+        },
+        post_info: {
+          title: "Uploading...", // Temporary, will be updated in publish step
         },
       }),
     }
   );
 
   if (!initResponse.ok) {
-    const error = await initResponse.json();
+    const errorText = await initResponse.text();
+    let errorData;
+    try {
+      errorData = JSON.parse(errorText);
+    } catch {
+      throw new Error(`TikTok inbox init failed: ${errorText}`);
+    }
     throw new Error(
-      `TikTok init error: ${error.error?.message || JSON.stringify(error)}`
+      `TikTok inbox init error: ${errorData.error?.message || JSON.stringify(errorData)}`
     );
   }
 
@@ -55,9 +76,141 @@ export async function publishToTikTok({
     throw new Error(`TikTok error: ${initData.error?.message}`);
   }
 
-  const publishId = initData.data.publish_id;
+  const uploadUrl = initData.data.upload_url;
+  const uploadId = initData.data.upload_id;
 
-  // Step 2: Check publish status (TikTok processes async)
+  console.log(`✅ Got upload URL, upload ID: ${uploadId}`);
+
+  // Step 2: Upload video file to TikTok's upload endpoint
+  const uploadResponse = await fetch(uploadUrl, {
+    method: "PUT",
+    headers: {
+      "Content-Type": mimeType,
+    },
+    body: videoBuffer,
+  });
+
+  if (!uploadResponse.ok) {
+    const errorText = await uploadResponse.text();
+    throw new Error(`TikTok video upload failed: ${errorText}`);
+  }
+
+  console.log(`✅ Video uploaded successfully, upload ID: ${uploadId}`);
+
+  return uploadId;
+}
+
+// TikTok Content Posting API
+// Note: TikTok requires video content - no text-only or image posts
+export async function publishToTikTok({
+  accessToken,
+  content,
+  mediaUrls,
+  videoBuffer,
+  videoMimeType,
+}: PublishOptions): Promise<string> {
+  let publishId: string;
+
+  // Use direct upload if video buffer is provided
+  if (videoBuffer && videoMimeType) {
+    validateVideo(videoBuffer, videoMimeType);
+    const uploadId = await uploadVideoToTikTok(accessToken, videoBuffer, videoMimeType);
+
+    // Initialize publish with uploaded video
+    const publishInitResponse = await fetch(
+      "https://open.tiktokapis.com/v2/post/publish/video/init/",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json; charset=UTF-8",
+        },
+        body: JSON.stringify({
+          post_info: {
+            title: content.slice(0, 150), // TikTok title limit
+            privacy_level: "PUBLIC_TO_EVERYONE",
+            disable_duet: false,
+            disable_comment: false,
+            disable_stitch: false,
+          },
+          source_info: {
+            source: "FILE_UPLOAD",
+            upload_id: uploadId,
+          },
+        }),
+      }
+    );
+
+    if (!publishInitResponse.ok) {
+      const errorText = await publishInitResponse.text();
+      let errorData;
+      try {
+        errorData = JSON.parse(errorText);
+      } catch {
+        throw new Error(`TikTok publish init failed: ${errorText}`);
+      }
+      throw new Error(
+        `TikTok publish init error: ${errorData.error?.message || JSON.stringify(errorData)}`
+      );
+    }
+
+    const publishInitData = await publishInitResponse.json();
+
+    if (publishInitData.error?.code !== "ok") {
+      throw new Error(`TikTok error: ${publishInitData.error?.message}`);
+    }
+
+    publishId = publishInitData.data.publish_id;
+    console.log(`✅ Publish initialized, publish ID: ${publishId}`);
+  } else if (mediaUrls && mediaUrls.length > 0) {
+    // Fallback to PULL_FROM_URL for backward compatibility
+    const videoUrl = mediaUrls[0];
+    console.log(`📤 Using PULL_FROM_URL method with URL: ${videoUrl}`);
+    
+    // Initialize video upload
+    const initResponse = await fetch(
+      "https://open.tiktokapis.com/v2/post/publish/video/init/",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json; charset=UTF-8",
+        },
+        body: JSON.stringify({
+          post_info: {
+            title: content.slice(0, 150), // TikTok title limit
+            privacy_level: "PUBLIC_TO_EVERYONE",
+            disable_duet: false,
+            disable_comment: false,
+            disable_stitch: false,
+          },
+          source_info: {
+            source: "PULL_FROM_URL",
+            video_url: videoUrl,
+          },
+        }),
+      }
+    );
+
+    if (!initResponse.ok) {
+      const error = await initResponse.json();
+      throw new Error(
+        `TikTok init error: ${error.error?.message || JSON.stringify(error)}`
+      );
+    }
+
+    const initData = await initResponse.json();
+
+    if (initData.error?.code !== "ok") {
+      throw new Error(`TikTok error: ${initData.error?.message}`);
+    }
+
+    publishId = initData.data.publish_id;
+  } else {
+    throw new Error("TikTok requires a video to post. Provide either videoBuffer or mediaUrls.");
+  }
+
+  // Check publish status (TikTok processes async)
   const postId = await waitForTikTokPublish(accessToken, publishId);
 
   return postId;

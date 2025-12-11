@@ -33,7 +33,7 @@ export default async function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <SiteHeader session={session} />
+        <SiteHeader />
         <main className="min-h-screen">{children}</main>
         <SiteFooter session={session} />
       </body>

@@ -60,7 +60,7 @@ export function DashboardHeader({
 
         <div className="flex flex-wrap gap-3">
           <Link
-            href="/dashboard/compose"
+            href="/dashboard/posts"
             className="px-6 py-3 rounded-2xl bg-white text-[#4044C9] font-bold shadow-lg shadow-white/30 hover:-translate-y-0.5 transition-transform"
           >
             Create Post

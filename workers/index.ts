@@ -1,5 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import dotenv from "dotenv";
+dotenv.config();
+dotenv.config({ path: ".env.local", override: true });
 import { Worker, Job } from "bullmq";
 import * as crypto from "crypto";
 import { createRedisConnection } from "@/lib/queue/connection";
@@ -11,12 +13,14 @@ import {
   publishToLinkedIn,
 } from "@/lib/queue/publishers";
 import { PublishPostJobData } from "@/lib/queue/queues";
-import { db, post, postTarget, socialAccount } from "@/lib/db";
+import {
+  workerDb as db,
+  post,
+  postTarget,
+  socialAccount,
+} from "@/lib/db/worker-connection";
 import { eq } from "drizzle-orm";
 import { uploadMultipleMedia } from "@/lib/social/twitter-media";
-
-dotenv.config();
-dotenv.config({ path: ".env.local", override: true });
 
 const ALGORITHM = "aes-256-gcm";
 const IV_LENGTH = 16;
@@ -252,11 +256,26 @@ export function createPostWorker() {
 
         switch (account.platform) {
           case "twitter":
-            platformPostId = await publishToTwitter({
-              accessToken,
-              content: content || "", // Twitter requires at least empty string
-              mediaIds, // Pass media IDs instead of URLs
-            });
+            try {
+              platformPostId = await publishToTwitter({
+                accessToken,
+                content: content || "", // Twitter requires at least empty string
+                mediaIds, // Pass media IDs instead of URLs
+              });
+              console.log(
+                `✅ Twitter publish successful, tweet ID: ${platformPostId}`
+              );
+            } catch (twitterError) {
+              console.error("❌ Twitter publish error:", twitterError);
+              // Re-throw with more context
+              throw new Error(
+                `Failed to publish to Twitter: ${
+                  twitterError instanceof Error
+                    ? twitterError.message
+                    : "Unknown error"
+                }`
+              );
+            }
             break;
           case "instagram":
             // For Instagram, you'd need to convert mediaData to URLs first
@@ -267,11 +286,35 @@ export function createPostWorker() {
             });
             break;
           case "tiktok":
-            platformPostId = await publishToTikTok({
-              accessToken,
-              content,
-              mediaUrls: [], // TikTok requires URLs
-            });
+            try {
+              // For TikTok, we need to handle video buffers directly
+              if (mediaData && mediaData.length > 0) {
+                // Convert base64 to buffer
+                const videoData = mediaData[0];
+                const videoBuffer = Buffer.from(videoData.data, "base64");
+
+                platformPostId = await publishToTikTok({
+                  accessToken,
+                  content,
+                  videoBuffer,
+                  videoMimeType: videoData.mimeType,
+                });
+                console.log(
+                  `✅ TikTok publish successful, post ID: ${platformPostId}`
+                );
+              } else {
+                throw new Error("TikTok requires a video file");
+              }
+            } catch (tiktokError) {
+              console.error("❌ TikTok publish error:", tiktokError);
+              throw new Error(
+                `Failed to publish to TikTok: ${
+                  tiktokError instanceof Error
+                    ? tiktokError.message
+                    : "Unknown error"
+                }`
+              );
+            }
             break;
           case "linkedin":
             platformPostId = await publishToLinkedIn({

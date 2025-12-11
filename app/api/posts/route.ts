@@ -168,20 +168,29 @@ export async function POST(request: NextRequest) {
     }
 
     // Insert post (don't store media in DB, send in job data)
-    await db.insert(post).values({
-      id: postId,
-      userId: session.user.id,
-      content: content || "",
-      mediaUrls: [], // We'll generate URLs after upload
-      scheduledFor,
-      status: scheduledFor ? "scheduled" : "publishing",
-    });
+    try {
+      await db.insert(post).values({
+        id: postId,
+        userId: session.user.id,
+        content: content || "",
+        mediaUrls: [], // We'll generate URLs after upload
+        scheduledFor,
+        status: scheduledFor ? "scheduled" : "publishing",
+      });
 
-    console.log(
-      `✅ Created post: ${postId}${
-        mediaData.length > 0 ? ` with ${mediaData.length} media files` : ""
-      }`
-    );
+      console.log(
+        `✅ Created post: ${postId}${
+          mediaData.length > 0 ? ` with ${mediaData.length} media files` : ""
+        }`
+      );
+    } catch (postError) {
+      console.error("❌ Failed to insert post:", postError);
+      throw new Error(
+        `Failed to create post: ${
+          postError instanceof Error ? postError.message : "Unknown error"
+        }`
+      );
+    }
 
     // Create post targets
     console.log("🎯 Creating post targets...");
@@ -202,8 +211,24 @@ export async function POST(request: NextRequest) {
     }
 
     // Insert all targets at once
-    await db.insert(postTarget).values(targets);
-    console.log(`✅ Created ${targets.length} post targets`);
+    try {
+      await db.insert(postTarget).values(targets);
+      console.log(`✅ Created ${targets.length} post targets`);
+    } catch (targetError) {
+      console.error("❌ Failed to insert post targets:", targetError);
+      // Try to delete the post if targets failed
+      try {
+        await db.delete(post).where(eq(post.id, postId));
+        console.log(`🗑️ Cleaned up post ${postId} after target insertion failure`);
+      } catch (cleanupError) {
+        console.error("❌ Failed to cleanup post after target failure:", cleanupError);
+      }
+      throw new Error(
+        `Failed to create post targets: ${
+          targetError instanceof Error ? targetError.message : "Unknown error"
+        }`
+      );
+    }
 
     // Queue the jobs with media data
     console.log("📋 Queueing jobs...");
