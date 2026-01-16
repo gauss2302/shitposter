@@ -1,0 +1,1 @@
+ALTER TABLE "social_account" ADD COLUMN "oauth1_access_token" text;

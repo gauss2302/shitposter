@@ -1,10 +1,17 @@
+import { createOAuth1Header, parseUrl } from "./oauth1";
+
 interface TwitterUserContext {
   accessToken: string;
+  accessTokenSecret?: string; // Required for OAuth 1.0a media upload
+  consumerKey?: string; // Twitter Client ID
+  consumerSecret?: string; // Twitter Client Secret
 }
 
 /**
  * Upload media to Twitter and return media ID
  * Uses chunked upload for reliability with larger files
+ * 
+ * Uses OAuth 1.0a for media upload endpoint (required by Twitter API v1.1)
  */
 export async function uploadMediaToTwitter(
   context: TwitterUserContext,
@@ -17,28 +24,104 @@ export async function uploadMediaToTwitter(
 
   console.log(`📤 Starting upload: ${totalBytes} bytes, type: ${mimeType}`);
 
+  // Check if OAuth 1.0a credentials are available
+  const useOAuth1 =
+    context.accessTokenSecret &&
+    context.consumerKey &&
+    context.consumerSecret;
+
+  if (!useOAuth1) {
+    throw new Error(
+      "OAuth 1.0a credentials required for media upload. Missing: accessTokenSecret, consumerKey, or consumerSecret"
+    );
+  }
+
   // INIT phase - Initialize upload
-  const initResponse = await fetch(
-    "https://upload.twitter.com/1.1/media/upload.json",
+  const initParams: Record<string, string> = {
+    command: "INIT",
+    total_bytes: totalBytes.toString(),
+    media_type: mimeType,
+    media_category: mediaCategory,
+  };
+
+  console.log(`📤 INIT request params:`, {
+    command: "INIT",
+    total_bytes: totalBytes,
+    media_type: mimeType,
+    media_category: mediaCategory,
+  });
+
+  const uploadUrl = "https://upload.twitter.com/1.1/media/upload.json";
+  const { baseUrl, queryParams } = parseUrl(uploadUrl);
+
+  // Create OAuth 1.0a Authorization header
+  const authHeader = createOAuth1Header(
+    "POST",
+    baseUrl,
+    { ...initParams, ...queryParams },
     {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${context.accessToken}`,
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: new URLSearchParams({
-        command: "INIT",
-        total_bytes: totalBytes.toString(),
-        media_type: mimeType,
-        media_category: mediaCategory,
-      }),
+      consumerKey: context.consumerKey!,
+      consumerSecret: context.consumerSecret!,
+      accessToken: context.accessToken,
+      accessTokenSecret: context.accessTokenSecret!,
     }
   );
 
+  const initResponse = await fetch(uploadUrl, {
+    method: "POST",
+    headers: {
+      Authorization: authHeader,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: new URLSearchParams(initParams),
+  });
+
+  console.log(`📤 INIT response status: ${initResponse.status} ${initResponse.statusText}`);
+
   if (!initResponse.ok) {
-    const error = await initResponse.text();
-    console.error("Twitter media INIT error:", error);
-    throw new Error(`Failed to initialize media upload: ${error}`);
+    // Try to parse as JSON first, then fall back to text
+    let errorMessage: string;
+    let errorData: any = null;
+    let responseText: string = "";
+    
+    try {
+      responseText = await initResponse.text();
+      console.log(`📤 INIT response body:`, responseText.substring(0, 500)); // Log first 500 chars
+      
+      if (responseText.trim()) {
+        try {
+          errorData = JSON.parse(responseText);
+          errorMessage = 
+            errorData?.errors?.[0]?.message ||
+            errorData?.error ||
+            errorData?.message ||
+            responseText ||
+            `HTTP ${initResponse.status} ${initResponse.statusText}`;
+        } catch {
+          errorMessage = responseText || `HTTP ${initResponse.status} ${initResponse.statusText}`;
+        }
+      } else {
+        // Empty response - likely authentication or endpoint issue
+        errorMessage = `HTTP ${initResponse.status} ${initResponse.statusText} (empty response)`;
+        if (initResponse.status === 401 || initResponse.status === 403) {
+          errorMessage += " - Authentication failed. Twitter media upload may require OAuth 1.0a instead of OAuth 2.0 Bearer token.";
+        }
+      }
+    } catch (e) {
+      errorMessage = `HTTP ${initResponse.status} ${initResponse.statusText} (failed to read response)`;
+      console.error("Error reading response:", e);
+    }
+
+    console.error("Twitter media INIT error:", {
+      status: initResponse.status,
+      statusText: initResponse.statusText,
+      headers: Object.fromEntries(initResponse.headers.entries()),
+      error: errorMessage,
+      errorData,
+      responsePreview: responseText.substring(0, 200),
+    });
+    
+    throw new Error(`Failed to initialize media upload (${initResponse.status}): ${errorMessage}`);
   }
 
   const initData = await initResponse.json();
@@ -63,24 +146,66 @@ export async function uploadMediaToTwitter(
     formData.append("segment_index", segmentIndex.toString());
     formData.append("media", new Blob([chunk], { type: mimeType }));
 
-    const appendResponse = await fetch(
-      "https://upload.twitter.com/1.1/media/upload.json",
+    // For APPEND, OAuth 1.0a signature includes only text parameters (not the file)
+    // The file is sent as multipart/form-data but not included in OAuth signature
+    const appendParams: Record<string, string> = {
+      command: "APPEND",
+      media_id: mediaId,
+      segment_index: segmentIndex.toString(),
+    };
+
+    const appendAuthHeader = createOAuth1Header(
+      "POST",
+      baseUrl,
+      { ...appendParams, ...queryParams },
       {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${context.accessToken}`,
-        },
-        body: formData,
+        consumerKey: context.consumerKey!,
+        consumerSecret: context.consumerSecret!,
+        accessToken: context.accessToken,
+        accessTokenSecret: context.accessTokenSecret!,
       }
     );
 
+    const appendResponse = await fetch(uploadUrl, {
+      method: "POST",
+      headers: {
+        Authorization: appendAuthHeader,
+        // Don't set Content-Type - let fetch set it with boundary for FormData
+      },
+      body: formData,
+    });
+
     if (!appendResponse.ok) {
-      const error = await appendResponse.text();
+      let errorMessage: string;
+      let errorData: any = null;
+      
+      try {
+        const responseText = await appendResponse.text();
+        try {
+          errorData = JSON.parse(responseText);
+          errorMessage = 
+            errorData?.errors?.[0]?.message ||
+            errorData?.error ||
+            errorData?.message ||
+            responseText ||
+            `HTTP ${appendResponse.status} ${appendResponse.statusText}`;
+        } catch {
+          errorMessage = responseText || `HTTP ${appendResponse.status} ${appendResponse.statusText}`;
+        }
+      } catch {
+        errorMessage = `HTTP ${appendResponse.status} ${appendResponse.statusText}`;
+      }
+
       console.error(
         `Twitter media APPEND error (chunk ${segmentIndex}):`,
-        error
+        {
+          status: appendResponse.status,
+          statusText: appendResponse.statusText,
+          error: errorMessage,
+          errorData,
+        }
       );
-      throw new Error(`Failed to upload chunk ${segmentIndex}: ${error}`);
+      throw new Error(`Failed to upload chunk ${segmentIndex} (${appendResponse.status}): ${errorMessage}`);
     }
 
     console.log(`✅ Uploaded chunk ${segmentIndex}`);
@@ -90,25 +215,60 @@ export async function uploadMediaToTwitter(
   // FINALIZE phase - Complete upload
   console.log(`🏁 Finalizing upload for media_id: ${mediaId}`);
 
-  const finalizeResponse = await fetch(
-    "https://upload.twitter.com/1.1/media/upload.json",
+  const finalizeParams: Record<string, string> = {
+    command: "FINALIZE",
+    media_id: mediaId,
+  };
+
+  const finalizeAuthHeader = createOAuth1Header(
+    "POST",
+    baseUrl,
+    { ...finalizeParams, ...queryParams },
     {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${context.accessToken}`,
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: new URLSearchParams({
-        command: "FINALIZE",
-        media_id: mediaId,
-      }),
+      consumerKey: context.consumerKey!,
+      consumerSecret: context.consumerSecret!,
+      accessToken: context.accessToken,
+      accessTokenSecret: context.accessTokenSecret!,
     }
   );
 
+  const finalizeResponse = await fetch(uploadUrl, {
+    method: "POST",
+    headers: {
+      Authorization: finalizeAuthHeader,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: new URLSearchParams(finalizeParams),
+  });
+
   if (!finalizeResponse.ok) {
-    const error = await finalizeResponse.text();
-    console.error("Twitter media FINALIZE error:", error);
-    throw new Error(`Failed to finalize media upload: ${error}`);
+    let errorMessage: string;
+    let errorData: any = null;
+    
+    try {
+      const responseText = await finalizeResponse.text();
+      try {
+        errorData = JSON.parse(responseText);
+        errorMessage = 
+          errorData?.errors?.[0]?.message ||
+          errorData?.error ||
+          errorData?.message ||
+          responseText ||
+          `HTTP ${finalizeResponse.status} ${finalizeResponse.statusText}`;
+      } catch {
+        errorMessage = responseText || `HTTP ${finalizeResponse.status} ${finalizeResponse.statusText}`;
+      }
+    } catch {
+      errorMessage = `HTTP ${finalizeResponse.status} ${finalizeResponse.statusText}`;
+    }
+
+    console.error("Twitter media FINALIZE error:", {
+      status: finalizeResponse.status,
+      statusText: finalizeResponse.statusText,
+      error: errorMessage,
+      errorData,
+    });
+    throw new Error(`Failed to finalize media upload (${finalizeResponse.status}): ${errorMessage}`);
   }
 
   const finalizeData = await finalizeResponse.json();
@@ -131,18 +291,30 @@ async function waitForVideoProcessing(
   mediaId: string,
   maxAttempts: number = 60 // Up to 2 minutes
 ): Promise<string> {
+  const statusUrl = `https://upload.twitter.com/1.1/media/upload.json?${new URLSearchParams({
+    command: "STATUS",
+    media_id: mediaId,
+  })}`;
+  const { baseUrl, queryParams } = parseUrl(statusUrl);
+
   for (let i = 0; i < maxAttempts; i++) {
-    const response = await fetch(
-      `https://upload.twitter.com/1.1/media/upload.json?${new URLSearchParams({
-        command: "STATUS",
-        media_id: mediaId,
-      })}`,
+    const statusAuthHeader = createOAuth1Header(
+      "GET",
+      baseUrl,
+      queryParams,
       {
-        headers: {
-          Authorization: `Bearer ${context.accessToken}`,
-        },
+        consumerKey: context.consumerKey!,
+        consumerSecret: context.consumerSecret!,
+        accessToken: context.accessToken,
+        accessTokenSecret: context.accessTokenSecret!,
       }
     );
+
+    const response = await fetch(statusUrl, {
+      headers: {
+        Authorization: statusAuthHeader,
+      },
+    });
 
     if (!response.ok) {
       console.error("Failed to check video processing status");
@@ -178,6 +350,9 @@ async function waitForVideoProcessing(
 
 /**
  * Upload multiple media files and return media IDs
+ * 
+ * @param context - Twitter OAuth 1.0a credentials (accessToken, accessTokenSecret, consumerKey, consumerSecret)
+ * @param files - Array of files to upload
  */
 export async function uploadMultipleMedia(
   context: TwitterUserContext,

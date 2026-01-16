@@ -280,7 +280,7 @@ export function ComposeModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center p-2 md:p-4"
       onClick={(e) => {
         if (e.target === e.currentTarget) {
           onClose();
@@ -291,19 +291,19 @@ export function ComposeModal({
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
 
       {/* Modal */}
-      <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-2xl">
+      <div className="relative w-full max-w-xl md:max-w-2xl max-h-[95vh] md:max-h-[90vh] overflow-y-auto bg-white dark:bg-zinc-900 rounded-xl md:rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-2xl">
         {/* Header */}
-        <div className="sticky top-0 z-10 flex items-center justify-between p-6 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
-          <h2 className="text-xl font-bold text-zinc-900 dark:text-white">
+        <div className="sticky top-0 z-10 flex items-center justify-between p-3 md:p-4 lg:p-6 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+          <h2 className="text-lg md:text-xl font-bold text-zinc-900 dark:text-white">
             Create Post
           </h2>
           <button
             onClick={onClose}
             disabled={loading || processingMedia}
-            className="p-2 text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition disabled:opacity-50"
+            className="p-1.5 md:p-2 text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition disabled:opacity-50"
           >
             <svg
-              className="w-6 h-6"
+              className="w-5 h-5 md:w-6 md:h-6"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -319,33 +319,34 @@ export function ComposeModal({
         </div>
 
         {/* Content */}
-        <div className="p-6">
-          <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="p-3 md:p-4 lg:p-6">
+          <form onSubmit={handleSubmit} className="space-y-4 md:space-y-5 lg:space-y-6">
             {/* Account Selection */}
-            <div className="bg-zinc-50 dark:bg-zinc-800/50 rounded-xl p-4 border border-zinc-200 dark:border-zinc-700">
-              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3">
+            <div className="bg-zinc-50 dark:bg-zinc-800/50 rounded-lg md:rounded-xl p-3 md:p-4 border border-zinc-200 dark:border-zinc-700">
+              <label className="block text-xs md:text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2 md:mb-3">
                 Post to
               </label>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-1.5 md:gap-2">
                 {accounts.map((account) => (
                   <button
                     key={account.id}
                     type="button"
                     onClick={() => toggleAccount(account.id)}
                     disabled={loading || processingMedia}
-                    className={`px-3 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition border ${
+                    className={`px-2 md:px-3 py-1.5 md:py-2 rounded-md md:rounded-lg flex items-center gap-1.5 md:gap-2 text-xs md:text-sm font-medium transition border ${
                       selectedAccounts.includes(account.id)
                         ? "border-violet-500 bg-violet-50 dark:bg-violet-900/20 text-violet-700 dark:text-violet-300"
                         : "border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:border-zinc-300 dark:hover:border-zinc-600"
                     } disabled:opacity-50 disabled:cursor-not-allowed`}
                   >
-                    <span className="text-lg">
+                    <span className="text-base md:text-lg">
                       {platformIcons[account.platform]}
                     </span>
-                    @{account.platformUsername}
+                    <span className="hidden sm:inline">@</span>
+                    <span className="truncate max-w-[80px] md:max-w-none">{account.platformUsername}</span>
                     {selectedAccounts.includes(account.id) && (
                       <svg
-                        className="w-4 h-4"
+                        className="w-3.5 h-3.5 md:w-4 md:h-4 flex-shrink-0"
                         fill="currentColor"
                         viewBox="0 0 20 20"
                       >
@@ -362,30 +363,30 @@ export function ComposeModal({
             </div>
 
             {/* Content */}
-            <div className="bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-200 dark:border-zinc-700 overflow-hidden">
+            <div className="bg-zinc-50 dark:bg-zinc-800/50 rounded-lg md:rounded-xl border border-zinc-200 dark:border-zinc-700 overflow-hidden">
               <textarea
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 placeholder="What's on your mind?"
-                rows={6}
+                rows={5}
                 disabled={loading || processingMedia}
-                className="w-full p-4 bg-transparent text-zinc-900 dark:text-white placeholder-zinc-400 resize-none focus:outline-none text-lg disabled:opacity-50"
+                className="w-full p-3 md:p-4 bg-transparent text-zinc-900 dark:text-white placeholder-zinc-400 resize-none focus:outline-none text-sm md:text-base lg:text-lg disabled:opacity-50"
               />
 
               {/* Media Processing Indicator */}
               {processingMedia && (
-                <div className="px-4 pb-4">
-                  <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                <div className="px-3 md:px-4 pb-3 md:pb-4">
+                  <div className="flex items-center gap-2 md:gap-3 p-2 md:p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                     <div className="flex-shrink-0">
-                      <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                      <div className="w-4 h-4 md:w-5 md:h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
                     </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-blue-900 dark:text-blue-200">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs md:text-sm font-medium text-blue-900 dark:text-blue-200 truncate">
                         Processing media files...
                       </p>
-                      <div className="mt-2 w-full bg-blue-200 dark:bg-blue-800 rounded-full h-1.5">
+                      <div className="mt-1.5 md:mt-2 w-full bg-blue-200 dark:bg-blue-800 rounded-full h-1 md:h-1.5">
                         <div
-                          className="bg-blue-500 h-1.5 rounded-full transition-all duration-300"
+                          className="bg-blue-500 h-full rounded-full transition-all duration-300"
                           style={{ width: `${uploadProgress}%` }}
                         ></div>
                       </div>
@@ -396,27 +397,27 @@ export function ComposeModal({
 
               {/* Media Previews */}
               {mediaPreviews.length > 0 && !processingMedia && (
-                <div className="px-4 pb-4 grid grid-cols-2 gap-2">
+                <div className="px-3 md:px-4 pb-3 md:pb-4 grid grid-cols-2 gap-1.5 md:gap-2">
                   {mediaPreviews.map((preview, index) => (
                     <div key={index} className="relative group">
                       {mediaFiles[index].type.startsWith("video/") ? (
                         <video
                           src={preview}
-                          className="w-full h-32 object-cover rounded-lg border border-zinc-200 dark:border-zinc-700"
+                          className="w-full h-24 md:h-32 object-cover rounded-md md:rounded-lg border border-zinc-200 dark:border-zinc-700"
                           controls
                         />
                       ) : (
                         <img
                           src={preview}
                           alt={`Upload ${index + 1}`}
-                          className="w-full h-32 object-cover rounded-lg border border-zinc-200 dark:border-zinc-700"
+                          className="w-full h-24 md:h-32 object-cover rounded-md md:rounded-lg border border-zinc-200 dark:border-zinc-700"
                         />
                       )}
-                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2 rounded-b-lg">
-                        <p className="text-xs text-white truncate">
+                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-1.5 md:p-2 rounded-b-md md:rounded-b-lg">
+                        <p className="text-[10px] md:text-xs text-white truncate">
                           {mediaFiles[index].name}
                         </p>
-                        <p className="text-xs text-white/80">
+                        <p className="text-[10px] md:text-xs text-white/80">
                           {(mediaFiles[index].size / 1024 / 1024).toFixed(2)}{" "}
                           MB
                         </p>
@@ -425,7 +426,7 @@ export function ComposeModal({
                         type="button"
                         onClick={() => removeMedia(index)}
                         disabled={loading}
-                        className="absolute top-2 right-2 w-7 h-7 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg disabled:opacity-50"
+                        className="absolute top-1.5 right-1.5 md:top-2 md:right-2 w-6 h-6 md:w-7 md:h-7 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg disabled:opacity-50 text-sm md:text-base"
                       >
                         ×
                       </button>
@@ -434,8 +435,8 @@ export function ComposeModal({
                 </div>
               )}
 
-              <div className="px-4 pb-4 flex items-center justify-between border-t border-zinc-200 dark:border-zinc-700 pt-3">
-                <div className="flex gap-2">
+              <div className="px-3 md:px-4 pb-3 md:pb-4 flex items-center justify-between border-t border-zinc-200 dark:border-zinc-700 pt-2 md:pt-3">
+                <div className="flex gap-1.5 md:gap-2">
                   <label className="cursor-pointer">
                     <input
                       type="file"
@@ -446,16 +447,16 @@ export function ComposeModal({
                       disabled={loading || processingMedia}
                     />
                     <div
-                      className={`w-9 h-9 rounded-full bg-violet-100 dark:bg-violet-900/30 hover:bg-violet-200 dark:hover:bg-violet-900/50 flex items-center justify-center transition ${
+                      className={`w-8 h-8 md:w-9 md:h-9 rounded-full bg-violet-100 dark:bg-violet-900/30 hover:bg-violet-200 dark:hover:bg-violet-900/50 flex items-center justify-center transition ${
                         (loading || processingMedia) &&
                         "opacity-50 cursor-not-allowed"
                       }`}
                     >
                       {processingMedia ? (
-                        <div className="w-5 h-5 border-2 border-violet-600 border-t-transparent rounded-full animate-spin"></div>
+                        <div className="w-4 h-4 md:w-5 md:h-5 border-2 border-violet-600 border-t-transparent rounded-full animate-spin"></div>
                       ) : (
                         <svg
-                          className="w-5 h-5 text-violet-600 dark:text-violet-400"
+                          className="w-4 h-4 md:w-5 md:h-5 text-violet-600 dark:text-violet-400"
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
@@ -471,7 +472,7 @@ export function ComposeModal({
                     </div>
                   </label>
                   {mediaFiles.length > 0 && (
-                    <div className="flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
+                    <div className="flex items-center gap-1.5 md:gap-2 text-[10px] md:text-xs text-zinc-500 dark:text-zinc-400">
                       <span className="font-medium">
                         {mediaFiles.length} file
                         {mediaFiles.length !== 1 ? "s" : ""}
@@ -480,7 +481,7 @@ export function ComposeModal({
                   )}
                 </div>
                 <span
-                  className={`text-sm font-medium ${
+                  className={`text-xs md:text-sm font-medium ${
                     isOverLimit ? "text-red-500" : "text-zinc-400"
                   }`}
                 >
@@ -490,25 +491,25 @@ export function ComposeModal({
             </div>
 
             {/* Scheduling */}
-            <div className="bg-zinc-50 dark:bg-zinc-800/50 rounded-xl p-4 border border-zinc-200 dark:border-zinc-700">
-              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3">
+            <div className="bg-zinc-50 dark:bg-zinc-800/50 rounded-lg md:rounded-xl p-3 md:p-4 border border-zinc-200 dark:border-zinc-700">
+              <label className="block text-xs md:text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2 md:mb-3">
                 Schedule (optional)
               </label>
-              <div className="flex flex-wrap gap-3">
+              <div className="flex flex-wrap gap-2 md:gap-3">
                 <input
                   type="date"
                   value={scheduleDate}
                   onChange={(e) => setScheduleDate(e.target.value)}
                   min={new Date().toISOString().split("T")[0]}
                   disabled={loading || processingMedia}
-                  className="px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none disabled:opacity-50"
+                  className="flex-1 min-w-[140px] px-2 md:px-3 py-1.5 md:py-2 rounded-md md:rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white text-xs md:text-sm focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none disabled:opacity-50"
                 />
                 <input
                   type="time"
                   value={scheduleTime}
                   onChange={(e) => setScheduleTime(e.target.value)}
                   disabled={loading || processingMedia}
-                  className="px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none disabled:opacity-50"
+                  className="flex-1 min-w-[120px] px-2 md:px-3 py-1.5 md:py-2 rounded-md md:rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white text-xs md:text-sm focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none disabled:opacity-50"
                 />
                 {(scheduleDate || scheduleTime) && (
                   <button
@@ -518,14 +519,14 @@ export function ComposeModal({
                       setScheduleTime("");
                     }}
                     disabled={loading || processingMedia}
-                    className="px-3 py-2 text-sm text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 disabled:opacity-50"
+                    className="px-2 md:px-3 py-1.5 md:py-2 text-xs md:text-sm text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 disabled:opacity-50"
                   >
                     Clear
                   </button>
                 )}
               </div>
               {!scheduleDate && !scheduleTime && (
-                <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-2">
+                <p className="text-xs md:text-sm text-zinc-500 dark:text-zinc-400 mt-1.5 md:mt-2">
                   Leave empty to post immediately
                 </p>
               )}
@@ -533,10 +534,10 @@ export function ComposeModal({
 
             {/* Error */}
             {error && (
-              <div className="p-4 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
-                <div className="flex items-start gap-3">
+              <div className="p-3 md:p-4 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
+                <div className="flex items-start gap-2 md:gap-3">
                   <svg
-                    className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5"
+                    className="w-4 h-4 md:w-5 md:h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5"
                     fill="currentColor"
                     viewBox="0 0 20 20"
                   >
@@ -546,7 +547,7 @@ export function ComposeModal({
                       clipRule="evenodd"
                     />
                   </svg>
-                  <p className="text-sm text-red-600 dark:text-red-400">
+                  <p className="text-xs md:text-sm text-red-600 dark:text-red-400">
                     {error}
                   </p>
                 </div>
@@ -554,12 +555,12 @@ export function ComposeModal({
             )}
 
             {/* Submit */}
-            <div className="flex justify-end gap-3 pt-4 border-t border-zinc-200 dark:border-zinc-700">
+            <div className="flex flex-col sm:flex-row justify-end gap-2 md:gap-3 pt-3 md:pt-4 border-t border-zinc-200 dark:border-zinc-700">
               <button
                 type="button"
                 onClick={onClose}
                 disabled={loading || processingMedia}
-                className="px-4 py-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white font-medium transition disabled:opacity-50"
+                className="px-3 md:px-4 py-2 text-xs md:text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white font-medium transition disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -572,11 +573,11 @@ export function ComposeModal({
                   selectedAccounts.length === 0 ||
                   isOverLimit
                 }
-                className="px-6 py-2 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white font-medium rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                className="px-4 md:px-6 py-2 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white text-xs md:text-sm font-medium rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {loading ? (
                   <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <div className="w-3.5 h-3.5 md:w-4 md:h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                     <span>
                       {scheduleDate ? "Scheduling..." : "Publishing..."}
                     </span>

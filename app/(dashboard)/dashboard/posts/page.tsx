@@ -8,6 +8,7 @@ import Link from "next/link";
 import { PostsNotification } from "./notification";
 import { ScheduledTime } from "./scheduled-time";
 import { PostsClient } from "./posts-client";
+import { PostsViewClient } from "./posts-view-client";
 
 const platformIcons: Record<string, string> = {
   twitter: "𝕏",
@@ -142,42 +143,42 @@ export default async function PostsPage() {
   );
 
   return (
-    <div className="space-y-8">
-      <div className="rounded-3xl border border-zinc-200/80 dark:border-zinc-800 bg-gradient-to-r from-violet-600/5 via-white to-fuchsia-600/5 dark:from-violet-500/10 dark:via-zinc-950 dark:to-fuchsia-500/10 p-8">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+    <div className="space-y-4 md:space-y-6 lg:space-y-8">
+      <div className="rounded-2xl md:rounded-3xl border border-zinc-200/80 dark:border-zinc-800 bg-gradient-to-r from-violet-600/5 via-white to-fuchsia-600/5 dark:from-violet-500/10 dark:via-zinc-950 dark:to-fuchsia-500/10 p-4 md:p-6 lg:p-8">
+        <div className="flex flex-col gap-4 md:gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-wider text-violet-600 dark:text-violet-300">
+            <p className="text-xs md:text-sm font-semibold uppercase tracking-wider text-violet-600 dark:text-violet-300">
               Analytics overview
             </p>
-            <h1 className="mt-2 text-3xl font-bold text-zinc-900 dark:text-white">
+            <h1 className="mt-1 md:mt-2 text-2xl md:text-3xl font-bold text-zinc-900 dark:text-white">
               Posts & Performance
             </h1>
-            <p className="mt-2 text-zinc-600 dark:text-zinc-400 max-w-2xl">
+            <p className="mt-1 md:mt-2 text-sm md:text-base text-zinc-600 dark:text-zinc-400 max-w-2xl">
               Track how your content performs across every platform, spot
               failures early, and jump straight into composing something new.
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 md:gap-3">
             <div className="text-right">
-              <p className="text-sm uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+              <p className="text-xs md:text-sm uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                 Success rate
               </p>
-              <p className="text-3xl font-semibold text-zinc-900 dark:text-white">
+              <p className="text-2xl md:text-3xl font-semibold text-zinc-900 dark:text-white">
                 {successRate}%
               </p>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              <p className="text-[10px] md:text-xs text-zinc-500 dark:text-zinc-400">
                 {publishedTargets} / {totalTargets || 1} targets
               </p>
             </div>
             <div className="h-full border-l border-zinc-200 dark:border-zinc-800" />
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 md:gap-3">
               <PostsClient accounts={allAccounts} />
               <Link
                 href="/dashboard"
-                className="inline-flex items-center gap-2 rounded-xl bg-zinc-900 px-4 py-2 text-white transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-900"
+                className="inline-flex items-center gap-1.5 md:gap-2 rounded-lg md:rounded-xl bg-zinc-900 px-3 md:px-4 py-1.5 md:py-2 text-white text-xs md:text-sm transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-900"
               >
-                <span>Open Dashboard</span>
-                <span className="text-lg">🗂️</span>
+                <span>Dashboard</span>
+                <span className="text-base md:text-lg">🗂️</span>
               </Link>
             </div>
           </div>
@@ -205,7 +206,7 @@ export default async function PostsPage() {
 
       <PostsNotification />
 
-      <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <section className="grid gap-2 md:gap-3 grid-cols-2 md:grid-cols-4">
         {[
           {
             label: "Total posts",
@@ -235,15 +236,15 @@ export default async function PostsPage() {
         ].map((card) => (
           <div
             key={card.label}
-            className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900"
+            className="rounded-xl md:rounded-2xl border border-zinc-200 bg-white p-3 md:p-4 dark:border-zinc-800 dark:bg-zinc-900"
           >
-            <p className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+            <p className="text-xs md:text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
               {card.label}
             </p>
-            <p className="mt-2 text-3xl font-semibold text-zinc-900 dark:text-white">
+            <p className="mt-1 md:mt-2 text-2xl md:text-3xl font-semibold text-zinc-900 dark:text-white">
               {card.value}
             </p>
-            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+            <p className="mt-0.5 md:mt-1 text-xs md:text-sm text-zinc-500 dark:text-zinc-400">
               {card.helper}
             </p>
           </div>
@@ -360,165 +361,25 @@ export default async function PostsPage() {
       </section>
 
       {postsWithTargets.length === 0 ? (
-        <div className="bg-white dark:bg-zinc-900 rounded-xl p-12 border border-zinc-200 dark:border-zinc-800 text-center">
-          <div className="w-16 h-16 bg-zinc-100 dark:bg-zinc-800 rounded-full mx-auto mb-4 flex items-center justify-center">
-            <span className="text-3xl">📝</span>
+        <div className="bg-white dark:bg-zinc-900 rounded-xl p-8 md:p-12 border border-zinc-200 dark:border-zinc-800 text-center">
+          <div className="w-12 h-12 md:w-16 md:h-16 bg-zinc-100 dark:bg-zinc-800 rounded-full mx-auto mb-3 md:mb-4 flex items-center justify-center">
+            <span className="text-2xl md:text-3xl">📝</span>
           </div>
-          <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-2">
+          <h2 className="text-base md:text-lg font-semibold text-zinc-900 dark:text-white mb-2">
             No posts yet
           </h2>
-          <p className="text-zinc-500 dark:text-zinc-400 mb-4">
+          <p className="text-sm md:text-base text-zinc-500 dark:text-zinc-400 mb-3 md:mb-4">
             Create your first post to get started
           </p>
           <Link
             href="/dashboard"
-            className="inline-flex px-4 py-2 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white font-medium rounded-lg transition"
+            className="inline-flex px-3 md:px-4 py-1.5 md:py-2 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white text-sm md:text-base font-medium rounded-lg transition"
           >
             Go to Dashboard
           </Link>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {postsWithTargets.map((postItem) => (
-            <div
-              key={postItem.id}
-              className="bg-white dark:bg-zinc-900 rounded-xl p-4 border border-zinc-200 dark:border-zinc-800 hover:border-violet-300 dark:hover:border-violet-700 transition flex flex-col"
-            >
-              <div className="flex items-start justify-between gap-4 mb-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span
-                      className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                        statusColors[postItem.status] || statusColors.draft
-                      }`}
-                    >
-                      {postItem.status}
-                    </span>
-                    {postItem.scheduledFor && (
-                      <ScheduledTime
-                        date={postItem.scheduledFor}
-                        status={postItem.status}
-                      />
-                    )}
-                  </div>
-                  <p className="text-zinc-900 dark:text-white leading-relaxed">
-                    {postItem.content}
-                  </p>
-                </div>
-              </div>
-
-              {/* Targets */}
-              <div className="border-t border-zinc-100 dark:border-zinc-800 pt-3 mt-auto">
-                <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-2">
-                  Publishing To
-                </p>
-                <div className="flex flex-wrap gap-1.5">
-                  {postItem.targets.map((target) => (
-                    <div
-                      key={target.id}
-                      className={`flex items-center gap-1.5 px-2 py-1 rounded-md border text-xs ${
-                        target.status === "published"
-                          ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
-                          : target.status === "failed"
-                          ? "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800"
-                          : target.status === "publishing"
-                          ? "bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800"
-                          : "bg-zinc-50 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700"
-                      }`}
-                    >
-                      <span className="text-sm">
-                        {target.account
-                          ? platformIcons[target.account.platform] || "🌐"
-                          : "❓"}
-                      </span>
-                      <div className="min-w-0">
-                        <p className="font-semibold text-zinc-900 dark:text-white truncate">
-                          @{target.account?.platformUsername || "Unknown"}
-                        </p>
-                        <p
-                          className={
-                            target.status === "published"
-                              ? "text-green-600 dark:text-green-400"
-                              : target.status === "failed"
-                              ? "text-red-600 dark:text-red-400"
-                              : "text-zinc-500 dark:text-zinc-400"
-                          }
-                        >
-                          {target.status}
-                        </p>
-                      </div>
-                      {target.platformPostId && (
-                        <a
-                          href={getPlatformUrl(
-                            target.account?.platform || "",
-                            target.account?.platformUsername || "",
-                            target.platformPostId
-                          )}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="ml-1 text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 flex-shrink-0"
-                          title={`View on ${
-                            target.account?.platform || "platform"
-                          }`}
-                        >
-                          <svg
-                            className="w-3 h-3"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                            />
-                          </svg>
-                        </a>
-                      )}
-                      {target.status === "publishing" && (
-                        <div className="ml-1 flex items-center gap-1 text-yellow-600 dark:text-yellow-400">
-                          <div className="w-2.5 h-2.5 border-2 border-yellow-600 border-t-transparent rounded-full animate-spin"></div>
-                        </div>
-                      )}
-                      {target.status === "pending" && (
-                        <div
-                          className="ml-1 text-zinc-500 dark:text-zinc-400"
-                          data-status="pending"
-                        >
-                          ⏳
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-                {postItem.targets.some((t) => t.errorMessage) && (
-                  <div className="mt-2 p-2 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
-                    <p className="text-xs font-semibold text-red-700 dark:text-red-300 mb-1">
-                      Errors:
-                    </p>
-                    {postItem.targets
-                      .filter((t) => t.errorMessage)
-                      .map((t) => (
-                        <p
-                          key={t.id}
-                          className="text-xs text-red-600 dark:text-red-400 line-clamp-1"
-                        >
-                          • {t.account?.platformUsername}: {t.errorMessage}
-                        </p>
-                      ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="border-t border-zinc-100 dark:border-zinc-800 pt-2 mt-2 flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400">
-                <span className="truncate">
-                  {new Date(postItem.createdAt).toLocaleDateString()}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
+        <PostsViewClient posts={postsWithTargets} />
       )}
     </div>
   );

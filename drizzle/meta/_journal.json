@@ -8,6 +8,20 @@
       "when": 1764745185300,
       "tag": "0000_watery_morg",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1768554478434,
+      "tag": "0001_many_spiral",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1768554938358,
+      "tag": "0002_easy_lightspeed",
+      "breakpoints": true
     }
   ]
 }

@@ -1,68 +1,103 @@
-// Load environment variables FIRST, before any other imports
 import dotenv from "dotenv";
 dotenv.config();
 dotenv.config({ path: ".env.local", override: true });
 
-// NOW import everything else
 import { createPostWorker } from "./index";
+import { startHealthServer } from "./health";
 
-console.log("═══════════════════════════════════════");
-console.log("🚀 Starting BullMQ Worker for shitpost.art");
-console.log("═══════════════════════════════════════");
-console.log("📋 Queue: post-publishing");
-console.log("🔗 Redis:", process.env.REDIS_URL?.slice(0, 30) + "...");
-console.log("🗄️  Database:", process.env.DATABASE_URL?.slice(0, 30) + "...");
+console.log("═══════════════════════════════════════════════════════════");
+console.log("🚀 shitpost.art Worker - Starting...");
+console.log("═══════════════════════════════════════════════════════════");
+console.log(`📋 Queue: post-publishing`);
+console.log(`🔗 Redis: ${process.env.REDIS_URL?.replace(/:[^:@]+@/, ":***@")}`);
 console.log(
-  "🔐 Encryption Key:",
-  process.env.TOKEN_ENCRYPTION_KEY ? "✅ Set" : "❌ Missing"
+  `🗄️  Database: ${process.env.DATABASE_URL?.split("@")[1] || "configured"}`
 );
-console.log("═══════════════════════════════════════");
+console.log(`🔐 Encryption: ${process.env.TOKEN_ENCRYPTION_KEY ? "✅" : "❌"}`);
+console.log(`⚡ Concurrency: ${process.env.WORKER_CONCURRENCY || 3}`);
+console.log(`🚦 Rate Limit: ${process.env.WORKER_RATE_LIMIT || 10}/sec`);
+console.log("═══════════════════════════════════════════════════════════");
 
 // Verify required environment variables
 const requiredEnvVars = ["REDIS_URL", "DATABASE_URL", "TOKEN_ENCRYPTION_KEY"];
-
-const missingVars = requiredEnvVars.filter((varName) => !process.env[varName]);
+const missingVars = requiredEnvVars.filter((v) => !process.env[v]);
 
 if (missingVars.length > 0) {
-  console.error("❌ Missing required environment variables:");
-  missingVars.forEach((varName) => {
-    console.error(`   - ${varName}`);
-  });
-  console.error("\n💡 Tip: Check your .env and .env.local files");
+  console.error("❌ Missing environment variables:", missingVars.join(", "));
   process.exit(1);
 }
 
-console.log("✅ All environment variables present");
-console.log("🔧 Creating worker instance...");
+let worker: Awaited<ReturnType<typeof createPostWorker>> | null = null;
+let healthServer: Awaited<ReturnType<typeof startHealthServer>> | null = null;
+let isShuttingDown = false;
 
-// Create and start the worker
-try {
-  const worker = createPostWorker();
+async function shutdown(signal: string) {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
 
-  console.log("✅ Worker created successfully");
-  console.log("👀 Watching for jobs in queue: post-publishing");
-  console.log("⚡ Ready to process posts!");
-  console.log("═══════════════════════════════════════");
-  console.log("");
+  console.log(`\n⏹️  ${signal} received - Graceful shutdown started...`);
 
-  // Graceful shutdown handlers
-  process.on("SIGTERM", async () => {
-    console.log("\n⏹️  SIGTERM received, shutting down gracefully...");
-    await worker.close();
-    console.log("✅ Worker closed");
+  const shutdownTimeout = setTimeout(() => {
+    console.error("❌ Shutdown timeout - forcing exit");
+    process.exit(1);
+  }, 30000); // 30 second timeout
+
+  try {
+    // Stop accepting new jobs
+    if (worker) {
+      console.log("   Closing worker...");
+      await worker.close();
+      console.log("   ✅ Worker closed");
+    }
+
+    // Close health server
+    if (healthServer) {
+      console.log("   Closing health server...");
+      healthServer.close();
+      console.log("   ✅ Health server closed");
+    }
+
+    clearTimeout(shutdownTimeout);
+    console.log("✅ Graceful shutdown complete");
     process.exit(0);
-  });
-
-  process.on("SIGINT", async () => {
-    console.log("\n⏹️  SIGINT received (Ctrl+C), shutting down gracefully...");
-    await worker.close();
-    console.log("✅ Worker closed");
-    process.exit(0);
-  });
-
-  // Keep the process alive
-  process.stdin.resume();
-} catch (error) {
-  console.error("❌ Failed to create worker:", error);
-  process.exit(1);
+  } catch (error) {
+    console.error("❌ Shutdown error:", error);
+    clearTimeout(shutdownTimeout);
+    process.exit(1);
+  }
 }
+
+async function main() {
+  try {
+    // Start health server first
+    healthServer = await startHealthServer();
+
+    // Create and start worker
+    worker = createPostWorker();
+
+    console.log("═══════════════════════════════════════════════════════════");
+    console.log("✅ Worker started successfully!");
+    console.log("👀 Watching for jobs...");
+    console.log("═══════════════════════════════════════════════════════════");
+
+    // Graceful shutdown handlers
+    process.on("SIGTERM", () => shutdown("SIGTERM"));
+    process.on("SIGINT", () => shutdown("SIGINT"));
+
+    // Handle uncaught errors
+    process.on("uncaughtException", (error) => {
+      console.error("❌ Uncaught Exception:", error);
+      shutdown("UNCAUGHT_EXCEPTION");
+    });
+
+    process.on("unhandledRejection", (reason) => {
+      console.error("❌ Unhandled Rejection:", reason);
+      shutdown("UNHANDLED_REJECTION");
+    });
+  } catch (error) {
+    console.error("❌ Failed to start worker:", error);
+    process.exit(1);
+  }
+}
+
+main();

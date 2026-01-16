@@ -10,9 +10,25 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "worker": "bun x tsx workers/start.ts",
-    "queueclean": "npx tsx scripts/clean-queue.ts",
-    "queuestatus": "npx tsx scripts/queue-status.ts"
+    
+    "worker": "bun run workers/start.ts",
+    "worker:dev": "bun --watch run workers/start.ts",
+    
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f",
+    "docker:logs:worker": "docker-compose logs -f worker",
+    "docker:build": "docker-compose build",
+    "docker:rebuild": "docker-compose build --no-cache",
+    
+    "docker:dev": "docker-compose -f docker-compose.yml -f docker-compose.dev.yml up",
+    "docker:prod": "docker-compose --profile monitoring up -d",
+    
+    "queue:status": "bun run scripts/queue-status.ts",
+    "queue:clean": "bun run scripts/clean-queue.ts",
+    
+    "health": "curl -s http://localhost:3001/health | jq",
+    "metrics": "curl -s http://localhost:3001/metrics"
   },
   "dependencies": {
     "better-auth": "^1.4.4",

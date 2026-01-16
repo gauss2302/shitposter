@@ -8,7 +8,7 @@ import {
 } from "drizzle-orm/pg-core";
 
 // ============================================
-// BETTER AUTH TABLES (required by better-auth)
+// BETTER AUTH TABLES
 // ============================================
 
 export const user = pgTable("user", {
@@ -62,7 +62,7 @@ export const verification = pgTable("verification", {
 });
 
 // ============================================
-// SOCIAL ACCOUNTS (for posting to platforms)
+// SOCIAL ACCOUNTS
 // ============================================
 
 export const socialAccount = pgTable("social_account", {
@@ -75,9 +75,13 @@ export const socialAccount = pgTable("social_account", {
   platformUserId: text("platform_user_id").notNull(),
   platformUsername: text("platform_username").notNull(),
 
-  accessToken: text("access_token").notNull(), // encrypted
+  accessToken: text("access_token").notNull(), // encrypted (OAuth 2.0 for most platforms, OAuth 1.0a for Twitter if no OAuth 2.0)
   refreshToken: text("refresh_token"),
   tokenExpiresAt: timestamp("token_expires_at"),
+
+  // OAuth 1.0a credentials (for Twitter media upload)
+  oauth1AccessToken: text("oauth1_access_token"), // encrypted, OAuth 1.0a access token (separate from OAuth 2.0)
+  accessTokenSecret: text("access_token_secret"), // encrypted, OAuth 1.0a access token secret
 
   profileImageUrl: text("profile_image_url"),
   followerCount: integer("follower_count"),

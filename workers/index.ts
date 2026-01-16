@@ -2,6 +2,7 @@
 import dotenv from "dotenv";
 dotenv.config();
 dotenv.config({ path: ".env.local", override: true });
+
 import { Worker, Job } from "bullmq";
 import * as crypto from "crypto";
 import { createRedisConnection } from "@/lib/queue/connection";
@@ -21,6 +22,7 @@ import {
 } from "@/lib/db/worker-connection";
 import { eq } from "drizzle-orm";
 import { uploadMultipleMedia } from "@/lib/social/twitter-media";
+import { workerMetrics } from "./health";
 
 const ALGORITHM = "aes-256-gcm";
 const IV_LENGTH = 16;
@@ -65,6 +67,45 @@ function encrypt(text: string): string {
   return iv.toString("hex") + authTag.toString("hex") + encrypted;
 }
 
+// Categorize errors for smart retry logic
+function categorizeError(
+  error: Error
+): "auth" | "rate_limit" | "network" | "permanent" | "temporary" {
+  const message = error.message.toLowerCase();
+
+  if (
+    message.includes("401") ||
+    message.includes("403") ||
+    message.includes("unauthorized") ||
+    message.includes("authentication")
+  ) {
+    return "auth";
+  }
+  if (
+    message.includes("429") ||
+    message.includes("rate limit") ||
+    message.includes("too many")
+  ) {
+    return "rate_limit";
+  }
+  if (
+    message.includes("network") ||
+    message.includes("timeout") ||
+    message.includes("econnrefused") ||
+    message.includes("enotfound")
+  ) {
+    return "network";
+  }
+  if (
+    message.includes("invalid") ||
+    message.includes("not found") ||
+    message.includes("does not exist")
+  ) {
+    return "permanent";
+  }
+  return "temporary";
+}
+
 export function createPostWorker() {
   const worker = new Worker<PublishPostJobData>(
     "post-publishing",
@@ -72,40 +113,32 @@ export function createPostWorker() {
       const { postId, targetId, socialAccountId, content, mediaData } =
         job.data;
 
+      // Update metrics
+      workerMetrics.isProcessing = true;
+      workerMetrics.lastJobAt = new Date();
+
       console.log(
-        `📤 Processing job ${
-          job.id
-        }: Post ${postId} to account ${socialAccountId}, target: ${targetId}${
-          mediaData?.length ? ` with ${mediaData.length} media files` : ""
-        }`
+        `📤 [Job ${job.id}] Processing: Post ${postId} → Account ${socialAccountId}`
       );
+      console.log(`   Attempt: ${job.attemptsMade + 1}/${job.opts.attempts}`);
 
       try {
         // Verify target exists
-        console.log(`🔍 Verifying target ${targetId}...`);
         const target = await db.query.postTarget.findFirst({
           where: eq(postTarget.id, targetId),
         });
 
         if (!target) {
-          throw new Error(
-            `Post target ${targetId} not found in database. This may indicate a race condition.`
-          );
+          throw new Error(`Post target ${targetId} not found`);
         }
 
-        console.log(`✅ Found target ${targetId} for post ${postId}`);
-
         // Update status to publishing
-        console.log(`✏️ Updating target ${targetId} to publishing...`);
         await db
           .update(postTarget)
           .set({ status: "publishing" })
           .where(eq(postTarget.id, targetId));
 
-        console.log(`✅ Updated target ${targetId} to publishing`);
-
         // Get social account details
-        console.log(`🔍 Fetching account ${socialAccountId}...`);
         const account = await db.query.socialAccount.findFirst({
           where: eq(socialAccount.id, socialAccountId),
         });
@@ -119,46 +152,32 @@ export function createPostWorker() {
         }
 
         console.log(
-          `✅ Found account: @${account.platformUsername} (${account.platform})`
+          `   Target: @${account.platformUsername} (${account.platform})`
         );
 
         // Decrypt access token
-        console.log(`🔓 Decrypting access token for ${account.platform}...`);
         let accessToken = decrypt(account.accessToken);
-        console.log(
-          `✅ Access token decrypted (length: ${accessToken.length})`
-        );
 
         // Check if token needs refresh
         if (account.tokenExpiresAt && account.tokenExpiresAt < new Date()) {
-          console.log(
-            `⚠️ Token expired for account ${socialAccountId}, attempting refresh...`
-          );
+          console.log(`   ⚠️ Token expired, refreshing...`);
 
           if (!account.refreshToken) {
-            console.error(
-              `❌ No refresh token available for ${account.platform}`
-            );
             await db
               .update(socialAccount)
               .set({ isActive: false })
               .where(eq(socialAccount.id, socialAccountId));
-            throw new Error(
-              `Token expired and no refresh token available. User must reconnect.`
-            );
+            throw new Error(`Token expired and no refresh token available`);
           }
 
           try {
             const refreshToken = decrypt(account.refreshToken);
-            console.log(`🔄 Refreshing ${account.platform} token...`);
-
             let newTokens: {
               accessToken: string;
               refreshToken: string;
               expiresIn: number;
             };
 
-            // Refresh based on platform
             switch (account.platform) {
               case "twitter":
                 newTokens = await refreshTwitterToken(refreshToken);
@@ -169,11 +188,6 @@ export function createPostWorker() {
                 );
             }
 
-            console.log(
-              `✅ Token refreshed successfully for ${account.platform}`
-            );
-
-            // Update database with new tokens
             await db
               .update(socialAccount)
               .set({
@@ -186,26 +200,19 @@ export function createPostWorker() {
               })
               .where(eq(socialAccount.id, socialAccountId));
 
-            console.log(`✅ Updated database with new tokens`);
-
-            // Use new access token
             accessToken = newTokens.accessToken;
+            console.log(`   ✅ Token refreshed`);
           } catch (refreshError) {
-            console.error(`❌ Failed to refresh token:`, refreshError);
             await db
               .update(socialAccount)
               .set({ isActive: false })
               .where(eq(socialAccount.id, socialAccountId));
             throw new Error(
               `Failed to refresh token: ${
-                refreshError instanceof Error
-                  ? refreshError.message
-                  : "Unknown error"
+                refreshError instanceof Error ? refreshError.message : "Unknown"
               }`
             );
           }
-        } else {
-          console.log(`✅ Token is still valid for ${account.platform}`);
         }
 
         // Handle media upload for Twitter
@@ -216,104 +223,82 @@ export function createPostWorker() {
           mediaData.length > 0 &&
           account.platform === "twitter"
         ) {
-          console.log(
-            `📸 Uploading ${mediaData.length} media files to Twitter...`
-          );
+          console.log(`   📸 Uploading ${mediaData.length} media files...`);
 
-          try {
-            // Convert base64 back to buffers and upload
-            const files = mediaData.map((media) => ({
-              buffer: Buffer.from(media.data, "base64"),
-              mimeType: media.mimeType,
-            }));
+          // Get OAuth 1.0a credentials for media upload
+          // Use oauth1AccessToken if available, otherwise fall back to accessToken (might be OAuth 1.0a)
+          const oauth1AccessToken = account.oauth1AccessToken
+            ? decrypt(account.oauth1AccessToken)
+            : accessToken; // Fallback to regular accessToken if oauth1AccessToken not set
+          
+          const accessTokenSecret = account.accessTokenSecret
+            ? decrypt(account.accessTokenSecret)
+            : null;
 
-            mediaIds = await uploadMultipleMedia({ accessToken }, files);
-            console.log(
-              `✅ Uploaded ${mediaIds.length} media files, IDs: ${mediaIds.join(
-                ", "
-              )}`
-            );
-          } catch (uploadError) {
-            console.error(`❌ Media upload failed:`, uploadError);
+          if (!accessTokenSecret) {
             throw new Error(
-              `Failed to upload media: ${
-                uploadError instanceof Error
-                  ? uploadError.message
-                  : "Unknown error"
-              }`
+              "OAuth 1.0a accessTokenSecret is required for Twitter media upload. Please connect your Twitter account via OAuth 1.0a at /api/social/connect/twitter-oauth1"
             );
           }
+
+          const consumerKey = process.env.TWITTER_CLIENT_ID;
+          const consumerSecret = process.env.TWITTER_CLIENT_SECRET;
+
+          if (!consumerKey || !consumerSecret) {
+            throw new Error(
+              "TWITTER_CLIENT_ID and TWITTER_CLIENT_SECRET are required for media upload"
+            );
+          }
+
+          const files = mediaData.map((media) => ({
+            buffer: Buffer.from(media.data, "base64"),
+            mimeType: media.mimeType,
+          }));
+
+          mediaIds = await uploadMultipleMedia(
+            {
+              accessToken: oauth1AccessToken, // Use OAuth 1.0a token for media upload
+              accessTokenSecret,
+              consumerKey,
+              consumerSecret,
+            },
+            files
+          );
+          console.log(`   ✅ Media uploaded: ${mediaIds.join(", ")}`);
         }
 
         // Publish based on platform
         let platformPostId: string;
 
-        console.log(`🚀 Publishing to ${account.platform}...`);
-        console.log(`   Content: "${content || "(empty)"}"`);
-        console.log(
-          `   Media IDs: ${mediaIds.length > 0 ? mediaIds.join(", ") : "none"}`
-        );
+        console.log(`   🚀 Publishing to ${account.platform}...`);
 
         switch (account.platform) {
           case "twitter":
-            try {
-              platformPostId = await publishToTwitter({
-                accessToken,
-                content: content || "", // Twitter requires at least empty string
-                mediaIds, // Pass media IDs instead of URLs
-              });
-              console.log(
-                `✅ Twitter publish successful, tweet ID: ${platformPostId}`
-              );
-            } catch (twitterError) {
-              console.error("❌ Twitter publish error:", twitterError);
-              // Re-throw with more context
-              throw new Error(
-                `Failed to publish to Twitter: ${
-                  twitterError instanceof Error
-                    ? twitterError.message
-                    : "Unknown error"
-                }`
-              );
-            }
+            platformPostId = await publishToTwitter({
+              accessToken,
+              content: content || "",
+              mediaIds,
+            });
             break;
           case "instagram":
-            // For Instagram, you'd need to convert mediaData to URLs first
             platformPostId = await publishToInstagram({
               accessToken,
               content,
-              mediaUrls: [], // Instagram requires URLs, not IDs
+              mediaUrls: [],
             });
             break;
           case "tiktok":
-            try {
-              // For TikTok, we need to handle video buffers directly
-              if (mediaData && mediaData.length > 0) {
-                // Convert base64 to buffer
-                const videoData = mediaData[0];
-                const videoBuffer = Buffer.from(videoData.data, "base64");
-
-                platformPostId = await publishToTikTok({
-                  accessToken,
-                  content,
-                  videoBuffer,
-                  videoMimeType: videoData.mimeType,
-                });
-                console.log(
-                  `✅ TikTok publish successful, post ID: ${platformPostId}`
-                );
-              } else {
-                throw new Error("TikTok requires a video file");
-              }
-            } catch (tiktokError) {
-              console.error("❌ TikTok publish error:", tiktokError);
-              throw new Error(
-                `Failed to publish to TikTok: ${
-                  tiktokError instanceof Error
-                    ? tiktokError.message
-                    : "Unknown error"
-                }`
-              );
+            if (mediaData && mediaData.length > 0) {
+              const videoData = mediaData[0];
+              const videoBuffer = Buffer.from(videoData.data, "base64");
+              platformPostId = await publishToTikTok({
+                accessToken,
+                content,
+                videoBuffer,
+                videoMimeType: videoData.mimeType,
+              });
+            } else {
+              throw new Error("TikTok requires a video file");
             }
             break;
           case "linkedin":
@@ -328,7 +313,7 @@ export function createPostWorker() {
             throw new Error(`Unsupported platform: ${account.platform}`);
         }
 
-        console.log(`✅ Published! Platform post ID: ${platformPostId}`);
+        console.log(`   ✅ Published! ID: ${platformPostId}`);
 
         // Update target status to published
         await db
@@ -340,22 +325,22 @@ export function createPostWorker() {
           })
           .where(eq(postTarget.id, targetId));
 
-        console.log(`✅ Updated target ${targetId} to published`);
-
         // Update post status
         await updatePostStatus(postId);
 
-        console.log(
-          `✅ Successfully published to ${account.platform}: ${platformPostId}`
-        );
+        // Update metrics
+        workerMetrics.jobsProcessed++;
+        workerMetrics.isProcessing = false;
 
         return { success: true, platformPostId };
       } catch (error) {
         const errorMessage =
           error instanceof Error ? error.message : "Unknown error";
+        const errorCategory = categorizeError(
+          error instanceof Error ? error : new Error(errorMessage)
+        );
 
-        console.error(`❌ Error publishing target ${targetId}:`, errorMessage);
-        console.error(`❌ Stack trace:`, error);
+        console.error(`   ❌ Error (${errorCategory}): ${errorMessage}`);
 
         // Update target status to failed
         await db
@@ -366,24 +351,32 @@ export function createPostWorker() {
           })
           .where(eq(postTarget.id, targetId));
 
-        console.log(`✅ Updated target ${targetId} to failed`);
-
         // Update post status
         await updatePostStatus(postId);
 
-        console.error(
-          `❌ Failed to publish to account ${socialAccountId}:`,
-          errorMessage
-        );
+        // Update metrics
+        workerMetrics.jobsFailed++;
+        workerMetrics.isProcessing = false;
 
-        throw error; // Re-throw to trigger retry
+        // Don't retry auth errors - they won't fix themselves
+        if (errorCategory === "auth") {
+          console.log(`   ⛔ Auth error - not retrying`);
+          throw new Error(`[NO_RETRY] ${errorMessage}`);
+        }
+
+        // Rate limit - use longer backoff
+        if (errorCategory === "rate_limit") {
+          console.log(`   ⏳ Rate limited - will retry with backoff`);
+        }
+
+        throw error;
       }
     },
     {
       connection: createRedisConnection(),
-      concurrency: 3,
+      concurrency: parseInt(process.env.WORKER_CONCURRENCY || "3"),
       limiter: {
-        max: 10,
+        max: parseInt(process.env.WORKER_RATE_LIMIT || "10"),
         duration: 1000,
       },
     }
@@ -391,15 +384,18 @@ export function createPostWorker() {
 
   // Event handlers
   worker.on("completed", (job) => {
-    console.log(`✅ Job ${job.id} completed successfully`);
+    console.log(`✅ [Job ${job.id}] Completed`);
   });
 
   worker.on("failed", (job, err) => {
+    const isNoRetry = err.message.startsWith("[NO_RETRY]");
     console.error(
-      `❌ Job ${job?.id} failed after ${job?.attemptsMade} attempts:`,
-      err.message
+      `❌ [Job ${job?.id}] Failed (attempt ${job?.attemptsMade}/${job?.opts.attempts}): ${err.message}`
     );
-    console.error(`❌ Job data:`, JSON.stringify(job?.data, null, 2));
+
+    if (isNoRetry) {
+      console.log(`   ⛔ Job will not be retried`);
+    }
   });
 
   worker.on("error", (err) => {
@@ -407,7 +403,7 @@ export function createPostWorker() {
   });
 
   worker.on("stalled", (jobId) => {
-    console.warn(`⚠️  Job ${jobId} stalled`);
+    console.warn(`⚠️ [Job ${jobId}] Stalled`);
   });
 
   return worker;
@@ -415,13 +411,9 @@ export function createPostWorker() {
 
 // Helper to update post status based on all targets
 async function updatePostStatus(postId: string) {
-  console.log(`🔄 Updating post ${postId} status...`);
-
   const targets = await db.query.postTarget.findMany({
     where: eq(postTarget.postId, postId),
   });
-
-  console.log(`📊 Found ${targets.length} targets for post ${postId}`);
 
   const statuses = targets.map((t) => t.status);
 
@@ -439,12 +431,8 @@ async function updatePostStatus(postId: string) {
     newStatus = "scheduled";
   }
 
-  console.log(`✅ Setting post ${postId} status to: ${newStatus}`);
-
   await db
     .update(post)
     .set({ status: newStatus, updatedAt: new Date() })
     .where(eq(post.id, postId));
-
-  console.log(`✅ Updated post ${postId} status to: ${newStatus}`);
 }

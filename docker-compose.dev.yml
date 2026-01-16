@@ -1,0 +1,41 @@
+version: "3.8"
+
+services:
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker.dev
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./workers:/app/workers:ro
+      - ./lib:/app/lib:ro
+    environment:
+      - NODE_ENV=development
+      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-socialposter}
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME:-socialposter}
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-postgres}
+      - TOKEN_ENCRYPTION_KEY=${TOKEN_ENCRYPTION_KEY}
+      - TWITTER_CLIENT_ID=${TWITTER_CLIENT_ID}
+      - TWITTER_CLIENT_SECRET=${TWITTER_CLIENT_SECRET}
+      - TIKTOK_CLIENT_KEY=${TIKTOK_CLIENT_KEY}
+      - TIKTOK_CLIENT_SECRET=${TIKTOK_CLIENT_SECRET}
+      - LINKEDIN_CLIENT_ID=${LINKEDIN_CLIENT_ID}
+      - LINKEDIN_CLIENT_SECRET=${LINKEDIN_CLIENT_SECRET}
+      - FACEBOOK_APP_ID=${FACEBOOK_APP_ID}
+      - FACEBOOK_APP_SECRET=${FACEBOOK_APP_SECRET}
+      - WORKER_CONCURRENCY=${WORKER_CONCURRENCY:-1}
+      - WORKER_RATE_LIMIT=${WORKER_RATE_LIMIT:-10}
+      - HEALTH_PORT=3001
+    ports:
+      - "3001:3001"
+    networks:
+      - shitpost-network
+    command: bun --watch run workers/start.ts

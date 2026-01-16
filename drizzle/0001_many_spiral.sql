@@ -1,0 +1,1 @@
+ALTER TABLE "social_account" ADD COLUMN "access_token_secret" text;

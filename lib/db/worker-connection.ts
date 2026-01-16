@@ -8,17 +8,12 @@ if (!connectionString) {
   throw new Error("DATABASE_URL is not defined");
 }
 
-// Create a postgres client optimized for workers with explicit config
+// Create a postgres client optimized for workers
+// Connection details are parsed from DATABASE_URL
 const workerClient = postgres(connectionString, {
   max: 10,
   idle_timeout: 20,
   connect_timeout: 10,
-  // Explicitly prevent postgres-js from using system user
-  username: "postgres",
-  password: "postgres",
-  database: "socialposter",
-  host: "localhost",
-  port: 5432,
 });
 
 export const workerDb = drizzle(workerClient, { schema });
