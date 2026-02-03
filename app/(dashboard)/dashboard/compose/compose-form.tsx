@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { SocialAccount } from "@/lib/db/schema";
+import { logger } from "@/lib/logger";
 
 const platformIcons: Record<string, string> = {
   twitter: "𝕏",
@@ -96,14 +97,10 @@ export function ComposeForm({ accounts }: ComposeFormProps) {
         }
       }
 
-      console.log(
-        `📸 Processing ${files.length} media file(s):`,
-        files.map((f) => ({
-          name: f.name,
-          type: f.type,
-          size: `${(f.size / 1024 / 1024).toFixed(2)}MB`,
-        }))
-      );
+      logger.debug("Processing media files", {
+        count: files.length,
+        files: files.map((f) => ({ name: f.name, type: f.type, sizeMB: (f.size / 1024 / 1024).toFixed(2) })),
+      });
 
       setMediaFiles(files);
 
@@ -126,9 +123,9 @@ export function ComposeForm({ accounts }: ComposeFormProps) {
 
       setMediaPreviews(previews);
       setUploadProgress(100);
-      console.log(`✅ Generated ${previews.length} preview(s)`);
+      logger.debug("Generated media previews", { count: previews.length });
     } catch (err) {
-      console.error("❌ Media processing error:", err);
+      logger.error("Media processing error", err);
       setError(err instanceof Error ? err.message : "Failed to process files");
       setMediaFiles([]);
       setMediaPreviews([]);
@@ -142,7 +139,7 @@ export function ComposeForm({ accounts }: ComposeFormProps) {
   const removeMedia = (index: number) => {
     setMediaFiles((prev) => prev.filter((_, i) => i !== index));
     setMediaPreviews((prev) => prev.filter((_, i) => i !== index));
-    console.log(`🗑️ Removed media file at index ${index}`);
+    logger.debug("Removed media file", { index });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -165,10 +162,11 @@ export function ComposeForm({ accounts }: ComposeFormProps) {
     }
 
     setLoading(true);
-    console.log(`🚀 Starting post submission...`);
-    console.log(`📝 Content length: ${content.length} chars`);
-    console.log(`📸 Media files: ${mediaFiles.length}`);
-    console.log(`🎯 Target accounts: ${selectedAccounts.length}`);
+    logger.debug("Starting post submission", {
+      contentLength: content.length,
+      mediaCount: mediaFiles.length,
+      accountCount: selectedAccounts.length,
+    });
 
     try {
       let scheduledFor: string | undefined;
@@ -187,11 +185,10 @@ export function ComposeForm({ accounts }: ComposeFormProps) {
         // Convert to UTC ISO string for storage
         scheduledFor = localDate.toISOString();
         
-        console.log(`📅 Scheduled for:`, {
+        logger.debug("Scheduled for", {
           local: localDateTimeString,
           timezone,
           utc: scheduledFor,
-          localDate: localDate.toString(),
         });
       }
 
@@ -207,34 +204,27 @@ export function ComposeForm({ accounts }: ComposeFormProps) {
       }
 
       // Append media files
-      mediaFiles.forEach((file, index) => {
+      mediaFiles.forEach((file) => {
         formData.append("media", file);
-        console.log(
-          `📎 Attached media ${index + 1}: ${file.name} (${file.type}, ${(
-            file.size /
-            1024 /
-            1024
-          ).toFixed(2)}MB)`
-        );
       });
 
-      console.log(`📤 Sending request to /api/posts...`);
+      logger.debug("Sending request to /api/posts");
 
       const res = await fetch("/api/posts", {
         method: "POST",
         body: formData,
       });
 
-      console.log(`📥 Response status: ${res.status}`);
+      logger.debug("Response received", { status: res.status });
 
       const data = await res.json();
 
       if (!res.ok) {
-        console.error(`❌ API error:`, data);
+        logger.error("API error", data);
         throw new Error(data.error || "Failed to create post");
       }
 
-      console.log(`✅ Post created successfully:`, data);
+      logger.info("Post created successfully", { postId: data.post?.id });
 
       // Clear form
       setContent("");
@@ -246,7 +236,7 @@ export function ComposeForm({ accounts }: ComposeFormProps) {
 
       router.push("/dashboard/posts?success=created");
     } catch (err) {
-      console.error("❌ Submission error:", err);
+      logger.error("Submission error", err);
       setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
       setLoading(false);

@@ -1,4 +1,5 @@
 import { Queue } from "bullmq";
+import { logger } from "@/lib/logger";
 import { createRedisConnection } from "./connection";
 
 // Post publishing queue
@@ -43,17 +44,14 @@ export async function schedulePost(
 
   // If scheduled time is in the past, publish immediately
   if (delay < 0) {
-    console.warn(
-      `⚠️ Scheduled time is in the past (${scheduledFor.toISOString()}), publishing immediately`
-    );
+    logger.warn("Scheduled time is in the past, publishing immediately", scheduledFor.toISOString());
     delay = 1000; // 1 second delay
   }
 
-  console.log(
-    `📅 Scheduling post for ${scheduledFor.toISOString()} (in ${Math.round(
-      delay / 1000
-    )}s)`
-  );
+  logger.debug("Scheduling post", {
+    scheduledFor: scheduledFor.toISOString(),
+    delaySeconds: Math.round(delay / 1000),
+  });
 
   return postQueue.add("publish", data, {
     delay,
@@ -63,7 +61,7 @@ export async function schedulePost(
 
 // Helper to publish immediately (with small safety delay)
 export async function publishPostNow(data: PublishPostJobData) {
-  console.log(`🚀 Publishing post immediately (with 1s delay)`);
+  logger.debug("Publishing post immediately (1s delay)");
 
   return postQueue.add("publish", data, {
     delay: 1000, // 1 second delay to ensure DB commit completes

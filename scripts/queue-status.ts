@@ -1,5 +1,6 @@
 // scripts/queue-status.ts
 import { Queue } from "bullmq";
+import { logger } from "../lib/logger";
 import { createRedisConnection } from "../lib/queue/connection";
 
 async function checkQueueStatus() {
@@ -7,7 +8,7 @@ async function checkQueueStatus() {
     connection: createRedisConnection(),
   });
 
-  console.log("📊 Queue Status: post-publishing\n");
+  logger.info("Queue Status: post-publishing");
 
   try {
     // Get job counts
@@ -20,61 +21,54 @@ async function checkQueueStatus() {
       "paused"
     );
 
-    console.log("Job Counts:");
-    console.log(`  ⏳ Waiting:   ${counts.wait}`);
-    console.log(`  🔄 Active:    ${counts.active}`);
-    console.log(`  ✅ Completed: ${counts.completed}`);
-    console.log(`  ❌ Failed:    ${counts.failed}`);
-    console.log(`  ⏰ Delayed:   ${counts.delayed}`);
-    console.log(`  ⏸️  Paused:    ${counts.paused}`);
+    logger.info("Job counts", counts);
 
     // Show failed jobs
     if (counts.failed > 0) {
-      console.log("\n❌ Failed Jobs:");
       const failedJobs = await postQueue.getFailed(0, 10); // Get first 10
       for (const job of failedJobs) {
-        console.log(`\n  Job ID: ${job.id}`);
-        console.log(`  Post ID: ${job.data.postId}`);
-        console.log(`  Target ID: ${job.data.targetId}`);
-        console.log(`  Account: ${job.data.socialAccountId}`);
-        console.log(`  Attempts: ${job.attemptsMade}/${job.opts.attempts}`);
-        console.log(`  Error: ${job.failedReason}`);
+        logger.info("Failed job", {
+          jobId: job.id,
+          postId: job.data.postId,
+          targetId: job.data.targetId,
+          account: job.data.socialAccountId,
+          attempts: `${job.attemptsMade}/${job.opts.attempts}`,
+          error: job.failedReason,
+        });
       }
-
       if (counts.failed > 10) {
-        console.log(`\n  ... and ${counts.failed - 10} more failed jobs`);
+        logger.info("More failed jobs", { remaining: counts.failed - 10 });
       }
     }
 
     // Show waiting jobs
     if (counts.wait > 0) {
-      console.log("\n⏳ Waiting Jobs:");
       const waitingJobs = await postQueue.getWaiting(0, 5); // Get first 5
       for (const job of waitingJobs) {
-        console.log(`\n  Job ID: ${job.id}`);
-        console.log(`  Post ID: ${job.data.postId}`);
-        console.log(`  Target ID: ${job.data.targetId}`);
+        logger.info("Waiting job", {
+          jobId: job.id,
+          postId: job.data.postId,
+          targetId: job.data.targetId,
+        });
       }
-
       if (counts.wait > 5) {
-        console.log(`\n  ... and ${counts.wait - 5} more waiting jobs`);
+        logger.info("More waiting jobs", { remaining: counts.wait - 5 });
       }
     }
 
     // Show active jobs
     if (counts.active > 0) {
-      console.log("\n🔄 Active Jobs:");
       const activeJobs = await postQueue.getActive(0, 5);
       for (const job of activeJobs) {
-        console.log(`\n  Job ID: ${job.id}`);
-        console.log(`  Post ID: ${job.data.postId}`);
-        console.log(`  Target ID: ${job.data.targetId}`);
+        logger.info("Active job", {
+          jobId: job.id,
+          postId: job.data.postId,
+          targetId: job.data.targetId,
+        });
       }
     }
-
-    console.log("\n");
   } catch (error) {
-    console.error("❌ Error checking queue status:", error);
+    logger.error("Error checking queue status", error);
   } finally {
     await postQueue.close();
     process.exit(0);

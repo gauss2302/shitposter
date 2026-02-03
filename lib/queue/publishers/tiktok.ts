@@ -1,3 +1,5 @@
+import { logger } from "@/lib/logger";
+
 interface PublishOptions {
   accessToken: string;
   content: string;
@@ -35,7 +37,10 @@ async function uploadVideoToTikTok(
   videoBuffer: Buffer,
   mimeType: string
 ): Promise<string> {
-  console.log(`📤 Uploading video to TikTok: ${(videoBuffer.length / 1024 / 1024).toFixed(2)}MB, type: ${mimeType}`);
+  logger.debug("Uploading video to TikTok", {
+    sizeMB: (videoBuffer.length / 1024 / 1024).toFixed(2),
+    mimeType,
+  });
 
   // Step 1: Initialize inbox upload
   const initResponse = await fetch(
@@ -79,7 +84,7 @@ async function uploadVideoToTikTok(
   const uploadUrl = initData.data.upload_url;
   const uploadId = initData.data.upload_id;
 
-  console.log(`✅ Got upload URL, upload ID: ${uploadId}`);
+  logger.debug("TikTok upload URL received", { uploadId });
 
   // Step 2: Upload video file to TikTok's upload endpoint
   const uploadResponse = await fetch(uploadUrl, {
@@ -95,7 +100,7 @@ async function uploadVideoToTikTok(
     throw new Error(`TikTok video upload failed: ${errorText}`);
   }
 
-  console.log(`✅ Video uploaded successfully, upload ID: ${uploadId}`);
+  logger.debug("TikTok video uploaded", { uploadId });
 
   return uploadId;
 }
@@ -161,11 +166,11 @@ export async function publishToTikTok({
     }
 
     publishId = publishInitData.data.publish_id;
-    console.log(`✅ Publish initialized, publish ID: ${publishId}`);
+    logger.debug("TikTok publish initialized", { publishId });
   } else if (mediaUrls && mediaUrls.length > 0) {
     // Fallback to PULL_FROM_URL for backward compatibility
     const videoUrl = mediaUrls[0];
-    console.log(`📤 Using PULL_FROM_URL method with URL: ${videoUrl}`);
+    logger.debug("Using PULL_FROM_URL for TikTok", { videoUrl });
     
     // Initialize video upload
     const initResponse = await fetch(

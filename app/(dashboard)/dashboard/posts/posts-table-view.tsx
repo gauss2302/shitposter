@@ -55,20 +55,20 @@ function getPlatformUrl(
 
 export function PostsTableView({ posts }: PostsTableViewProps) {
   return (
-    <div className="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+    <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
       <table className="w-full text-left">
         <thead className="bg-zinc-50 dark:bg-zinc-800/50 border-b border-zinc-200 dark:border-zinc-700">
           <tr>
-            <th className="px-3 md:px-4 py-2 md:py-3 text-xs md:text-sm font-semibold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider">
+            <th className="px-4 py-2.5 text-xs font-semibold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider">
               Content
             </th>
-            <th className="px-3 md:px-4 py-2 md:py-3 text-xs md:text-sm font-semibold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider">
+            <th className="px-4 py-2.5 text-xs font-semibold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider">
               Status
             </th>
-            <th className="px-3 md:px-4 py-2 md:py-3 text-xs md:text-sm font-semibold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider">
+            <th className="px-4 py-2.5 text-xs font-semibold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider">
               Platforms
             </th>
-            <th className="px-3 md:px-4 py-2 md:py-3 text-xs md:text-sm font-semibold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider">
+            <th className="px-4 py-2.5 text-xs font-semibold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider">
               Date
             </th>
           </tr>
@@ -79,21 +79,21 @@ export function PostsTableView({ posts }: PostsTableViewProps) {
               key={post.id}
               className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors"
             >
-              <td className="px-3 md:px-4 py-2 md:py-3">
-                <p className="text-xs md:text-sm text-zinc-900 dark:text-white line-clamp-2 max-w-xs">
+              <td className="px-4 py-2.5">
+                <p className="text-sm text-zinc-900 dark:text-white line-clamp-2 max-w-xs">
                   {post.content}
                 </p>
               </td>
-              <td className="px-3 md:px-4 py-2 md:py-3">
+              <td className="px-4 py-2.5">
                 <span
-                  className={`inline-flex px-2 py-1 text-[10px] md:text-xs font-semibold rounded-full ${
+                  className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                     statusColors[post.status] || statusColors.draft
                   }`}
                 >
                   {post.status}
                 </span>
               </td>
-              <td className="px-3 md:px-4 py-2 md:py-3">
+              <td className="px-4 py-2.5">
                 <div className="flex flex-wrap gap-1">
                   {post.targets.map((target) => (
                     <div
@@ -136,8 +136,8 @@ export function PostsTableView({ posts }: PostsTableViewProps) {
                   ))}
                 </div>
               </td>
-              <td className="px-3 md:px-4 py-2 md:py-3">
-                <span className="text-xs md:text-sm text-zinc-500 dark:text-zinc-400">
+              <td className="px-4 py-2.5">
+                <span className="text-sm text-zinc-500 dark:text-zinc-400">
                   {post.scheduledFor
                     ? post.scheduledFor.toLocaleDateString()
                     : post.createdAt.toLocaleDateString()}

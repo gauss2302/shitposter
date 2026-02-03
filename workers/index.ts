@@ -5,6 +5,8 @@ dotenv.config({ path: ".env.local", override: true });
 
 import { Worker, Job } from "bullmq";
 import * as crypto from "crypto";
+import * as Sentry from "@sentry/node";
+import { logger } from "@/lib/logger";
 import { createRedisConnection } from "@/lib/queue/connection";
 import {
   publishToTwitter,
@@ -117,10 +119,11 @@ export function createPostWorker() {
       workerMetrics.isProcessing = true;
       workerMetrics.lastJobAt = new Date();
 
-      console.log(
-        `📤 [Job ${job.id}] Processing: Post ${postId} → Account ${socialAccountId}`
-      );
-      console.log(`   Attempt: ${job.attemptsMade + 1}/${job.opts.attempts}`);
+      logger.info(`[Job ${job.id}] Processing`, {
+        postId,
+        socialAccountId,
+        attempt: `${job.attemptsMade + 1}/${job.opts.attempts}`,
+      });
 
       try {
         // Verify target exists
@@ -151,16 +154,17 @@ export function createPostWorker() {
           throw new Error(`Social account ${socialAccountId} is not active`);
         }
 
-        console.log(
-          `   Target: @${account.platformUsername} (${account.platform})`
-        );
+        logger.debug("Target account", {
+          username: account.platformUsername,
+          platform: account.platform,
+        });
 
         // Decrypt access token
         let accessToken = decrypt(account.accessToken);
 
         // Check if token needs refresh
         if (account.tokenExpiresAt && account.tokenExpiresAt < new Date()) {
-          console.log(`   ⚠️ Token expired, refreshing...`);
+          logger.info("Token expired, refreshing");
 
           if (!account.refreshToken) {
             await db
@@ -201,7 +205,7 @@ export function createPostWorker() {
               .where(eq(socialAccount.id, socialAccountId));
 
             accessToken = newTokens.accessToken;
-            console.log(`   ✅ Token refreshed`);
+            logger.info("Token refreshed");
           } catch (refreshError) {
             await db
               .update(socialAccount)
@@ -223,7 +227,7 @@ export function createPostWorker() {
           mediaData.length > 0 &&
           account.platform === "twitter"
         ) {
-          console.log(`   📸 Uploading ${mediaData.length} media files...`);
+          logger.debug("Uploading media files", { count: mediaData.length });
 
           // Get OAuth 1.0a credentials for media upload
           // Use oauth1AccessToken if available, otherwise fall back to accessToken (might be OAuth 1.0a)
@@ -264,13 +268,13 @@ export function createPostWorker() {
             },
             files
           );
-          console.log(`   ✅ Media uploaded: ${mediaIds.join(", ")}`);
+          logger.debug("Media uploaded", { mediaIds });
         }
 
         // Publish based on platform
         let platformPostId: string;
 
-        console.log(`   🚀 Publishing to ${account.platform}...`);
+        logger.debug("Publishing to platform", { platform: account.platform });
 
         switch (account.platform) {
           case "twitter":
@@ -302,18 +306,27 @@ export function createPostWorker() {
             }
             break;
           case "linkedin":
+            // Prepare media files for LinkedIn if available
+            let linkedInMediaFiles: Array<{ buffer: Buffer; mimeType: string }> | undefined;
+            if (mediaData && mediaData.length > 0) {
+              linkedInMediaFiles = mediaData.map((media) => ({
+                buffer: Buffer.from(media.data, "base64"),
+                mimeType: media.mimeType,
+              }));
+              logger.debug("Uploading media to LinkedIn", { count: linkedInMediaFiles.length });
+            }
             platformPostId = await publishToLinkedIn({
               accessToken,
               accountId: account.platformUserId,
               content,
-              mediaUrls: [],
+              mediaFiles: linkedInMediaFiles,
             });
             break;
           default:
             throw new Error(`Unsupported platform: ${account.platform}`);
         }
 
-        console.log(`   ✅ Published! ID: ${platformPostId}`);
+        logger.info("Published", { platformPostId, platform: account.platform });
 
         // Update target status to published
         await db
@@ -340,7 +353,7 @@ export function createPostWorker() {
           error instanceof Error ? error : new Error(errorMessage)
         );
 
-        console.error(`   ❌ Error (${errorCategory}): ${errorMessage}`);
+        logger.error(`Job error (${errorCategory})`, { errorMessage, jobId: job.id });
 
         // Update target status to failed
         await db
@@ -360,13 +373,13 @@ export function createPostWorker() {
 
         // Don't retry auth errors - they won't fix themselves
         if (errorCategory === "auth") {
-          console.log(`   ⛔ Auth error - not retrying`);
+          logger.warn("Auth error - not retrying", { jobId: job.id });
           throw new Error(`[NO_RETRY] ${errorMessage}`);
         }
 
         // Rate limit - use longer backoff
         if (errorCategory === "rate_limit") {
-          console.log(`   ⏳ Rate limited - will retry with backoff`);
+          logger.warn("Rate limited - will retry with backoff", { jobId: job.id });
         }
 
         throw error;
@@ -384,26 +397,36 @@ export function createPostWorker() {
 
   // Event handlers
   worker.on("completed", (job) => {
-    console.log(`✅ [Job ${job.id}] Completed`);
+    logger.info("Job completed", { jobId: job.id });
   });
 
   worker.on("failed", (job, err) => {
     const isNoRetry = err.message.startsWith("[NO_RETRY]");
-    console.error(
-      `❌ [Job ${job?.id}] Failed (attempt ${job?.attemptsMade}/${job?.opts.attempts}): ${err.message}`
-    );
+    logger.error("Job failed", {
+      jobId: job?.id,
+      attempts: `${job?.attemptsMade}/${job?.opts.attempts}`,
+      message: err.message,
+    });
+    Sentry.captureException(err, {
+      tags: {
+        jobId: job ? String(job.id) : "unknown",
+        postId: job?.data?.postId,
+        socialAccountId: job?.data?.socialAccountId,
+      },
+    });
 
     if (isNoRetry) {
-      console.log(`   ⛔ Job will not be retried`);
+      logger.warn("Job will not be retried", { jobId: job?.id });
     }
   });
 
   worker.on("error", (err) => {
-    console.error("❌ Worker error:", err);
+    logger.error("Worker error", err);
+    Sentry.captureException(err);
   });
 
   worker.on("stalled", (jobId) => {
-    console.warn(`⚠️ [Job ${jobId}] Stalled`);
+    logger.warn("Job stalled", { jobId });
   });
 
   return worker;

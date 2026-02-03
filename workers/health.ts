@@ -1,5 +1,6 @@
 import { Queue } from "bullmq";
 import { createServer } from "http";
+import { logger } from "@/lib/logger";
 import { createRedisConnection } from "@/lib/queue/connection";
 
 // Parse HEALTH_PORT as number, default to 3001
@@ -151,10 +152,10 @@ worker_uptime_seconds ${process.uptime()}
   });
 
   server.listen(HEALTH_PORT, () => {
-    console.log(`🏥 Health server listening on port ${HEALTH_PORT}`);
-    console.log(`   - GET /health  - Health check`);
-    console.log(`   - GET /ready   - Readiness probe`);
-    console.log(`   - GET /metrics - Prometheus metrics`);
+    logger.info("Health server listening", {
+      port: HEALTH_PORT,
+      endpoints: ["/health", "/ready", "/metrics"],
+    });
   });
 
   return server;

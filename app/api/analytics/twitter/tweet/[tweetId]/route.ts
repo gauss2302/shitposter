@@ -2,14 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { logger } from "@/lib/logger";
 import { decrypt } from "@/lib/utils";
 import { getTwitterAnalytics } from "@/lib/social/twitter";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ tweetId: string }> }
 ) {
-  const { id: accountId } = await params;
+  const { tweetId: accountId } = await params;
   const session = await auth.api.getSession({ headers: await headers() });
 
   if (!session) {
@@ -56,7 +57,7 @@ export async function GET(
 
     return NextResponse.json(analytics);
   } catch (error) {
-    console.error("Error fetching Twitter analytics:", error);
+    logger.error("Error fetching Twitter analytics", error);
 
     const errorMessage =
       error instanceof Error ? error.message : "Failed to fetch analytics";

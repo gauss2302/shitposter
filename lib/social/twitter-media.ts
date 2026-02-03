@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { createOAuth1Header, parseUrl } from "./oauth1";
 
 interface TwitterUserContext {
@@ -22,7 +23,7 @@ export async function uploadMediaToTwitter(
   const mediaCategory = isVideo ? "tweet_video" : "tweet_image";
   const totalBytes = fileBuffer.length;
 
-  console.log(`📤 Starting upload: ${totalBytes} bytes, type: ${mimeType}`);
+  logger.debug("Starting Twitter media upload", { totalBytes, mimeType });
 
   // Check if OAuth 1.0a credentials are available
   const useOAuth1 =
@@ -44,8 +45,7 @@ export async function uploadMediaToTwitter(
     media_category: mediaCategory,
   };
 
-  console.log(`📤 INIT request params:`, {
-    command: "INIT",
+  logger.debug("Twitter media INIT params", {
     total_bytes: totalBytes,
     media_type: mimeType,
     media_category: mediaCategory,
@@ -76,7 +76,7 @@ export async function uploadMediaToTwitter(
     body: new URLSearchParams(initParams),
   });
 
-  console.log(`📤 INIT response status: ${initResponse.status} ${initResponse.statusText}`);
+  logger.debug("Twitter media INIT response", { status: initResponse.status, statusText: initResponse.statusText });
 
   if (!initResponse.ok) {
     // Try to parse as JSON first, then fall back to text
@@ -86,8 +86,8 @@ export async function uploadMediaToTwitter(
     
     try {
       responseText = await initResponse.text();
-      console.log(`📤 INIT response body:`, responseText.substring(0, 500)); // Log first 500 chars
-      
+      logger.debug("Twitter media INIT response body", { preview: responseText.substring(0, 200) });
+
       if (responseText.trim()) {
         try {
           errorData = JSON.parse(responseText);
@@ -109,16 +109,14 @@ export async function uploadMediaToTwitter(
       }
     } catch (e) {
       errorMessage = `HTTP ${initResponse.status} ${initResponse.statusText} (failed to read response)`;
-      console.error("Error reading response:", e);
+      logger.error("Error reading Twitter media response", e);
     }
 
-    console.error("Twitter media INIT error:", {
+    logger.error("Twitter media INIT error", {
       status: initResponse.status,
       statusText: initResponse.statusText,
-      headers: Object.fromEntries(initResponse.headers.entries()),
       error: errorMessage,
       errorData,
-      responsePreview: responseText.substring(0, 200),
     });
     
     throw new Error(`Failed to initialize media upload (${initResponse.status}): ${errorMessage}`);
@@ -126,7 +124,7 @@ export async function uploadMediaToTwitter(
 
   const initData = await initResponse.json();
   const mediaId = initData.media_id_string;
-  console.log(`✅ Initialized upload with media_id: ${mediaId}`);
+  logger.debug("Twitter media upload initialized", { mediaId });
 
   // APPEND phase - Upload file in chunks
   const chunkSize = 5 * 1024 * 1024; // 5MB chunks
@@ -138,7 +136,7 @@ export async function uploadMediaToTwitter(
       Math.min(offset + chunkSize, totalBytes)
     );
 
-    console.log(`📤 Uploading chunk ${segmentIndex}: ${chunk.length} bytes`);
+    logger.debug("Uploading Twitter media chunk", { segmentIndex, chunkLength: chunk.length });
 
     const formData = new FormData();
     formData.append("command", "APPEND");
@@ -196,24 +194,22 @@ export async function uploadMediaToTwitter(
         errorMessage = `HTTP ${appendResponse.status} ${appendResponse.statusText}`;
       }
 
-      console.error(
-        `Twitter media APPEND error (chunk ${segmentIndex}):`,
-        {
-          status: appendResponse.status,
-          statusText: appendResponse.statusText,
-          error: errorMessage,
-          errorData,
-        }
-      );
+      logger.error("Twitter media APPEND error", {
+        segmentIndex,
+        status: appendResponse.status,
+        statusText: appendResponse.statusText,
+        error: errorMessage,
+        errorData,
+      });
       throw new Error(`Failed to upload chunk ${segmentIndex} (${appendResponse.status}): ${errorMessage}`);
     }
 
-    console.log(`✅ Uploaded chunk ${segmentIndex}`);
+    logger.debug("Uploaded Twitter media chunk", { segmentIndex });
     segmentIndex++;
   }
 
   // FINALIZE phase - Complete upload
-  console.log(`🏁 Finalizing upload for media_id: ${mediaId}`);
+  logger.debug("Finalizing Twitter media upload", { mediaId });
 
   const finalizeParams: Record<string, string> = {
     command: "FINALIZE",
@@ -262,7 +258,7 @@ export async function uploadMediaToTwitter(
       errorMessage = `HTTP ${finalizeResponse.status} ${finalizeResponse.statusText}`;
     }
 
-    console.error("Twitter media FINALIZE error:", {
+    logger.error("Twitter media FINALIZE error", {
       status: finalizeResponse.status,
       statusText: finalizeResponse.statusText,
       error: errorMessage,
@@ -272,11 +268,11 @@ export async function uploadMediaToTwitter(
   }
 
   const finalizeData = await finalizeResponse.json();
-  console.log(`✅ Finalized upload:`, finalizeData);
+  logger.debug("Twitter media upload finalized", { mediaId, finalizeData: !!finalizeData });
 
   // For videos, wait for processing
   if (isVideo && finalizeData.processing_info) {
-    console.log(`⏳ Video processing required, waiting...`);
+    logger.debug("Video processing required, waiting");
     return await waitForVideoProcessing(context, mediaId);
   }
 
@@ -317,7 +313,7 @@ async function waitForVideoProcessing(
     });
 
     if (!response.ok) {
-      console.error("Failed to check video processing status");
+      logger.warn("Failed to check video processing status", { mediaId });
       await new Promise((resolve) => setTimeout(resolve, 2000));
       continue;
     }
@@ -325,10 +321,10 @@ async function waitForVideoProcessing(
     const data = await response.json();
     const state = data.processing_info?.state;
 
-    console.log(`📊 Processing status: ${state}`);
+    logger.debug("Twitter video processing status", { state });
 
     if (state === "succeeded") {
-      console.log(`✅ Video processing complete`);
+      logger.debug("Twitter video processing complete", { mediaId });
       return mediaId;
     }
 
@@ -371,12 +367,12 @@ export async function uploadMultipleMedia(
     throw new Error("Maximum 4 images allowed per tweet");
   }
 
-  console.log(`📸 Uploading ${files.length} media file(s)...`);
+  logger.debug("Uploading multiple Twitter media files", { count: files.length });
 
   // Upload files sequentially (parallel might hit rate limits)
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
-    console.log(`📤 Uploading file ${i + 1}/${files.length}`);
+    logger.debug("Uploading Twitter media file", { index: i + 1, total: files.length });
 
     try {
       const mediaId = await uploadMediaToTwitter(
@@ -385,14 +381,14 @@ export async function uploadMultipleMedia(
         file.mimeType
       );
       mediaIds.push(mediaId);
-      console.log(`✅ File ${i + 1} uploaded: ${mediaId}`);
+      logger.debug("Twitter media file uploaded", { index: i + 1, mediaId });
     } catch (error) {
-      console.error(`❌ Failed to upload file ${i + 1}:`, error);
+      logger.error("Failed to upload Twitter media file", { index: i + 1, error });
       throw error; // Don't continue if upload fails
     }
   }
 
-  console.log(`✅ All ${mediaIds.length} files uploaded successfully`);
+  logger.debug("All Twitter media files uploaded", { count: mediaIds.length });
   return mediaIds;
 }
 

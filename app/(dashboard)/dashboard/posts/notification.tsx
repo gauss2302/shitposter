@@ -38,17 +38,16 @@ export function PostsNotification() {
   if (!message || dismissed) {
     if (showWorkerWarning && !dismissed) {
       return (
-        <div className="mb-6 p-4 rounded-xl bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex items-start gap-3">
-              <span className="text-2xl">⚠️</span>
-              <div>
-                <p className="font-semibold text-yellow-800 dark:text-yellow-200 mb-1">
+        <div className="p-3 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-2 flex-1">
+              <span className="text-lg">⚠️</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-yellow-800 dark:text-yellow-200 mb-1">
                   Worker Not Running
                 </p>
-                <p className="text-sm text-yellow-700 dark:text-yellow-300">
-                  Your posts are queued but not being processed. Make sure the
-                  worker is running: <code className="bg-yellow-100 dark:bg-yellow-900/50 px-2 py-1 rounded">bun run workers/start.ts</code>
+                <p className="text-xs text-yellow-700 dark:text-yellow-300">
+                  Posts are queued. Start worker: <code className="bg-yellow-100 dark:bg-yellow-900/50 px-1.5 py-0.5 rounded text-xs">bun run workers/start.ts</code>
                 </p>
               </div>
             </div>
@@ -57,7 +56,7 @@ export function PostsNotification() {
                 setShowWorkerWarning(false);
                 setDismissed(true);
               }}
-              className="text-yellow-600 dark:text-yellow-400 hover:opacity-70 transition text-xl"
+              className="text-yellow-600 dark:text-yellow-400 hover:opacity-70 transition shrink-0"
             >
               ×
             </button>
@@ -75,29 +74,22 @@ export function PostsNotification() {
   };
 
   return (
-    <div className="mb-6 p-4 rounded-xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex items-start gap-3">
-          <span className="text-2xl">✅</span>
-          <div>
-            <p className="font-semibold text-green-800 dark:text-green-200 mb-1">
+    <div className="p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-2 flex-1">
+          <span className="text-lg">✅</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-green-800 dark:text-green-200 mb-1">
               Success
             </p>
-            <p className="text-sm text-green-700 dark:text-green-300">
+            <p className="text-xs text-green-700 dark:text-green-300">
               {message}
-            </p>
-            <p className="text-xs text-green-600 dark:text-green-400 mt-2">
-              💡 Make sure the worker is running to process posts. Run{" "}
-              <code className="bg-green-100 dark:bg-green-900/50 px-1.5 py-0.5 rounded text-xs">
-                bun run worker
-              </code>{" "}
-              in a separate terminal. Check the posts list below to see the status.
             </p>
           </div>
         </div>
         <button
           onClick={handleDismiss}
-          className="text-green-600 dark:text-green-400 hover:opacity-70 transition text-xl"
+          className="text-green-600 dark:text-green-400 hover:opacity-70 transition shrink-0"
         >
           ×
         </button>

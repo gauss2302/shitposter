@@ -1,6 +1,7 @@
 // app/(dashboard)/dashboard/posts/page.tsx
 import { auth } from "@/lib/auth";
 import { db, post, postTarget, socialAccount } from "@/lib/db";
+import { logger } from "@/lib/logger";
 import { eq, desc, inArray } from "drizzle-orm";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -78,7 +79,7 @@ export default async function PostsPage() {
           })),
         };
       } catch (error) {
-        console.error(`Error fetching targets for post ${p.id}:`, error);
+        logger.error("Error fetching targets for post", { postId: p.id, error });
         // Return post without targets if query fails
         return {
           ...p,
@@ -143,55 +144,49 @@ export default async function PostsPage() {
   );
 
   return (
-    <div className="space-y-4 md:space-y-6 lg:space-y-8">
-      <div className="rounded-2xl md:rounded-3xl border border-zinc-200/80 dark:border-zinc-800 bg-gradient-to-r from-violet-600/5 via-white to-fuchsia-600/5 dark:from-violet-500/10 dark:via-zinc-950 dark:to-fuchsia-500/10 p-4 md:p-6 lg:p-8">
-        <div className="flex flex-col gap-4 md:gap-6 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <p className="text-xs md:text-sm font-semibold uppercase tracking-wider text-violet-600 dark:text-violet-300">
-              Analytics overview
-            </p>
-            <h1 className="mt-1 md:mt-2 text-2xl md:text-3xl font-bold text-zinc-900 dark:text-white">
-              Posts & Performance
-            </h1>
-            <p className="mt-1 md:mt-2 text-sm md:text-base text-zinc-600 dark:text-zinc-400 max-w-2xl">
-              Track how your content performs across every platform, spot
-              failures early, and jump straight into composing something new.
+    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+      {/* Header Section - Compact */}
+      <div className="rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-gradient-to-r from-violet-600/5 via-white to-fuchsia-600/5 dark:from-violet-500/10 dark:via-zinc-950 dark:to-fuchsia-500/10 p-4 sm:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-3 mb-2">
+              <h1 className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-white">
+                Posts & Performance
+              </h1>
+              <span className="hidden sm:inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+                <span className="text-sm font-semibold text-zinc-900 dark:text-white">
+                  {successRate}%
+                </span>
+                <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                  success
+                </span>
+              </span>
+            </div>
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              Track performance across platforms and manage your content
             </p>
           </div>
-          <div className="flex items-center gap-2 md:gap-3">
-            <div className="text-right">
-              <p className="text-xs md:text-sm uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                Success rate
-              </p>
-              <p className="text-2xl md:text-3xl font-semibold text-zinc-900 dark:text-white">
-                {successRate}%
-              </p>
-              <p className="text-[10px] md:text-xs text-zinc-500 dark:text-zinc-400">
-                {publishedTargets} / {totalTargets || 1} targets
-              </p>
-            </div>
-            <div className="h-full border-l border-zinc-200 dark:border-zinc-800" />
-            <div className="flex items-center gap-2 md:gap-3">
-              <PostsClient accounts={allAccounts} />
-              <Link
-                href="/dashboard"
-                className="inline-flex items-center gap-1.5 md:gap-2 rounded-lg md:rounded-xl bg-zinc-900 px-3 md:px-4 py-1.5 md:py-2 text-white text-xs md:text-sm transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-900"
-              >
-                <span>Dashboard</span>
-                <span className="text-base md:text-lg">🗂️</span>
-              </Link>
-            </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <PostsClient accounts={allAccounts} />
+            <Link
+              href="/dashboard"
+              className="inline-flex items-center gap-2 rounded-lg bg-zinc-900 px-3 py-1.5 text-white text-sm transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
+            >
+              <span>Dashboard</span>
+              <span className="text-base">🗂️</span>
+            </Link>
           </div>
         </div>
 
-        <div className="mt-6 flex flex-wrap gap-2">
+        {/* Navigation Tabs - Compact */}
+        <div className="mt-4 flex flex-wrap gap-1.5">
           {headerMenu.map((item) => {
             const isActive = item.href === "/dashboard/posts";
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`rounded-full border px-4 py-2 text-sm font-medium transition ${
+                className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition ${
                   isActive
                     ? "border-violet-500 bg-white text-violet-600 shadow-sm dark:bg-zinc-900 dark:text-violet-300"
                     : "border-transparent text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
@@ -206,7 +201,8 @@ export default async function PostsPage() {
 
       <PostsNotification />
 
-      <section className="grid gap-2 md:gap-3 grid-cols-2 md:grid-cols-4">
+      {/* Stats Grid - Compact */}
+      <section className="grid gap-3 grid-cols-2 sm:grid-cols-4">
         {[
           {
             label: "Total posts",
@@ -236,37 +232,35 @@ export default async function PostsPage() {
         ].map((card) => (
           <div
             key={card.label}
-            className="rounded-xl md:rounded-2xl border border-zinc-200 bg-white p-3 md:p-4 dark:border-zinc-800 dark:bg-zinc-900"
+            className="rounded-lg border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900"
           >
-            <p className="text-xs md:text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+            <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
               {card.label}
             </p>
-            <p className="mt-1 md:mt-2 text-2xl md:text-3xl font-semibold text-zinc-900 dark:text-white">
+            <p className="mt-1 text-xl sm:text-2xl font-semibold text-zinc-900 dark:text-white">
               {card.value}
             </p>
-            <p className="mt-0.5 md:mt-1 text-xs md:text-sm text-zinc-500 dark:text-zinc-400">
+            <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
               {card.helper}
             </p>
           </div>
         ))}
       </section>
 
+      {/* Analytics Section - Grouped */}
       <section className="grid gap-4 lg:grid-cols-3">
-        <div className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900 lg:col-span-2">
-          <div className="flex items-center justify-between">
+        <div className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900 lg:col-span-2">
+          <div className="flex items-center justify-between mb-4">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-                Platform performance
-              </p>
-              <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">
-                Where you publish
+              <h2 className="text-base font-semibold text-zinc-900 dark:text-white">
+                Platform Performance
               </h2>
-            </div>
-            <span className="text-sm text-zinc-500 dark:text-zinc-400">
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
               {totalTargets} total targets
-            </span>
+            </p>
+            </div>
           </div>
-          <div className="mt-4 space-y-4">
+          <div className="space-y-3">
             {platformEntries.length === 0 && (
               <p className="text-sm text-zinc-500 dark:text-zinc-400">
                 Connect a social account to start collecting platform insights.
@@ -303,14 +297,11 @@ export default async function PostsPage() {
             })}
           </div>
         </div>
-        <div className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
-          <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-            Status distribution
-          </p>
-          <h3 className="mt-1 text-lg font-semibold text-zinc-900 dark:text-white">
-            Target health
+        <div className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+          <h3 className="text-base font-semibold text-zinc-900 dark:text-white mb-4">
+            Status Distribution
           </h3>
-          <div className="mt-4 space-y-4">
+          <div className="space-y-3">
             {["published", "scheduled", "publishing", "failed"].map(
               (status) => {
                 const count = targetStatusCounts[status] || 0;
@@ -347,40 +338,43 @@ export default async function PostsPage() {
               }
             )}
           </div>
-          <div className="mt-6 rounded-xl border border-dashed border-zinc-200 p-4 text-sm text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
-            Need higher success rates? Double-check tokens in{" "}
+          <div className="mt-4 rounded-lg border border-dashed border-zinc-200 p-3 text-xs text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
+            Need higher success rates? Check{" "}
             <Link
               href="/dashboard/accounts"
               className="font-medium text-violet-600 hover:underline dark:text-violet-400"
             >
               Accounts
             </Link>{" "}
-            or clean failed jobs in the queue.
+            or clean failed jobs.
           </div>
         </div>
       </section>
 
-      {postsWithTargets.length === 0 ? (
-        <div className="bg-white dark:bg-zinc-900 rounded-xl p-8 md:p-12 border border-zinc-200 dark:border-zinc-800 text-center">
-          <div className="w-12 h-12 md:w-16 md:h-16 bg-zinc-100 dark:bg-zinc-800 rounded-full mx-auto mb-3 md:mb-4 flex items-center justify-center">
-            <span className="text-2xl md:text-3xl">📝</span>
+      {/* Posts Section */}
+      <div className="rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900 p-4 sm:p-6">
+        {postsWithTargets.length === 0 ? (
+          <div className="text-center py-8 sm:py-12">
+            <div className="w-12 h-12 bg-zinc-100 dark:bg-zinc-800 rounded-full mx-auto mb-3 flex items-center justify-center">
+              <span className="text-2xl">📝</span>
+            </div>
+            <h2 className="text-base font-semibold text-zinc-900 dark:text-white mb-2">
+              No posts yet
+            </h2>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">
+              Create your first post to get started
+            </p>
+            <Link
+              href="/dashboard"
+              className="inline-flex px-4 py-2 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white text-sm font-medium rounded-lg transition"
+            >
+              Go to Dashboard
+            </Link>
           </div>
-          <h2 className="text-base md:text-lg font-semibold text-zinc-900 dark:text-white mb-2">
-            No posts yet
-          </h2>
-          <p className="text-sm md:text-base text-zinc-500 dark:text-zinc-400 mb-3 md:mb-4">
-            Create your first post to get started
-          </p>
-          <Link
-            href="/dashboard"
-            className="inline-flex px-3 md:px-4 py-1.5 md:py-2 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white text-sm md:text-base font-medium rounded-lg transition"
-          >
-            Go to Dashboard
-          </Link>
-        </div>
-      ) : (
-        <PostsViewClient posts={postsWithTargets} />
-      )}
+        ) : (
+          <PostsViewClient posts={postsWithTargets} />
+        )}
+      </div>
     </div>
   );
 }

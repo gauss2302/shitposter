@@ -5,6 +5,7 @@ import { eq, inArray } from "drizzle-orm";
 
 import { auth } from "@/lib/auth";
 import { db, post, postTarget, socialAccount } from "@/lib/db";
+import { logger } from "@/lib/logger";
 import { schedulePost, publishPostNow } from "@/lib/queue/queues";
 
 export async function POST(request: NextRequest) {
@@ -24,45 +25,46 @@ export async function POST(request: NextRequest) {
     // Get media files
     const mediaFiles = formData.getAll("media") as File[];
 
-    // 🔍 DEBUG: Log what we received
-    console.log("═══════════════════════════════════════");
-    console.log("📥 POST /api/posts - Request received");
-    console.log("═══════════════════════════════════════");
-    console.log("👤 User ID:", session.user.id);
-    console.log("📝 Content length:", content?.length || 0);
-    console.log("📸 Media files count:", mediaFiles.length);
-
-    if (mediaFiles.length > 0) {
-      console.log("📸 Media files details:");
-      mediaFiles.forEach((file, i) => {
-        console.log(`  ${i + 1}. ${file.name}`);
-        console.log(`     Type: ${file.type}`);
-        console.log(`     Size: ${(file.size / 1024 / 1024).toFixed(2)} MB`);
-      });
-    } else {
-      console.log("📸 No media files attached");
-    }
+    logger.debug("POST /api/posts", {
+      userId: session.user.id,
+      contentLength: content?.length || 0,
+      mediaCount: mediaFiles.length,
+    });
 
     // Validate content
     if (!content?.trim() && mediaFiles.length === 0) {
-      console.log("❌ Validation failed: No content or media");
       return NextResponse.json(
         { error: "Content or media is required" },
         { status: 400 }
       );
     }
 
-    // Parse social account IDs
-    const socialAccountIds = JSON.parse(socialAccountIdsJson);
-    console.log("🎯 Target accounts:", socialAccountIds.length);
-
+    // Validate and parse social account IDs
+    if (
+      socialAccountIdsJson == null ||
+      typeof socialAccountIdsJson !== "string"
+    ) {
+      return NextResponse.json(
+        { error: "Invalid request: socialAccountIds is required" },
+        { status: 400 }
+      );
+    }
+    let socialAccountIds: unknown;
+    try {
+      socialAccountIds = JSON.parse(socialAccountIdsJson);
+    } catch {
+      return NextResponse.json(
+        { error: "Invalid socialAccountIds format" },
+        { status: 400 }
+      );
+    }
     if (!Array.isArray(socialAccountIds) || socialAccountIds.length === 0) {
-      console.log("❌ Validation failed: No accounts selected");
       return NextResponse.json(
         { error: "At least one account is required" },
         { status: 400 }
       );
     }
+    logger.debug("Target accounts:", socialAccountIds.length);
 
     // Verify all social accounts belong to the user
     const accounts = await db.query.socialAccount.findMany({
@@ -74,22 +76,17 @@ export async function POST(request: NextRequest) {
     });
 
     if (accounts.length !== socialAccountIds.length) {
-      console.log("❌ Validation failed: Account ownership mismatch");
       return NextResponse.json(
         { error: "One or more accounts not found or not owned by you" },
         { status: 400 }
       );
     }
 
-    console.log("✅ Account verification passed");
-    accounts.forEach((acc) => {
-      console.log(`  - @${acc.platformUsername} (${acc.platform})`);
-    });
+    logger.debug("Account verification passed", accounts.map((a) => a.platformUsername));
 
     // Check for inactive accounts
     const inactiveAccounts = accounts.filter((a) => !a.isActive);
     if (inactiveAccounts.length > 0) {
-      console.log("❌ Validation failed: Inactive accounts found");
       return NextResponse.json(
         {
           error: `Some accounts are disconnected: ${inactiveAccounts
@@ -101,15 +98,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Process media files and convert to base64
-    console.log("🔄 Processing media files...");
     const mediaData: Array<{ data: string; mimeType: string }> = [];
 
     for (let i = 0; i < mediaFiles.length; i++) {
       const file = mediaFiles[i];
-      console.log(
-        `  Processing file ${i + 1}/${mediaFiles.length}: ${file.name}`
-      );
-
       const bytes = await file.arrayBuffer();
       const buffer = Buffer.from(bytes);
       const base64 = buffer.toString("base64");
@@ -118,17 +110,13 @@ export async function POST(request: NextRequest) {
         data: base64,
         mimeType: file.type,
       });
-
-      console.log(
-        `  ✅ Converted to base64: ${base64.length.toLocaleString()} characters`
-      );
     }
 
-    console.log(`✅ Total media data items: ${mediaData.length}`);
+    logger.debug("Media processed", { count: mediaData.length });
 
     // Create the post
     const postId = nanoid();
-    console.log("📝 Creating post with ID:", postId);
+    logger.info("Creating post", { postId });
 
     // Parse and validate scheduled time
     let scheduledFor: Date | null = null;
@@ -136,7 +124,6 @@ export async function POST(request: NextRequest) {
       scheduledFor = new Date(scheduledForStr);
 
       if (isNaN(scheduledFor.getTime())) {
-        console.log("❌ Invalid scheduled date format");
         return NextResponse.json(
           { error: "Invalid scheduled date format" },
           { status: 400 }
@@ -145,15 +132,12 @@ export async function POST(request: NextRequest) {
 
       const oneMinuteAgo = Date.now() - 60000;
       if (scheduledFor.getTime() < oneMinuteAgo) {
-        console.warn(
-          `⚠️ Scheduled time ${scheduledFor.toISOString()} is in the past, posting immediately`
-        );
+        logger.warn("Scheduled time in the past, posting immediately", scheduledFor.toISOString());
         scheduledFor = null;
       }
 
       const oneYearFromNow = Date.now() + 365 * 24 * 60 * 60 * 1000;
       if (scheduledFor && scheduledFor.getTime() > oneYearFromNow) {
-        console.log("❌ Scheduled date too far in future");
         return NextResponse.json(
           { error: "Scheduled date cannot be more than 1 year in the future" },
           { status: 400 }
@@ -161,11 +145,10 @@ export async function POST(request: NextRequest) {
       }
 
       if (scheduledFor) {
-        console.log(`📅 Scheduled for: ${scheduledFor.toISOString()}`);
+        logger.debug("Scheduled for", scheduledFor.toISOString());
       }
-    } else {
-      console.log("🚀 Publishing immediately");
     }
+
 
     // Insert post (don't store media in DB, send in job data)
     try {
@@ -178,13 +161,9 @@ export async function POST(request: NextRequest) {
         status: scheduledFor ? "scheduled" : "publishing",
       });
 
-      console.log(
-        `✅ Created post: ${postId}${
-          mediaData.length > 0 ? ` with ${mediaData.length} media files` : ""
-        }`
-      );
+      logger.debug("Post created", { postId, mediaCount: mediaData.length });
     } catch (postError) {
-      console.error("❌ Failed to insert post:", postError);
+      logger.error("Failed to insert post", postError);
       throw new Error(
         `Failed to create post: ${
           postError instanceof Error ? postError.message : "Unknown error"
@@ -193,7 +172,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Create post targets
-    console.log("🎯 Creating post targets...");
     const targets = [];
     for (const account of accounts) {
       const targetId = nanoid();
@@ -204,24 +182,20 @@ export async function POST(request: NextRequest) {
         socialAccountId: account.id,
         status: "pending" as const,
       });
-
-      console.log(
-        `  Created target: ${targetId} for @${account.platformUsername}`
-      );
     }
 
     // Insert all targets at once
     try {
       await db.insert(postTarget).values(targets);
-      console.log(`✅ Created ${targets.length} post targets`);
+      logger.debug("Post targets created", { count: targets.length });
     } catch (targetError) {
-      console.error("❌ Failed to insert post targets:", targetError);
+      logger.error("Failed to insert post targets", targetError);
       // Try to delete the post if targets failed
       try {
         await db.delete(post).where(eq(post.id, postId));
-        console.log(`🗑️ Cleaned up post ${postId} after target insertion failure`);
+        logger.debug("Cleaned up post after target failure", { postId });
       } catch (cleanupError) {
-        console.error("❌ Failed to cleanup post after target failure:", cleanupError);
+        logger.error("Failed to cleanup post after target failure", cleanupError);
       }
       throw new Error(
         `Failed to create post targets: ${
@@ -231,7 +205,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Queue the jobs with media data
-    console.log("📋 Queueing jobs...");
     const jobPromises = [];
     for (let i = 0; i < targets.length; i++) {
       const target = targets[i];
@@ -246,14 +219,6 @@ export async function POST(request: NextRequest) {
         mediaData, // Include media data in job
       };
 
-      console.log(
-        `📋 Queuing job ${i + 1}/${targets.length}: target ${target.id} → @${
-          account.platformUsername
-        } (${account.platform})${
-          mediaData.length > 0 ? ` with ${mediaData.length} media` : ""
-        }`
-      );
-
       // Schedule or publish immediately
       if (scheduledFor && scheduledFor > new Date()) {
         jobPromises.push(schedulePost(jobData, scheduledFor));
@@ -264,8 +229,11 @@ export async function POST(request: NextRequest) {
 
     // Wait for all jobs to be queued
     await Promise.all(jobPromises);
-    console.log(`✅ Queued ${jobPromises.length} jobs successfully`);
-    console.log("═══════════════════════════════════════");
+    logger.info("Post created and jobs queued", {
+      postId,
+      targetCount: targets.length,
+      mediaCount: mediaData.length,
+    });
 
     return NextResponse.json({
       success: true,
@@ -278,9 +246,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("═══════════════════════════════════════");
-    console.error("❌ Error creating post:", error);
-    console.error("═══════════════════════════════════════");
+    logger.error("Error creating post", error);
     return NextResponse.json(
       {
         error: "Failed to create post",

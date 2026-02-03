@@ -34,4 +34,14 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-# shitposter
+
+## Production: Health and Uptime Monitoring
+
+For production, use an external monitor (e.g. UptimeRobot, Better Stack, PagerDuty) to hit these endpoints on an interval (e.g. 1–5 minutes):
+
+- **Next.js app**: `GET /api/health` — returns 200 when the web app is running.
+- **Worker**: `GET http://worker-host:HEALTH_PORT/health` — returns 200 and queue/Redis status when the worker is healthy. Default port is 3001 (`HEALTH_PORT`).
+- **Worker readiness** (e.g. Kubernetes): `GET http://worker-host:HEALTH_PORT/ready` — returns 200 when ready to accept jobs.
+- **Prometheus metrics**: `GET http://worker-host:HEALTH_PORT/metrics` — worker job counts and uptime in Prometheus format.
+
+Configure alerts when any health check returns non-2xx or times out.

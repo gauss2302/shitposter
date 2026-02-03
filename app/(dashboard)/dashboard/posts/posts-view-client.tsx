@@ -61,9 +61,9 @@ export function PostsViewClient({ posts }: PostsViewClientProps) {
   const [view, setView] = useState<"cards" | "table">("cards");
 
   return (
-    <div className="space-y-3 md:space-y-4">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-base md:text-lg font-bold text-zinc-900 dark:text-white">
+        <h2 className="text-base font-semibold text-zinc-900 dark:text-white">
           All Posts
         </h2>
         <PostsViewToggle view={view} onViewChange={setView} />
@@ -72,17 +72,17 @@ export function PostsViewClient({ posts }: PostsViewClientProps) {
       {view === "table" ? (
         <PostsTableView posts={posts} />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 md:gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
           {posts.map((postItem) => (
             <div
               key={postItem.id}
-              className="bg-white dark:bg-zinc-900 rounded-lg md:rounded-xl p-2.5 md:p-3 border border-zinc-200 dark:border-zinc-800 hover:border-violet-300 dark:hover:border-violet-700 transition flex flex-col"
+              className="bg-white dark:bg-zinc-900 rounded-lg p-3 border border-zinc-200 dark:border-zinc-800 hover:border-violet-300 dark:hover:border-violet-700 transition flex flex-col"
             >
-              <div className="flex items-start justify-between gap-2 md:gap-3 mb-2 md:mb-3">
+              <div className="flex items-start justify-between gap-2 mb-2">
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5 md:gap-2 mb-1.5 md:mb-2 flex-wrap">
+                  <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
                     <span
-                      className={`px-1.5 md:px-2 py-0.5 md:py-1 text-[10px] md:text-xs font-semibold rounded-full ${
+                      className={`px-2 py-0.5 text-xs font-semibold rounded-full ${
                         statusColors[postItem.status] || statusColors.draft
                       }`}
                     >
@@ -95,22 +95,22 @@ export function PostsViewClient({ posts }: PostsViewClientProps) {
                       />
                     )}
                   </div>
-                  <p className="text-xs md:text-sm text-zinc-900 dark:text-white leading-snug line-clamp-3">
+                  <p className="text-sm text-zinc-900 dark:text-white leading-snug line-clamp-3">
                     {postItem.content}
                   </p>
                 </div>
               </div>
 
               {/* Targets */}
-              <div className="border-t border-zinc-100 dark:border-zinc-800 pt-2 md:pt-3 mt-auto">
-                <p className="text-[10px] md:text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5 md:mb-2">
+              <div className="border-t border-zinc-100 dark:border-zinc-800 pt-2 mt-auto">
+                <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">
                   Publishing To
                 </p>
-                <div className="flex flex-wrap gap-1 md:gap-1.5">
+                <div className="flex flex-wrap gap-1.5">
                   {postItem.targets.slice(0, 3).map((target) => (
                     <div
                       key={target.id}
-                      className={`flex items-center gap-1 px-1.5 md:px-2 py-0.5 md:py-1 rounded border text-[10px] md:text-xs ${
+                      className={`flex items-center gap-1 px-2 py-1 rounded border text-xs ${
                         target.status === "published"
                           ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
                           : target.status === "failed"
@@ -120,12 +120,12 @@ export function PostsViewClient({ posts }: PostsViewClientProps) {
                           : "bg-zinc-50 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700"
                       }`}
                     >
-                      <span className="text-xs md:text-sm">
+                      <span className="text-sm">
                         {target.account
                           ? platformIcons[target.account.platform] || "🌐"
                           : "❓"}
                       </span>
-                      <span className="font-semibold text-zinc-900 dark:text-white truncate max-w-[60px] md:max-w-[80px]">
+                      <span className="font-semibold text-zinc-900 dark:text-white truncate max-w-[70px]">
                         @{target.account?.platformUsername?.substring(0, 8) || "Unknown"}
                       </span>
                       {target.platformPostId && (
@@ -160,14 +160,14 @@ export function PostsViewClient({ posts }: PostsViewClientProps) {
                     </div>
                   ))}
                   {postItem.targets.length > 3 && (
-                    <div className="text-[10px] md:text-xs text-zinc-500 dark:text-zinc-400 px-1.5 py-0.5">
+                    <div className="text-xs text-zinc-500 dark:text-zinc-400 px-1.5 py-0.5">
                       +{postItem.targets.length - 3} more
                     </div>
                   )}
                 </div>
                 {postItem.targets.some((t) => t.errorMessage) && (
-                  <div className="mt-1.5 md:mt-2 p-1.5 md:p-2 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
-                    <p className="text-[10px] md:text-xs font-semibold text-red-700 dark:text-red-300 mb-0.5 md:mb-1">
+                  <div className="mt-2 p-2 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
+                    <p className="text-xs font-semibold text-red-700 dark:text-red-300 mb-1">
                       Errors:
                     </p>
                     {postItem.targets
@@ -176,7 +176,7 @@ export function PostsViewClient({ posts }: PostsViewClientProps) {
                       .map((t) => (
                         <p
                           key={t.id}
-                          className="text-[10px] md:text-xs text-red-600 dark:text-red-400 line-clamp-1"
+                          className="text-xs text-red-600 dark:text-red-400 line-clamp-1"
                         >
                           • {t.account?.platformUsername}: {t.errorMessage}
                         </p>
@@ -185,7 +185,7 @@ export function PostsViewClient({ posts }: PostsViewClientProps) {
                 )}
               </div>
 
-              <div className="border-t border-zinc-100 dark:border-zinc-800 pt-1.5 md:pt-2 mt-1.5 md:mt-2 flex items-center justify-between text-[10px] md:text-xs text-zinc-500 dark:text-zinc-400">
+              <div className="border-t border-zinc-100 dark:border-zinc-800 pt-2 mt-2 flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400">
                 <span className="truncate">
                   {new Date(postItem.createdAt).toLocaleDateString()}
                 </span>

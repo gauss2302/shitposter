@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { NextRequest } from "next/server";
 import { nanoid } from "nanoid";
 import { auth } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 import { getRedis } from "@/lib/queue/connection";
 import { createOAuth1Header, parseUrl } from "@/lib/social/oauth1";
 
@@ -60,7 +61,7 @@ export async function GET(request: NextRequest) {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("Twitter OAuth 1.0a request token error:", {
+      logger.error("Twitter OAuth 1.0a request token error", {
         status: response.status,
         statusText: response.statusText,
         error: errorText,
@@ -76,12 +77,12 @@ export async function GET(request: NextRequest) {
     const oauthCallbackConfirmed = params.get("oauth_callback_confirmed");
 
     if (!oauthToken || !oauthTokenSecret) {
-      console.error("Missing oauth_token or oauth_token_secret in response");
+      logger.error("Missing oauth_token or oauth_token_secret in response");
       redirect("/dashboard/accounts?error=oauth1_invalid_response");
     }
 
     if (oauthCallbackConfirmed !== "true") {
-      console.error("oauth_callback_confirmed is not true");
+      logger.error("oauth_callback_confirmed is not true");
       redirect("/dashboard/accounts?error=oauth1_callback_not_confirmed");
     }
 
@@ -102,7 +103,7 @@ export async function GET(request: NextRequest) {
     const authorizeUrl = `https://api.x.com/oauth/authorize?oauth_token=${encodeURIComponent(oauthToken)}`;
     redirect(authorizeUrl);
   } catch (error) {
-    console.error("Error in Twitter OAuth 1.0a request token:", error);
+    logger.error("Error in Twitter OAuth 1.0a request token", error);
     redirect("/dashboard/accounts?error=oauth1_request_token_error");
   }
 }

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { nanoid } from "nanoid";
 import { eq } from "drizzle-orm";
 import { db, socialAccount } from "@/lib/db";
+import { logger } from "@/lib/logger";
 import { getRedis } from "@/lib/queue/connection";
 import { encrypt } from "@/lib/utils";
 import { createOAuth1Header, parseUrl } from "@/lib/social/oauth1";
@@ -19,7 +20,7 @@ export async function GET(request: NextRequest) {
   const denied = searchParams.get("denied");
 
   if (denied) {
-    console.error("User denied OAuth 1.0a authorization");
+    logger.warn("User denied OAuth 1.0a authorization");
     redirect("/dashboard/accounts?error=oauth1_denied");
   }
 
@@ -41,17 +42,26 @@ export async function GET(request: NextRequest) {
   for (const key of keys) {
     const data = await redis.get(key);
     if (data) {
-      const parsed = JSON.parse(data);
-      if (parsed.oauthToken === oauthToken) {
-        storedData = parsed;
-        await redis.del(key); // Clean up
-        break;
+      try {
+        const parsed = JSON.parse(data) as {
+          userId: string;
+          oauthToken: string;
+          oauthTokenSecret: string;
+        };
+        if (parsed?.oauthToken === oauthToken) {
+          storedData = parsed;
+          await redis.del(key); // Clean up
+          break;
+        }
+      } catch {
+        // Skip invalid JSON in Redis key
+        continue;
       }
     }
   }
 
   if (!storedData) {
-    console.error("Request token not found in Redis");
+    logger.error("Request token not found in Redis");
     redirect("/dashboard/accounts?error=oauth1_invalid_token");
   }
 
@@ -91,7 +101,7 @@ export async function GET(request: NextRequest) {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("Twitter OAuth 1.0a access token error:", {
+      logger.error("Twitter OAuth 1.0a access token error", {
         status: response.status,
         statusText: response.statusText,
         error: errorText,
@@ -108,7 +118,7 @@ export async function GET(request: NextRequest) {
     const screenName = params.get("screen_name");
 
     if (!accessToken || !accessTokenSecret) {
-      console.error("Missing oauth_token or oauth_token_secret in access token response");
+      logger.error("Missing oauth_token or oauth_token_secret in access token response");
       redirect("/dashboard/accounts?error=oauth1_invalid_access_token");
     }
 
@@ -187,7 +197,7 @@ export async function GET(request: NextRequest) {
 
     redirect("/dashboard/accounts?success=oauth1_connected");
   } catch (error) {
-    console.error("Error in Twitter OAuth 1.0a callback:", error);
+    logger.error("Error in Twitter OAuth 1.0a callback", error);
     redirect("/dashboard/accounts?error=oauth1_callback_error");
   }
 }

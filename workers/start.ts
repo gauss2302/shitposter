@@ -2,28 +2,35 @@ import dotenv from "dotenv";
 dotenv.config();
 dotenv.config({ path: ".env.local", override: true });
 
+import * as Sentry from "@sentry/node";
+import { logger } from "@/lib/logger";
 import { createPostWorker } from "./index";
 import { startHealthServer } from "./health";
 
-console.log("═══════════════════════════════════════════════════════════");
-console.log("🚀 shitpost.art Worker - Starting...");
-console.log("═══════════════════════════════════════════════════════════");
-console.log(`📋 Queue: post-publishing`);
-console.log(`🔗 Redis: ${process.env.REDIS_URL?.replace(/:[^:@]+@/, ":***@")}`);
-console.log(
-  `🗄️  Database: ${process.env.DATABASE_URL?.split("@")[1] || "configured"}`
-);
-console.log(`🔐 Encryption: ${process.env.TOKEN_ENCRYPTION_KEY ? "✅" : "❌"}`);
-console.log(`⚡ Concurrency: ${process.env.WORKER_CONCURRENCY || 3}`);
-console.log(`🚦 Rate Limit: ${process.env.WORKER_RATE_LIMIT || 10}/sec`);
-console.log("═══════════════════════════════════════════════════════════");
+if (process.env.SENTRY_DSN) {
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    environment: process.env.SENTRY_ENVIRONMENT || process.env.NODE_ENV,
+    tracesSampleRate: process.env.NODE_ENV === "development" ? 1.0 : 0.1,
+  });
+}
+
+logger.info("Worker starting", {
+  queue: "post-publishing",
+  redis: process.env.REDIS_URL ? "configured" : "missing",
+  database: process.env.DATABASE_URL ? "configured" : "missing",
+  encryption: process.env.TOKEN_ENCRYPTION_KEY ? "yes" : "no",
+  concurrency: process.env.WORKER_CONCURRENCY || 3,
+  rateLimit: process.env.WORKER_RATE_LIMIT || 10,
+});
 
 // Verify required environment variables
 const requiredEnvVars = ["REDIS_URL", "DATABASE_URL", "TOKEN_ENCRYPTION_KEY"];
 const missingVars = requiredEnvVars.filter((v) => !process.env[v]);
 
 if (missingVars.length > 0) {
-  console.error("❌ Missing environment variables:", missingVars.join(", "));
+  logger.error("Missing environment variables:", missingVars.join(", "));
+  Sentry.captureMessage(`Worker missing env: ${missingVars.join(", ")}`, "error");
   process.exit(1);
 }
 
@@ -35,33 +42,33 @@ async function shutdown(signal: string) {
   if (isShuttingDown) return;
   isShuttingDown = true;
 
-  console.log(`\n⏹️  ${signal} received - Graceful shutdown started...`);
+  logger.info("Graceful shutdown started", { signal });
 
   const shutdownTimeout = setTimeout(() => {
-    console.error("❌ Shutdown timeout - forcing exit");
+    logger.error("Shutdown timeout - forcing exit");
     process.exit(1);
   }, 30000); // 30 second timeout
 
   try {
     // Stop accepting new jobs
     if (worker) {
-      console.log("   Closing worker...");
+      logger.info("Closing worker...");
       await worker.close();
-      console.log("   ✅ Worker closed");
+      logger.info("Worker closed");
     }
 
     // Close health server
     if (healthServer) {
-      console.log("   Closing health server...");
+      logger.info("Closing health server...");
       healthServer.close();
-      console.log("   ✅ Health server closed");
+      logger.info("Health server closed");
     }
 
     clearTimeout(shutdownTimeout);
-    console.log("✅ Graceful shutdown complete");
+    logger.info("Graceful shutdown complete");
     process.exit(0);
   } catch (error) {
-    console.error("❌ Shutdown error:", error);
+    logger.error("Shutdown error", error);
     clearTimeout(shutdownTimeout);
     process.exit(1);
   }
@@ -75,10 +82,7 @@ async function main() {
     // Create and start worker
     worker = createPostWorker();
 
-    console.log("═══════════════════════════════════════════════════════════");
-    console.log("✅ Worker started successfully!");
-    console.log("👀 Watching for jobs...");
-    console.log("═══════════════════════════════════════════════════════════");
+    logger.info("Worker started successfully, watching for jobs");
 
     // Graceful shutdown handlers
     process.on("SIGTERM", () => shutdown("SIGTERM"));
@@ -86,16 +90,17 @@ async function main() {
 
     // Handle uncaught errors
     process.on("uncaughtException", (error) => {
-      console.error("❌ Uncaught Exception:", error);
+      logger.error("Uncaught Exception", error);
       shutdown("UNCAUGHT_EXCEPTION");
     });
 
     process.on("unhandledRejection", (reason) => {
-      console.error("❌ Unhandled Rejection:", reason);
+      logger.error("Unhandled Rejection", reason);
       shutdown("UNHANDLED_REJECTION");
     });
   } catch (error) {
-    console.error("❌ Failed to start worker:", error);
+    logger.error("Failed to start worker", error);
+    Sentry.captureException(error);
     process.exit(1);
   }
 }

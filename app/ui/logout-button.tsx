@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
+import { logger } from "@/lib/logger";
 
 interface LogoutButtonProps {
   className?: string;
@@ -25,7 +26,7 @@ export function LogoutButton({ className, children }: LogoutButtonProps) {
         },
       });
     } catch (error) {
-      console.error("Logout failed", error);
+      logger.error("Logout failed", error);
     } finally {
       setLoading(false);
     }

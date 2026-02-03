@@ -1,5 +1,6 @@
 // scripts/clean-queue.ts
 import { Queue } from "bullmq";
+import { logger } from "../lib/logger";
 import { createRedisConnection } from "../lib/queue/connection";
 
 async function cleanQueue() {
@@ -7,7 +8,7 @@ async function cleanQueue() {
     connection: createRedisConnection(),
   });
 
-  console.log("🧹 Cleaning queue: post-publishing");
+  logger.info("Cleaning queue: post-publishing");
 
   try {
     // Get counts before cleaning
@@ -20,39 +21,33 @@ async function cleanQueue() {
       "paused"
     );
 
-    console.log("\n📊 Current queue status:");
-    console.log(`  - Waiting: ${counts.wait}`);
-    console.log(`  - Active: ${counts.active}`);
-    console.log(`  - Completed: ${counts.completed}`);
-    console.log(`  - Failed: ${counts.failed}`);
-    console.log(`  - Delayed: ${counts.delayed}`);
-    console.log(`  - Paused: ${counts.paused}`);
+    logger.info("Current queue status", counts);
 
     // Clean completed jobs (older than 0 seconds = all)
-    console.log("\n🗑️  Removing completed jobs...");
+    logger.info("Removing completed jobs...");
     const completedRemoved = await postQueue.clean(0, 0, "completed");
-    console.log(`✅ Removed ${completedRemoved.length} completed jobs`);
+    logger.info("Removed completed jobs", { count: completedRemoved.length });
 
     // Clean failed jobs
-    console.log("\n🗑️  Removing failed jobs...");
+    logger.info("Removing failed jobs...");
     const failedRemoved = await postQueue.clean(0, 0, "failed");
-    console.log(`✅ Removed ${failedRemoved.length} failed jobs`);
+    logger.info("Removed failed jobs", { count: failedRemoved.length });
 
     // Remove all waiting jobs
-    console.log("\n🗑️  Removing waiting jobs...");
+    logger.info("Removing waiting jobs...");
     const waitingJobs = await postQueue.getWaiting();
     for (const job of waitingJobs) {
       await job.remove();
     }
-    console.log(`✅ Removed ${waitingJobs.length} waiting jobs`);
+    logger.info("Removed waiting jobs", { count: waitingJobs.length });
 
     // Remove all delayed jobs
-    console.log("\n🗑️  Removing delayed jobs...");
+    logger.info("Removing delayed jobs...");
     const delayedJobs = await postQueue.getDelayed();
     for (const job of delayedJobs) {
       await job.remove();
     }
-    console.log(`✅ Removed ${delayedJobs.length} delayed jobs`);
+    logger.info("Removed delayed jobs", { count: delayedJobs.length });
 
     // Get final counts
     const finalCounts = await postQueue.getJobCounts(
@@ -63,16 +58,10 @@ async function cleanQueue() {
       "delayed"
     );
 
-    console.log("\n📊 Final queue status:");
-    console.log(`  - Waiting: ${finalCounts.wait}`);
-    console.log(`  - Active: ${finalCounts.active}`);
-    console.log(`  - Completed: ${finalCounts.completed}`);
-    console.log(`  - Failed: ${finalCounts.failed}`);
-    console.log(`  - Delayed: ${finalCounts.delayed}`);
-
-    console.log("\n✨ Queue cleaned successfully!");
+    logger.info("Final queue status", finalCounts);
+    logger.info("Queue cleaned successfully");
   } catch (error) {
-    console.error("❌ Error cleaning queue:", error);
+    logger.error("Error cleaning queue", error);
   } finally {
     await postQueue.close();
     process.exit(0);

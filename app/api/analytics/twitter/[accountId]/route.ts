@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { db, socialAccount } from "@/lib/db";
+import { logger } from "@/lib/logger";
 import { and, eq } from "drizzle-orm";
 import { decrypt } from "@/lib/utils";
 import { getTwitterAnalytics } from "@/lib/social/twitter";
@@ -57,33 +58,31 @@ export async function GET(
     try {
       const cached = await redis.get(cacheKey);
       if (cached) {
-        console.log(`✅ Returning cached analytics for ${accountId}`);
+        logger.debug("Returning cached analytics", { accountId });
         return NextResponse.json(JSON.parse(cached));
       }
     } catch (cacheError) {
-      console.warn("Cache error (continuing without cache):", cacheError);
+      logger.warn("Cache error (continuing without cache)", cacheError);
     }
 
     // Decrypt access token
     const accessToken = decrypt(account.accessToken);
 
     // Fetch analytics - pass context object and limit
-    console.log(
-      `📊 Fetching fresh analytics for ${accountId} (${tweetLimit} tweets)`
-    );
+    logger.debug("Fetching fresh analytics", { accountId, tweetLimit });
     const analytics = await getTwitterAnalytics({ accessToken }, tweetLimit);
 
     // Cache the result for 5 minutes to avoid rate limits
     try {
       await redis.setex(cacheKey, 300, JSON.stringify(analytics));
-      console.log(`✅ Cached analytics for ${accountId}`);
+      logger.debug("Cached analytics", { accountId });
     } catch (cacheError) {
-      console.warn("Failed to cache analytics:", cacheError);
+      logger.warn("Failed to cache analytics", cacheError);
     }
 
     return NextResponse.json(analytics);
   } catch (error) {
-    console.error("Error fetching Twitter analytics:", error);
+    logger.error("Error fetching Twitter analytics", error);
 
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";

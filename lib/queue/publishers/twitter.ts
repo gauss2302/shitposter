@@ -3,6 +3,8 @@
 // All functions use user-context auth (connected user's token)
 // This does NOT consume your app's rate limits!
 
+import { logger } from "@/lib/logger";
+
 interface TwitterUserContext {
   accessToken: string; // The connected user's OAuth token
 }
@@ -407,11 +409,9 @@ export async function publishToTwitter({
       }),
   };
 
-  console.log("📤 Twitter API Request:", {
+  logger.debug("Twitter API request", {
     contentLength: content?.length || 0,
     mediaCount: mediaIds?.length || 0,
-    hasContent: !!content?.trim(),
-    hasMedia: !!(mediaIds && mediaIds.length > 0),
   });
 
   // Create tweet with media IDs (already uploaded)
@@ -434,10 +434,9 @@ export async function publishToTwitter({
   }
 
   if (!response.ok) {
-    console.error("❌ Twitter API Error Response:", {
+    logger.error("Twitter API error response", {
       status: response.status,
       statusText: response.statusText,
-      body: responseText,
       parsed: errorData,
     });
 
@@ -455,35 +454,28 @@ export async function publishToTwitter({
   try {
     data = JSON.parse(responseText);
   } catch (parseError) {
-    console.error("❌ Failed to parse Twitter API response:", responseText);
+    logger.error("Failed to parse Twitter API response");
     throw new Error("Invalid response from Twitter API");
   }
 
   // Validate response structure
   if (!data) {
-    console.error("❌ Twitter API returned empty response");
+    logger.error("Twitter API returned empty response");
     throw new Error("Empty response from Twitter API");
   }
 
   if (!data.data) {
-    console.error("❌ Twitter API response missing 'data' field:", data);
+    logger.error("Twitter API response missing 'data' field");
     throw new Error("Invalid response structure from Twitter API");
   }
 
   if (!data.data.id) {
-    console.error("❌ Twitter API response missing 'data.id' field:", data);
+    logger.error("Twitter API response missing 'data.id' field");
     throw new Error("Twitter API did not return a tweet ID");
   }
 
   const tweetId = data.data.id;
-  console.log("✅ Twitter API Success:", {
-    tweetId,
-    responseStructure: {
-      hasData: !!data.data,
-      hasId: !!data.data.id,
-      fullResponse: data,
-    },
-  });
+  logger.debug("Twitter API success", { tweetId });
 
   // Verify the tweet was actually created by fetching it back
   try {
@@ -498,19 +490,18 @@ export async function publishToTwitter({
 
     if (verifyResponse.ok) {
       const verifyData = await verifyResponse.json();
-      console.log("✅ Tweet verification successful:", {
+      logger.debug("Tweet verification successful", {
         tweetId,
         text: verifyData.data?.text,
-        createdAt: verifyData.data?.created_at,
       });
     } else {
-      console.warn("⚠️ Could not verify tweet (may still be processing):", {
+      logger.warn("Could not verify tweet (may still be processing)", {
         status: verifyResponse.status,
         tweetId,
       });
     }
   } catch (verifyError) {
-    console.warn("⚠️ Tweet verification failed (tweet may still exist):", verifyError);
+    logger.warn("Tweet verification failed (tweet may still exist)", verifyError);
   }
 
   return tweetId;
