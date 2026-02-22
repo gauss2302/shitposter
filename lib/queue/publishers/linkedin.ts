@@ -280,11 +280,11 @@ async function uploadImageToLinkedIn(
     // Step 2: Upload binary image data using PUT (as per curl example with --upload-file)
       const uploadResponse = await fetch(uploadUrl, {
         method: "PUT",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: imageBuffer,
-    });
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: new Uint8Array(imageBuffer),
+      });
 
     if (!uploadResponse.ok) {
       let errorMessage = `Failed to upload image binary (${uploadResponse.status})`;
@@ -408,7 +408,7 @@ async function uploadVideoToLinkedIn(
       headers: {
         Authorization: `Bearer ${accessToken}`,
       },
-      body: videoBuffer,
+      body: new Uint8Array(videoBuffer),
     });
 
     if (!uploadResponse.ok) {

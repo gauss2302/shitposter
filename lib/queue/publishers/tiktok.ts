@@ -92,7 +92,7 @@ async function uploadVideoToTikTok(
     headers: {
       "Content-Type": mimeType,
     },
-    body: videoBuffer,
+    body: new Uint8Array(videoBuffer),
   });
 
   if (!uploadResponse.ok) {
