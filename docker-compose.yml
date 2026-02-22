@@ -73,7 +73,7 @@ services:
       - NEXT_PUBLIC_SENTRY_DSN=${NEXT_PUBLIC_SENTRY_DSN}
       - SENTRY_ENVIRONMENT=${SENTRY_ENVIRONMENT:-production}
     ports:
-      - "3000:3000"
+      - "3010:3000"
     healthcheck:
       test:
         [
