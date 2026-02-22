@@ -159,7 +159,7 @@ export async function uploadMediaToTwitter(
     formData.append("command", "APPEND");
     formData.append("media_id", mediaId);
     formData.append("segment_index", segmentIndex.toString());
-    formData.append("media", new Blob([chunk], { type: mimeType }));
+    formData.append("media", new Blob([new Uint8Array(chunk)], { type: mimeType }));
 
     const appendParams: Record<string, string> = {
       command: "APPEND",
