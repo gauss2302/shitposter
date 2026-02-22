@@ -43,7 +43,6 @@ export default async function DashboardPage() {
           email={session.user.email}
           avatarUrl={session.user.image}
           stats={stats}
-          accounts={accounts}
         />
 
         {/* Top Row: Stats & Quick Actions */}
