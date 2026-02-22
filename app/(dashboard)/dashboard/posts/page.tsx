@@ -75,7 +75,7 @@ export default async function PostsPage() {
           ...p,
           targets: targets.map((t) => ({
             ...t,
-            account: accounts.find((a) => a.id === t.socialAccountId),
+            account: accounts.find((a) => a.id === t.socialAccountId) ?? null,
           })),
         };
       } catch (error) {
