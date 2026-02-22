@@ -4,7 +4,10 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import * as schema from "./db/schema";
 import { db } from "./db";
 
+const baseUrl = process.env.BETTER_AUTH_URL;
+
 export const auth = betterAuth({
+  trustedOrigins: baseUrl ? [baseUrl.replace(/\/$/, "")] : undefined,
   database: drizzleAdapter(db, {
     provider: "pg",
     schema: {

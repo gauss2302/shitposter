@@ -40,6 +40,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.web
+      args:
+        - NEXT_PUBLIC_BASE_PATH=${NEXT_PUBLIC_BASE_PATH:-}
     container_name: shitpost-web
     restart: unless-stopped
     depends_on:
@@ -59,6 +61,7 @@ services:
       - TOKEN_ENCRYPTION_KEY=${TOKEN_ENCRYPTION_KEY}
       - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-http://localhost:3010}
       - BETTER_AUTH_URL=${BETTER_AUTH_URL:-http://localhost:3010}
+      - NEXT_PUBLIC_BASE_PATH=${NEXT_PUBLIC_BASE_PATH:-}
       - TWITTER_CLIENT_ID=${TWITTER_CLIENT_ID:-}
       - TWITTER_CLIENT_SECRET=${TWITTER_CLIENT_SECRET:-}
       - TIKTOK_CLIENT_KEY=${TIKTOK_CLIENT_KEY:-}
