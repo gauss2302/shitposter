@@ -35,7 +35,28 @@ The easiest way to deploy your Next.js app is to use the [Vercel Platform](https
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
 
-## Production: Health and Uptime Monitoring
+## Production
+
+### Docker Deployment
+
+To run the full stack (web, worker, postgres, redis) with Docker:
+
+```bash
+# Run migrations before first start (from host, with DB reachable)
+bun run db:migrate
+
+# Start all services
+docker compose up -d
+```
+
+**Before deploying:**
+
+1. **Migrations** — Run `bun run db:migrate` (or `drizzle-kit migrate`) before starting. Containers do not run migrations automatically.
+2. **App URL** — Set `NEXT_PUBLIC_APP_URL` and `BETTER_AUTH_URL` to your public base URL (e.g. `https://your-domain.com`) for auth callbacks.
+3. **Secrets** — Use strong values for `TOKEN_ENCRYPTION_KEY`, DB passwords, and OAuth credentials.
+4. **Reverse proxy** — Put nginx, Caddy, or Traefik in front for TLS and domain routing.
+
+### Health and Uptime Monitoring
 
 For production, use an external monitor (e.g. UptimeRobot, Better Stack, PagerDuty) to hit these endpoints on an interval (e.g. 1–5 minutes):
 
