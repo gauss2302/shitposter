@@ -24,6 +24,7 @@ import {
 } from "@/lib/db/worker-connection";
 import { eq } from "drizzle-orm";
 import { uploadMultipleMedia } from "@/lib/social/twitter-media";
+import { TwitterRateLimitError } from "@/lib/social/twitter";
 import { workerMetrics } from "./health";
 
 const ALGORITHM = "aes-256-gcm";
@@ -379,7 +380,18 @@ export function createPostWorker() {
 
         // Rate limit - use longer backoff
         if (errorCategory === "rate_limit") {
-          logger.warn("Rate limited - will retry with backoff", { jobId: job.id });
+          const rateLimitInfo =
+            error instanceof TwitterRateLimitError
+              ? {
+                  limit: error.rateLimit.limit,
+                  remaining: error.rateLimit.remaining,
+                  resetAt: new Date(error.rateLimit.reset * 1000).toISOString(),
+                }
+              : undefined;
+          logger.warn("Rate limited - will retry with backoff", {
+            jobId: job.id,
+            ...rateLimitInfo,
+          });
         }
 
         throw error;

@@ -5,7 +5,7 @@ import { nanoid } from "nanoid";
 import { auth } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 import { getRedis } from "@/lib/queue/connection";
-import { createOAuth1Header, parseUrl } from "@/lib/social/oauth1";
+import { generateTwitterOAuth1AuthLink } from "@/lib/social/twitter-oauth1";
 
 /**
  * Step 1: Request OAuth 1.0a request token from Twitter
@@ -25,66 +25,15 @@ export async function GET(request: NextRequest) {
     throw new Error("TWITTER_CLIENT_ID and TWITTER_CLIENT_SECRET must be set");
   }
 
-  // Build callback URL
   const baseUrl = process.env.BETTER_AUTH_URL || "http://localhost:3000";
   const callbackUrl = `${baseUrl}/api/social/callback/twitter-oauth1`;
 
-  // Step 1: POST oauth/request_token
-  const requestTokenUrl = "https://api.x.com/oauth/request_token";
-  const { baseUrl: tokenBaseUrl, queryParams } = parseUrl(requestTokenUrl);
-
-  // OAuth 1.0a parameters for request token
-  const requestParams: Record<string, string> = {
-    oauth_callback: callbackUrl,
-  };
-
-  // Create OAuth 1.0a header (no token yet, only consumer credentials)
-  const authHeader = createOAuth1Header(
-    "POST",
-    tokenBaseUrl,
-    { ...requestParams, ...queryParams },
-    {
+  try {
+    const authLink = await generateTwitterOAuth1AuthLink({
+      callbackUrl,
       consumerKey,
       consumerSecret,
-      accessToken: "", // Empty for request token
-      accessTokenSecret: "", // Empty for request token
-    }
-  );
-
-  try {
-    const response = await fetch(requestTokenUrl, {
-      method: "POST",
-      headers: {
-        Authorization: authHeader,
-      },
     });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      logger.error("Twitter OAuth 1.0a request token error", {
-        status: response.status,
-        statusText: response.statusText,
-        error: errorText,
-      });
-      redirect("/dashboard/accounts?error=oauth1_request_token_failed");
-    }
-
-    const responseText = await response.text();
-    const params = new URLSearchParams(responseText);
-
-    const oauthToken = params.get("oauth_token");
-    const oauthTokenSecret = params.get("oauth_token_secret");
-    const oauthCallbackConfirmed = params.get("oauth_callback_confirmed");
-
-    if (!oauthToken || !oauthTokenSecret) {
-      logger.error("Missing oauth_token or oauth_token_secret in response");
-      redirect("/dashboard/accounts?error=oauth1_invalid_response");
-    }
-
-    if (oauthCallbackConfirmed !== "true") {
-      logger.error("oauth_callback_confirmed is not true");
-      redirect("/dashboard/accounts?error=oauth1_callback_not_confirmed");
-    }
 
     // Store request token and secret in Redis for callback verification
     const redis = getRedis();
@@ -94,16 +43,21 @@ export async function GET(request: NextRequest) {
       600, // 10 minutes
       JSON.stringify({
         userId: session.user.id,
-        oauthToken,
-        oauthTokenSecret,
+        oauthToken: authLink.oauth_token,
+        oauthTokenSecret: authLink.oauth_token_secret,
       })
     );
 
-    // Step 2: Redirect user to Twitter authorization page
-    const authorizeUrl = `https://api.x.com/oauth/authorize?oauth_token=${encodeURIComponent(oauthToken)}`;
-    redirect(authorizeUrl);
+    redirect(authLink.url);
   } catch (error) {
     logger.error("Error in Twitter OAuth 1.0a request token", error);
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes("request token failed")) {
+      redirect("/dashboard/accounts?error=oauth1_request_token_failed");
+    }
+    if (message.includes("missing oauth_token") || message.includes("oauth_callback_confirmed")) {
+      redirect("/dashboard/accounts?error=oauth1_invalid_response");
+    }
     redirect("/dashboard/accounts?error=oauth1_request_token_error");
   }
 }

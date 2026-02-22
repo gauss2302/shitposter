@@ -1,5 +1,11 @@
 import { logger } from "@/lib/logger";
 import { createOAuth1Header, parseUrl } from "./oauth1";
+import type {
+  TwitterApiErrorRaw,
+  TwitterMediaInitResponse,
+  TwitterMediaFinalizeResponse,
+  TwitterMediaStatusResponse,
+} from "./twitter-types";
 
 interface TwitterUserContext {
   accessToken: string;
@@ -8,16 +14,34 @@ interface TwitterUserContext {
   consumerSecret?: string; // Twitter Client Secret
 }
 
+function getTwitterMediaErrorMessage(
+  errorData: TwitterApiErrorRaw | null,
+  responseText: string,
+  status: number,
+  statusText: string
+): string {
+  if (errorData?.errors?.length) return errorData.errors[0].message;
+  if (errorData?.detail) return errorData.detail;
+  if (errorData?.title) return errorData.title;
+  if (responseText.trim()) return responseText;
+  return `HTTP ${status} ${statusText}`;
+}
+
+const DEFAULT_CHUNK_SIZE = 5 * 1024 * 1024; // 5MB
+const DEFAULT_MAX_CONCURRENT_UPLOADS = 3;
+
 /**
  * Upload media to Twitter and return media ID
- * Uses chunked upload for reliability with larger files
- * 
+ * Uses chunked upload for reliability with larger files.
+ * Optionally uploads multiple chunks in parallel (maxConcurrentUploads).
+ *
  * Uses OAuth 1.0a for media upload endpoint (required by Twitter API v1.1)
  */
 export async function uploadMediaToTwitter(
   context: TwitterUserContext,
   fileBuffer: Buffer,
-  mimeType: string
+  mimeType: string,
+  options?: { maxConcurrentUploads?: number }
 ): Promise<string> {
   const isVideo = mimeType.startsWith("video/");
   const mediaCategory = isVideo ? "tweet_video" : "tweet_image";
@@ -79,73 +103,64 @@ export async function uploadMediaToTwitter(
   logger.debug("Twitter media INIT response", { status: initResponse.status, statusText: initResponse.statusText });
 
   if (!initResponse.ok) {
-    // Try to parse as JSON first, then fall back to text
-    let errorMessage: string;
-    let errorData: any = null;
-    let responseText: string = "";
-    
+    let responseText = "";
+    let errorData: TwitterApiErrorRaw | null = null;
     try {
       responseText = await initResponse.text();
       logger.debug("Twitter media INIT response body", { preview: responseText.substring(0, 200) });
-
       if (responseText.trim()) {
         try {
-          errorData = JSON.parse(responseText);
-          errorMessage = 
-            errorData?.errors?.[0]?.message ||
-            errorData?.error ||
-            errorData?.message ||
-            responseText ||
-            `HTTP ${initResponse.status} ${initResponse.statusText}`;
+          errorData = JSON.parse(responseText) as TwitterApiErrorRaw;
         } catch {
-          errorMessage = responseText || `HTTP ${initResponse.status} ${initResponse.statusText}`;
-        }
-      } else {
-        // Empty response - likely authentication or endpoint issue
-        errorMessage = `HTTP ${initResponse.status} ${initResponse.statusText} (empty response)`;
-        if (initResponse.status === 401 || initResponse.status === 403) {
-          errorMessage += " - Authentication failed. Twitter media upload may require OAuth 1.0a instead of OAuth 2.0 Bearer token.";
+          // not JSON
         }
       }
     } catch (e) {
-      errorMessage = `HTTP ${initResponse.status} ${initResponse.statusText} (failed to read response)`;
       logger.error("Error reading Twitter media response", e);
     }
-
+    const errorMessage = getTwitterMediaErrorMessage(
+      errorData,
+      responseText,
+      initResponse.status,
+      initResponse.statusText
+    );
+    const fullMessage =
+      initResponse.status === 401 || initResponse.status === 403
+        ? `${errorMessage} - Authentication failed. Twitter media upload may require OAuth 1.0a instead of OAuth 2.0 Bearer token.`
+        : errorMessage;
     logger.error("Twitter media INIT error", {
       status: initResponse.status,
       statusText: initResponse.statusText,
-      error: errorMessage,
+      error: fullMessage,
       errorData,
     });
-    
-    throw new Error(`Failed to initialize media upload (${initResponse.status}): ${errorMessage}`);
+    throw new Error(`Failed to initialize media upload (${initResponse.status}): ${fullMessage}`);
   }
 
-  const initData = await initResponse.json();
+  const initData = (await initResponse.json()) as TwitterMediaInitResponse;
   const mediaId = initData.media_id_string;
   logger.debug("Twitter media upload initialized", { mediaId });
 
-  // APPEND phase - Upload file in chunks
-  const chunkSize = 5 * 1024 * 1024; // 5MB chunks
-  let segmentIndex = 0;
-
+  // APPEND phase - Upload file in chunks (optionally parallel)
+  const chunkSize = DEFAULT_CHUNK_SIZE;
+  const maxConcurrent = options?.maxConcurrentUploads ?? DEFAULT_MAX_CONCURRENT_UPLOADS;
+  const segments: { segmentIndex: number; chunk: Buffer }[] = [];
   for (let offset = 0; offset < totalBytes; offset += chunkSize) {
+    const segmentIndex = segments.length;
     const chunk = fileBuffer.slice(
       offset,
       Math.min(offset + chunkSize, totalBytes)
     );
+    segments.push({ segmentIndex, chunk });
+  }
 
-    logger.debug("Uploading Twitter media chunk", { segmentIndex, chunkLength: chunk.length });
-
+  async function appendChunk(segmentIndex: number, chunk: Buffer): Promise<void> {
     const formData = new FormData();
     formData.append("command", "APPEND");
     formData.append("media_id", mediaId);
     formData.append("segment_index", segmentIndex.toString());
     formData.append("media", new Blob([chunk], { type: mimeType }));
 
-    // For APPEND, OAuth 1.0a signature includes only text parameters (not the file)
-    // The file is sent as multipart/form-data but not included in OAuth signature
     const appendParams: Record<string, string> = {
       command: "APPEND",
       media_id: mediaId,
@@ -166,34 +181,29 @@ export async function uploadMediaToTwitter(
 
     const appendResponse = await fetch(uploadUrl, {
       method: "POST",
-      headers: {
-        Authorization: appendAuthHeader,
-        // Don't set Content-Type - let fetch set it with boundary for FormData
-      },
+      headers: { Authorization: appendAuthHeader },
       body: formData,
     });
 
     if (!appendResponse.ok) {
-      let errorMessage: string;
-      let errorData: any = null;
-      
+      let responseText = "";
+      let errorData: TwitterApiErrorRaw | null = null;
       try {
-        const responseText = await appendResponse.text();
+        responseText = await appendResponse.text();
         try {
-          errorData = JSON.parse(responseText);
-          errorMessage = 
-            errorData?.errors?.[0]?.message ||
-            errorData?.error ||
-            errorData?.message ||
-            responseText ||
-            `HTTP ${appendResponse.status} ${appendResponse.statusText}`;
+          errorData = JSON.parse(responseText) as TwitterApiErrorRaw;
         } catch {
-          errorMessage = responseText || `HTTP ${appendResponse.status} ${appendResponse.statusText}`;
+          // not JSON
         }
       } catch {
-        errorMessage = `HTTP ${appendResponse.status} ${appendResponse.statusText}`;
+        // ignore
       }
-
+      const errorMessage = getTwitterMediaErrorMessage(
+        errorData,
+        responseText,
+        appendResponse.status,
+        appendResponse.statusText
+      );
       logger.error("Twitter media APPEND error", {
         segmentIndex,
         status: appendResponse.status,
@@ -203,9 +213,15 @@ export async function uploadMediaToTwitter(
       });
       throw new Error(`Failed to upload chunk ${segmentIndex} (${appendResponse.status}): ${errorMessage}`);
     }
-
     logger.debug("Uploaded Twitter media chunk", { segmentIndex });
-    segmentIndex++;
+  }
+
+  // Upload chunks in batches of maxConcurrent to preserve order and limit concurrency
+  for (let i = 0; i < segments.length; i += maxConcurrent) {
+    const batch = segments.slice(i, i + maxConcurrent);
+    await Promise.all(
+      batch.map(({ segmentIndex, chunk }) => appendChunk(segmentIndex, chunk))
+    );
   }
 
   // FINALIZE phase - Complete upload
@@ -238,26 +254,24 @@ export async function uploadMediaToTwitter(
   });
 
   if (!finalizeResponse.ok) {
-    let errorMessage: string;
-    let errorData: any = null;
-    
+    let responseText = "";
+    let errorData: TwitterApiErrorRaw | null = null;
     try {
-      const responseText = await finalizeResponse.text();
+      responseText = await finalizeResponse.text();
       try {
-        errorData = JSON.parse(responseText);
-        errorMessage = 
-          errorData?.errors?.[0]?.message ||
-          errorData?.error ||
-          errorData?.message ||
-          responseText ||
-          `HTTP ${finalizeResponse.status} ${finalizeResponse.statusText}`;
+        errorData = JSON.parse(responseText) as TwitterApiErrorRaw;
       } catch {
-        errorMessage = responseText || `HTTP ${finalizeResponse.status} ${finalizeResponse.statusText}`;
+        // not JSON
       }
     } catch {
-      errorMessage = `HTTP ${finalizeResponse.status} ${finalizeResponse.statusText}`;
+      // ignore
     }
-
+    const errorMessage = getTwitterMediaErrorMessage(
+      errorData,
+      responseText,
+      finalizeResponse.status,
+      finalizeResponse.statusText
+    );
     logger.error("Twitter media FINALIZE error", {
       status: finalizeResponse.status,
       statusText: finalizeResponse.statusText,
@@ -267,7 +281,7 @@ export async function uploadMediaToTwitter(
     throw new Error(`Failed to finalize media upload (${finalizeResponse.status}): ${errorMessage}`);
   }
 
-  const finalizeData = await finalizeResponse.json();
+  const finalizeData = (await finalizeResponse.json()) as TwitterMediaFinalizeResponse;
   logger.debug("Twitter media upload finalized", { mediaId, finalizeData: !!finalizeData });
 
   // For videos, wait for processing
@@ -318,8 +332,9 @@ async function waitForVideoProcessing(
       continue;
     }
 
-    const data = await response.json();
-    const state = data.processing_info?.state;
+    const data = (await response.json()) as TwitterMediaStatusResponse;
+    const processingInfo = data.processing_info;
+    const state = processingInfo?.state;
 
     logger.debug("Twitter video processing status", { state });
 
@@ -330,14 +345,12 @@ async function waitForVideoProcessing(
 
     if (state === "failed") {
       throw new Error(
-        `Video processing failed: ${
-          data.processing_info?.error?.message || "Unknown error"
-        }`
+        `Video processing failed: ${processingInfo?.error?.message ?? "Unknown error"}`
       );
     }
 
     // Wait before next check
-    const waitTime = (data.processing_info?.check_after_secs || 2) * 1000;
+    const waitTime = (processingInfo?.check_after_secs ?? 2) * 1000;
     await new Promise((resolve) => setTimeout(resolve, waitTime));
   }
 

@@ -1,10 +1,89 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 // lib/social/twitter.ts
 // All functions use user-context auth (connected user's token)
 // This does NOT consume your app's rate limits!
 
+import type {
+  TwitterApiErrorRaw,
+  TwitterApiV2UserRaw,
+  TwitterApiV2UserResponse,
+  TwitterApiV2TweetRaw,
+  TwitterApiV2TweetsResponse,
+  TwitterApiV2SingleTweetResponse,
+  TwitterApiV2PostTweetResponse,
+  TwitterRateLimit,
+} from "./twitter-types";
+
 interface TwitterUserContext {
   accessToken: string; // The connected user's OAuth token
+}
+
+/**
+ * Parse Twitter API rate limit headers from a response.
+ * Returns null if headers are missing or invalid.
+ */
+export function parseTwitterRateLimitHeaders(headers: Headers): TwitterRateLimit | null {
+  const limit = headers.get("x-rate-limit-limit");
+  const remaining = headers.get("x-rate-limit-remaining");
+  const reset = headers.get("x-rate-limit-reset");
+  if (limit === null || remaining === null || reset === null) return null;
+  const limitNum = parseInt(limit, 10);
+  const remainingNum = parseInt(remaining, 10);
+  const resetNum = parseInt(reset, 10);
+  if (Number.isNaN(limitNum) || Number.isNaN(remainingNum) || Number.isNaN(resetNum))
+    return null;
+  return { limit: limitNum, remaining: remainingNum, reset: resetNum };
+}
+
+/** Error thrown when Twitter API returns 429 with rate limit info attached. */
+export class TwitterRateLimitError extends Error {
+  readonly rateLimitError = true;
+  readonly rateLimit: TwitterRateLimit;
+  constructor(message: string, rateLimit: TwitterRateLimit) {
+    super(message);
+    this.name = "TwitterRateLimitError";
+    this.rateLimit = rateLimit;
+  }
+}
+
+function getTwitterErrorMessage(error: TwitterApiErrorRaw, status: number): string {
+  if (status === 429) return "Rate limit exceeded. Please try again in 15 minutes.";
+  if (status === 401 || status === 403)
+    return "Authentication failed. Please reconnect your Twitter account.";
+  if (error.errors?.length) return error.errors[0].message;
+  return error.detail ?? error.title ?? "Unknown error";
+}
+
+function mapUserRawToProfile(user: TwitterApiV2UserRaw): TwitterUserProfile {
+  const metrics = user.public_metrics;
+  return {
+    id: user.id,
+    username: user.username,
+    name: user.name,
+    followersCount: metrics?.followers_count ?? 0,
+    followingCount: metrics?.following_count ?? 0,
+    tweetCount: metrics?.tweet_count ?? 0,
+    listedCount: metrics?.listed_count ?? 0,
+    profileImageUrl: user.profile_image_url ?? "",
+  };
+}
+
+function mapTweetRawToMetrics(tweet: TwitterApiV2TweetRaw): TwitterTweetMetrics {
+  const pm = tweet.public_metrics;
+  return {
+    id: tweet.id,
+    text: tweet.text,
+    createdAt: tweet.created_at,
+    publicMetrics: {
+      retweetCount: pm?.retweet_count ?? 0,
+      replyCount: pm?.reply_count ?? 0,
+      likeCount: pm?.like_count ?? 0,
+      quoteCount: pm?.quote_count ?? 0,
+      bookmarkCount: pm?.bookmark_count ?? 0,
+      impressionCount: pm?.impression_count ?? 0,
+    },
+    organicMetrics: undefined,
+    nonPublicMetrics: undefined,
+  };
 }
 
 // ============================================
@@ -39,27 +118,20 @@ export async function getUserProfile(
   );
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(
-      `Twitter API error: ${
-        error.detail || error.title || JSON.stringify(error)
-      }`
-    );
+    const rateLimit = parseTwitterRateLimitHeaders(response.headers);
+    const error = (await response.json()) as TwitterApiErrorRaw;
+    if (response.status === 429 && rateLimit) {
+      throw new TwitterRateLimitError(
+        getTwitterErrorMessage(error, response.status),
+        rateLimit
+      );
+    }
+    throw new Error(`Twitter API error: ${getTwitterErrorMessage(error, response.status)}`);
   }
 
-  const data = await response.json();
-  const user = data.data;
-
-  return {
-    id: user.id,
-    username: user.username,
-    name: user.name,
-    followersCount: user.public_metrics.followers_count,
-    followingCount: user.public_metrics.following_count,
-    tweetCount: user.public_metrics.tweet_count,
-    listedCount: user.public_metrics.listed_count,
-    profileImageUrl: user.profile_image_url,
-  };
+  parseTwitterRateLimitHeaders(response.headers); // optional: could log in callers
+  const data = (await response.json()) as TwitterApiV2UserResponse;
+  return mapUserRawToProfile(data.data);
 }
 
 // ============================================
@@ -125,45 +197,21 @@ export async function getUserTweets(
   );
 
   if (!response.ok) {
-    const error = await response.json();
-
-    // Provide more helpful error messages
-    let errorMessage = error.detail || error.title || "Unknown error";
-
-    if (response.status === 429) {
-      errorMessage = "Rate limit exceeded. Please try again in 15 minutes.";
-    } else if (response.status === 401 || response.status === 403) {
-      errorMessage =
-        "Authentication failed. Please reconnect your Twitter account.";
-    } else if (error.errors && error.errors.length > 0) {
-      errorMessage = error.errors[0].message;
+    const rateLimit = parseTwitterRateLimitHeaders(response.headers);
+    const error = (await response.json()) as TwitterApiErrorRaw;
+    if (response.status === 429 && rateLimit) {
+      throw new TwitterRateLimitError(
+        getTwitterErrorMessage(error, response.status),
+        rateLimit
+      );
     }
-
-    throw new Error(`Twitter API error: ${errorMessage}`);
+    throw new Error(`Twitter API error: ${getTwitterErrorMessage(error, response.status)}`);
   }
 
-  const data = await response.json();
-
-  if (!data.data || data.data.length === 0) {
-    return [];
-  }
-
-  return data.data.map((tweet: any) => ({
-    id: tweet.id,
-    text: tweet.text,
-    createdAt: tweet.created_at,
-    publicMetrics: {
-      retweetCount: tweet.public_metrics?.retweet_count || 0,
-      replyCount: tweet.public_metrics?.reply_count || 0,
-      likeCount: tweet.public_metrics?.like_count || 0,
-      quoteCount: tweet.public_metrics?.quote_count || 0,
-      bookmarkCount: tweet.public_metrics?.bookmark_count || 0,
-      impressionCount: tweet.public_metrics?.impression_count || 0,
-    },
-    // organic_metrics and non_public_metrics not available on Free tier
-    organicMetrics: undefined,
-    nonPublicMetrics: undefined,
-  }));
+  parseTwitterRateLimitHeaders(response.headers);
+  const data = (await response.json()) as TwitterApiV2TweetsResponse;
+  if (!data.data?.length) return [];
+  return data.data.map(mapTweetRawToMetrics);
 }
 
 /**
@@ -188,41 +236,20 @@ export async function getTweetById(
   );
 
   if (!response.ok) {
-    const error = await response.json();
-
-    let errorMessage = error.detail || error.title || "Unknown error";
-
-    if (response.status === 429) {
-      errorMessage = "Rate limit exceeded. Please try again in 15 minutes.";
-    } else if (response.status === 401 || response.status === 403) {
-      errorMessage =
-        "Authentication failed. Please reconnect your Twitter account.";
-    } else if (error.errors && error.errors.length > 0) {
-      errorMessage = error.errors[0].message;
+    const rateLimit = parseTwitterRateLimitHeaders(response.headers);
+    const error = (await response.json()) as TwitterApiErrorRaw;
+    if (response.status === 429 && rateLimit) {
+      throw new TwitterRateLimitError(
+        getTwitterErrorMessage(error, response.status),
+        rateLimit
+      );
     }
-
-    throw new Error(`Twitter API error: ${errorMessage}`);
+    throw new Error(`Twitter API error: ${getTwitterErrorMessage(error, response.status)}`);
   }
 
-  const data = await response.json();
-  const tweet = data.data;
-
-  return {
-    id: tweet.id,
-    text: tweet.text,
-    createdAt: tweet.created_at,
-    publicMetrics: {
-      retweetCount: tweet.public_metrics?.retweet_count || 0,
-      replyCount: tweet.public_metrics?.reply_count || 0,
-      likeCount: tweet.public_metrics?.like_count || 0,
-      quoteCount: tweet.public_metrics?.quote_count || 0,
-      bookmarkCount: tweet.public_metrics?.bookmark_count || 0,
-      impressionCount: tweet.public_metrics?.impression_count || 0,
-    },
-    // These metrics not available on Free tier
-    organicMetrics: undefined,
-    nonPublicMetrics: undefined,
-  };
+  parseTwitterRateLimitHeaders(response.headers);
+  const data = (await response.json()) as TwitterApiV2SingleTweetResponse;
+  return mapTweetRawToMetrics(data.data);
 }
 
 /**
@@ -249,15 +276,19 @@ export async function postTweet(
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(
-      `Twitter API error: ${
-        error.detail || error.title || JSON.stringify(error)
-      }`
-    );
+    const rateLimit = parseTwitterRateLimitHeaders(response.headers);
+    const error = (await response.json()) as TwitterApiErrorRaw;
+    if (response.status === 429 && rateLimit) {
+      throw new TwitterRateLimitError(
+        getTwitterErrorMessage(error, response.status),
+        rateLimit
+      );
+    }
+    throw new Error(`Twitter API error: ${getTwitterErrorMessage(error, response.status)}`);
   }
 
-  const data = await response.json();
+  parseTwitterRateLimitHeaders(response.headers);
+  const data = (await response.json()) as TwitterApiV2PostTweetResponse;
   return data.data.id;
 }
 
@@ -276,12 +307,15 @@ export async function deleteTweet(
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(
-      `Twitter API error: ${
-        error.detail || error.title || JSON.stringify(error)
-      }`
-    );
+    const rateLimit = parseTwitterRateLimitHeaders(response.headers);
+    const error = (await response.json()) as TwitterApiErrorRaw;
+    if (response.status === 429 && rateLimit) {
+      throw new TwitterRateLimitError(
+        getTwitterErrorMessage(error, response.status),
+        rateLimit
+      );
+    }
+    throw new Error(`Twitter API error: ${getTwitterErrorMessage(error, response.status)}`);
   }
 }
 
