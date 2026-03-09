@@ -5,9 +5,11 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "lint": "eslint .",
     "start": "next start",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
+    "db:migrate:prod": "./scripts/run-migrations.sh",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "worker": "bun run workers/start.ts",
@@ -23,10 +25,10 @@
     "queue:status": "bun run scripts/queue-status.ts",
     "queue:clean": "bun run scripts/clean-queue.ts",
     "health": "curl -s http://localhost:3001/health | jq",
-    "metrics": "curl -s http://localhost:3001/metrics"
+    "metrics": "curl -s http://localhost:3001/metrics",
+    "test": "vitest run"
   },
   "dependencies": {
-    "tsx": "^4.19.0",
     "@sentry/nextjs": "^10.38.0",
     "@sentry/node": "^10.38.0",
     "better-auth": "^1.4.4",
@@ -41,6 +43,7 @@
     "react": "19.2.0",
     "react-big-calendar": "^1.19.4",
     "react-dom": "19.2.0",
+    "tsx": "^4.19.0",
     "zod": "^4.1.13"
   },
   "devDependencies": {
@@ -52,6 +55,8 @@
     "eslint": "^9",
     "eslint-config-next": "16.0.6",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vite-tsconfig-paths": "^6.1.1",
+    "vitest": "^4.0.18"
   }
 }

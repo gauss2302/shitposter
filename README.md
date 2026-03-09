@@ -37,32 +37,37 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 ## Production
 
-### Docker Deployment
+### Docker deployment
 
 To run the full stack (web, worker, postgres, redis) with Docker:
 
 ```bash
 # Run migrations before first start (from host, with DB reachable)
-bun run db:migrate
+./scripts/run-migrations.sh
+# or: npm run db:migrate
 
 # Start all services
 docker compose up -d
 ```
 
+**Full production deploy** (pull, migrate, build, restart web + worker):
+
+```bash
+./scripts/deploy-production.sh
+```
+
+See **[docs/DEPLOY.md](docs/DEPLOY.md)** for production env vars, TLS, and CI/CD setup.
+
 **Before deploying:**
 
-1. **Migrations** — Run `bun run db:migrate` (or `drizzle-kit migrate`) before starting. Containers do not run migrations automatically.
+1. **Migrations** — Run before starting or updating app/worker. Use `./scripts/run-migrations.sh` or `npm run db:migrate`. See [docs/MIGRATIONS.md](docs/MIGRATIONS.md).
 2. **App URL** — Set `NEXT_PUBLIC_APP_URL` and `BETTER_AUTH_URL` to your public base URL (e.g. `https://your-domain.com`) for auth callbacks.
 3. **Secrets** — Use strong values for `TOKEN_ENCRYPTION_KEY`, DB passwords, and OAuth credentials.
 4. **Reverse proxy** — Put nginx, Caddy, or Traefik in front for TLS and domain routing.
 
-### Health and Uptime Monitoring
+### Health and monitoring
 
-For production, use an external monitor (e.g. UptimeRobot, Better Stack, PagerDuty) to hit these endpoints on an interval (e.g. 1–5 minutes):
+- **Web**: `GET /api/health` (lightweight) or `GET /api/health?deep=1` (checks DB + Redis).
+- **Worker**: `GET http://worker-host:3001/health` — queue and Redis status; `GET .../ready` for readiness; `GET .../metrics` for Prometheus.
 
-- **Next.js app**: `GET /api/health` — returns 200 when the web app is running.
-- **Worker**: `GET http://worker-host:HEALTH_PORT/health` — returns 200 and queue/Redis status when the worker is healthy. Default port is 3001 (`HEALTH_PORT`).
-- **Worker readiness** (e.g. Kubernetes): `GET http://worker-host:HEALTH_PORT/ready` — returns 200 when ready to accept jobs.
-- **Prometheus metrics**: `GET http://worker-host:HEALTH_PORT/metrics` — worker job counts and uptime in Prometheus format.
-
-Configure alerts when any health check returns non-2xx or times out.
+See **[docs/RUNBOOK.md](docs/RUNBOOK.md)** for logs and common issues, and **[docs/METRICS.md](docs/METRICS.md)** for Prometheus and alerting.
