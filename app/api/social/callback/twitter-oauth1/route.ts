@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { nanoid } from "nanoid";
 import { eq } from "drizzle-orm";
 import { db, socialAccount } from "@/lib/db";
+import { canConnectPlatformAccount } from "@/lib/billing";
 import { logger } from "@/lib/logger";
 import { getRedis } from "@/lib/queue/connection";
 import { encrypt } from "@/lib/utils";
@@ -179,6 +180,10 @@ export async function GET(request: NextRequest) {
         })
         .where(eq(socialAccount.id, existingAccount.id));
     } else {
+      const allowed = await canConnectPlatformAccount(userId, "twitter");
+      if (!allowed) {
+        redirect("/dashboard/accounts?error=limit_reached");
+      }
       // Create new account with OAuth 1.0a credentials
       // Note: For full functionality, user should also connect via OAuth 2.0
       // OAuth 1.0a is primarily for media upload, OAuth 2.0 for API v2 endpoints

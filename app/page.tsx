@@ -92,7 +92,7 @@ export default async function HomePage() {
             {[
               {
                 title: "Multi-Account Control",
-                desc: "Connect unlimited accounts. Switch between personas instantly without logging out.",
+                desc: "Connect multiple accounts per platform. Switch between personas instantly. Plans from 1 to unlimited accounts per platform.",
                 color: "bg-[#E8F9FF]",
                 accent: "bg-[#C4D9FF]",
               },
@@ -141,7 +141,7 @@ export default async function HomePage() {
                   {
                     step: "01",
                     title: "Connect everything",
-                    text: "Securely add unlimited Instagram, TikTok, LinkedIn, X and more in seconds. Each profile stays isolated but manageable from one place.",
+                    text: "Securely add Instagram, TikTok, LinkedIn, X and more in seconds. Choose a plan that fits: 1, 4, or unlimited accounts per platform.",
                   },
                   {
                     step: "02",
@@ -254,6 +254,48 @@ export default async function HomePage() {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Pricing Section */}
+      <section id="pricing" className="py-24 px-6 bg-white">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-14">
+            <h2 className="text-4xl lg:text-5xl font-black tracking-tight mb-4">
+              Simple pricing
+            </h2>
+            <p className="text-lg text-zinc-500 max-w-xl mx-auto">
+              Subscribe once. Connect accounts per your plan. Billed monthly.
+            </p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+            {[
+              { name: "Basic", price: "$9", accounts: "1 account per platform", plan: "basic" },
+              { name: "Business", price: "$29", accounts: "4 accounts per platform", plan: "business", highlight: true },
+              { name: "Enterprise", price: "$99", accounts: "Unlimited accounts", plan: "enterprise" },
+            ].map((tier) => (
+              <div
+                key={tier.plan}
+                className={`rounded-2xl border p-6 text-center ${
+                  tier.highlight ? "border-[#C5BAFF] bg-[#C5BAFF]/5" : "border-zinc-200"
+                }`}
+              >
+                <p className="font-bold text-zinc-900">{tier.name}</p>
+                <p className="mt-3 text-3xl font-black text-zinc-900">{tier.price}<span className="text-base font-normal text-zinc-500">/mo</span></p>
+                <p className="mt-1 text-sm text-zinc-500">{tier.accounts}</p>
+                <Link
+                  href="/sign-up"
+                  className={`mt-5 block w-full rounded-xl py-3 text-sm font-semibold transition ${
+                    tier.highlight
+                      ? "bg-[#C5BAFF] text-white hover:bg-[#b4a5ff]"
+                      : "bg-zinc-900 text-white hover:bg-zinc-800"
+                  }`}
+                >
+                  Get started
+                </Link>
+              </div>
+            ))}
           </div>
         </div>
       </section>

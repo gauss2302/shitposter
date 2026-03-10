@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { NextRequest } from "next/server";
 import { nanoid } from "nanoid";
 import { auth } from "@/lib/auth";
+import { canConnectPlatformAccount } from "@/lib/billing";
 import { logger } from "@/lib/logger";
 import { getRedis } from "@/lib/queue/connection";
 import { generateTwitterOAuth1AuthLink } from "@/lib/social/twitter-oauth1";
@@ -23,6 +24,11 @@ export async function GET(request: NextRequest) {
 
   if (!consumerKey || !consumerSecret) {
     throw new Error("TWITTER_CLIENT_ID and TWITTER_CLIENT_SECRET must be set");
+  }
+
+  const allowed = await canConnectPlatformAccount(session.user.id, "twitter");
+  if (!allowed) {
+    redirect("/dashboard/accounts?error=subscription_required");
   }
 
   const baseUrl = process.env.BETTER_AUTH_URL || "http://localhost:3000";

@@ -1,10 +1,13 @@
 import { auth } from "@/lib/auth";
+import { getSubscriptionState } from "@/lib/billing";
 import { db, socialAccount } from "@/lib/db";
 import { eq, desc } from "drizzle-orm";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { AccountsClient } from "./accounts-client";
+import { BillingBanner } from "./billing-banner";
 import { LogoutButton } from "@/app/ui/logout-button";
+import { PricingSection } from "./pricing-section";
 
 export default async function AccountsPage() {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -13,10 +16,13 @@ export default async function AccountsPage() {
     redirect("/sign-in");
   }
 
-  const accounts = await db.query.socialAccount.findMany({
-    where: eq(socialAccount.userId, session.user.id),
-    orderBy: desc(socialAccount.createdAt),
-  });
+  const [accounts, subscriptionState] = await Promise.all([
+    db.query.socialAccount.findMany({
+      where: eq(socialAccount.userId, session.user.id),
+      orderBy: desc(socialAccount.createdAt),
+    }),
+    getSubscriptionState(session.user.id),
+  ]);
 
   const totalAccounts = accounts.length;
   const activeAccounts = accounts.filter((account) => account.isActive).length;
@@ -26,6 +32,7 @@ export default async function AccountsPage() {
 
   return (
     <div className="space-y-6">
+      <BillingBanner subscriptionState={subscriptionState} />
       <div className="rounded-3xl border border-zinc-200/70 bg-gradient-to-br from-white via-white to-violet-50 p-6 shadow-sm">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
@@ -88,7 +95,12 @@ export default async function AccountsPage() {
         </div>
       </div>
 
-      <AccountsClient accounts={accounts} />
+      <AccountsClient
+        accounts={accounts}
+        subscriptionState={subscriptionState}
+      />
+
+      <PricingSection />
     </div>
   );
 }

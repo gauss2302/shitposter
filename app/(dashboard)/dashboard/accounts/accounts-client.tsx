@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { SocialAccount } from "@/lib/db/schema";
+import type { SubscriptionState } from "@/lib/billing";
 
 const platforms = [
   {
@@ -57,9 +58,13 @@ const platforms = [
 
 interface AccountsClientProps {
   accounts: SocialAccount[];
+  subscriptionState: SubscriptionState | null;
 }
 
-export function AccountsClient({ accounts }: AccountsClientProps) {
+export function AccountsClient({
+  accounts,
+  subscriptionState,
+}: AccountsClientProps) {
   const router = useRouter();
   const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
   const [disconnectingId, setDisconnectingId] = useState<string | null>(null);
@@ -72,6 +77,13 @@ export function AccountsClient({ accounts }: AccountsClientProps) {
     acc[account.platform].push(account);
     return acc;
   }, {} as Record<string, SocialAccount[]>);
+
+  function canConnectMore(platformId: string): boolean {
+    if (!subscriptionState) return false;
+    const count = accountsByPlatform[platformId]?.length ?? 0;
+    if (subscriptionState.limitPerPlatform === null) return true;
+    return count < subscriptionState.limitPerPlatform;
+  }
 
   const handleConnect = (platformId: string) => {
     window.location.href = `/api/social/connect/${platformId}`;
@@ -208,10 +220,18 @@ export function AccountsClient({ accounts }: AccountsClientProps) {
 
                     <button
                       onClick={() => handleConnect(selectedPlatform)}
-                      className="px-6 py-3 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white font-semibold rounded-xl transition shadow-lg"
+                      disabled={!canConnectMore(selectedPlatform)}
+                      className="px-6 py-3 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white font-semibold rounded-xl transition shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       + Connect New Account
                     </button>
+                    {!canConnectMore(selectedPlatform) && (
+                      <p className="text-xs text-zinc-500 mt-1">
+                        {!subscriptionState
+                          ? "Subscribe to connect accounts."
+                          : "Limit reached for this platform. Upgrade to add more."}
+                      </p>
+                    )}
                   </div>
                 );
               })()}
@@ -242,10 +262,18 @@ export function AccountsClient({ accounts }: AccountsClientProps) {
                       </p>
                       <button
                         onClick={() => handleConnect(selectedPlatform)}
-                        className="px-4 py-2 bg-zinc-900 text-white text-sm font-medium rounded-lg hover:bg-zinc-800 transition shadow-sm"
+                        disabled={!canConnectMore(selectedPlatform)}
+                        className="px-4 py-2 bg-zinc-900 text-white text-sm font-medium rounded-lg hover:bg-zinc-800 transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         Connect {platform?.name}
                       </button>
+                    {!canConnectMore(selectedPlatform) && (
+                      <p className="text-xs text-zinc-500 mt-2">
+                        {!subscriptionState
+                          ? "Subscribe to connect accounts."
+                          : "Limit reached. Upgrade to add more."}
+                      </p>
+                    )}
                     </div>
                   );
                 }

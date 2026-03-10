@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { nanoid } from "nanoid";
 import { eq } from "drizzle-orm";
 import { db, socialAccount } from "@/lib/db";
+import { canConnectPlatformAccount } from "@/lib/billing";
 import { logger } from "@/lib/logger";
 import { getRedis } from "@/lib/queue/connection";
 import { encrypt } from "@/lib/utils";
@@ -98,7 +99,7 @@ export async function GET(
     });
 
     if (existingAccount) {
-      // Update existing account
+      // Update existing account (reconnect) — no plan limit check
       await db
         .update(socialAccount)
         .set({
@@ -116,7 +117,11 @@ export async function GET(
         })
         .where(eq(socialAccount.id, existingAccount.id));
     } else {
-      // Create new account
+      // New account: enforce plan limit again (race / stale state)
+      const allowed = await canConnectPlatformAccount(userId, platform);
+      if (!allowed) {
+        redirect("/dashboard/accounts?error=limit_reached");
+      }
       await db.insert(socialAccount).values({
         id: nanoid(),
         userId,

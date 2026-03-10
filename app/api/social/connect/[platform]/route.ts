@@ -4,6 +4,7 @@ import { NextRequest } from "next/server";
 import { nanoid } from "nanoid";
 import { createHash } from "crypto";
 import { auth } from "@/lib/auth";
+import { canConnectPlatformAccount } from "@/lib/billing";
 import { getRedis } from "@/lib/queue/connection";
 
 // OAuth configurations for each platform
@@ -79,6 +80,11 @@ export async function GET(
   const config = oauthConfigs[platform as keyof typeof oauthConfigs];
   if (!config) {
     return new Response(`Unknown platform: ${platform}`, { status: 400 });
+  }
+
+  const allowed = await canConnectPlatformAccount(session.user.id, platform);
+  if (!allowed) {
+    redirect("/dashboard/accounts?error=subscription_required");
   }
 
   // Generate state and PKCE verifier

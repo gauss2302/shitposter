@@ -6,7 +6,6 @@ import {
   integer,
   primaryKey,
 } from "drizzle-orm/pg-core";
-
 // ============================================
 // BETTER AUTH TABLES
 // ============================================
@@ -59,6 +58,34 @@ export const verification = pgTable("verification", {
   expiresAt: timestamp("expires_at").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// ============================================
+// BILLING (Polar)
+// ============================================
+
+export const subscription = pgTable("subscription", {
+  id: text("id").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .unique()
+    .references(() => user.id, { onDelete: "cascade" }),
+
+  polarCustomerId: text("polar_customer_id"),
+  polarSubscriptionId: text("polar_subscription_id"),
+
+  plan: text("plan").notNull(), // 'basic' | 'business' | 'enterprise'
+  status: text("status").notNull(), // active, canceled, past_due, unpaid, etc.
+
+  currentPeriodStart: timestamp("current_period_start"),
+  currentPeriodEnd: timestamp("current_period_end"),
+  cancelAtPeriodEnd: boolean("cancel_at_period_end").notNull().default(false),
+  canceledAt: timestamp("canceled_at"),
+
+  metadata: text("metadata"), // optional JSON for webhook sync trace
+
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
 // ============================================
@@ -132,6 +159,7 @@ export const postTarget = pgTable("post_target", {
 // ============================================
 
 export type User = typeof user.$inferSelect;
+export type Subscription = typeof subscription.$inferSelect;
 export type SocialAccount = typeof socialAccount.$inferSelect;
 export type Post = typeof post.$inferSelect;
 export type PostTarget = typeof postTarget.$inferSelect;
