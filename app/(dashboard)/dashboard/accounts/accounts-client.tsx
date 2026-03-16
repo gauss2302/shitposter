@@ -5,56 +5,62 @@ import { useRouter } from "next/navigation";
 import type { SocialAccount } from "@/lib/db/schema";
 import type { SubscriptionState } from "@/lib/billing";
 
-const platforms = [
-  {
+const platformCatalog = {
+  twitter: {
     id: "twitter",
     name: "X (Twitter)",
     icon: "𝕏",
     color: "bg-black",
     description: "Post tweets and threads",
     stats: "280 chars • Images & Videos",
+    connectEnabled: true,
   },
-  {
-    id: "instagram",
-    name: "Instagram",
-    icon: "📸",
-    color: "bg-gradient-to-br from-purple-600 via-pink-500 to-orange-400",
-    description: "Share photos and reels",
-    stats: "2,200 chars • 10 images max",
-  },
-  {
-    id: "tiktok",
-    name: "TikTok",
-    icon: "🎵",
-    color: "bg-black",
-    description: "Upload short videos",
-    stats: "2,200 chars • Video only",
-  },
-  {
+  linkedin: {
     id: "linkedin",
     name: "LinkedIn",
     icon: "💼",
     color: "bg-blue-700",
     description: "Professional updates",
     stats: "3,000 chars • 20 images max",
+    connectEnabled: true,
   },
-  {
+  instagram: {
+    id: "instagram",
+    name: "Instagram",
+    icon: "📸",
+    color: "bg-gradient-to-br from-purple-600 via-pink-500 to-orange-400",
+    description: "Legacy connection",
+    stats: "New connections disabled",
+    connectEnabled: false,
+  },
+  tiktok: {
+    id: "tiktok",
+    name: "TikTok",
+    icon: "🎵",
+    color: "bg-black",
+    description: "Legacy connection",
+    stats: "New connections disabled",
+    connectEnabled: false,
+  },
+  facebook: {
     id: "facebook",
     name: "Facebook",
     icon: "📘",
     color: "bg-blue-600",
-    description: "Pages and groups",
-    stats: "63K chars • Rich media",
+    description: "Legacy connection",
+    stats: "New connections disabled",
+    connectEnabled: false,
   },
-  {
+  threads: {
     id: "threads",
     name: "Threads",
     icon: "🧵",
     color: "bg-black",
-    description: "Text-based posts",
-    stats: "500 chars • Instagram linked",
+    description: "Legacy connection",
+    stats: "New connections disabled",
+    connectEnabled: false,
   },
-];
+} as const;
 
 interface AccountsClientProps {
   accounts: SocialAccount[];
@@ -77,6 +83,23 @@ export function AccountsClient({
     acc[account.platform].push(account);
     return acc;
   }, {} as Record<string, SocialAccount[]>);
+
+  const platforms = Array.from(
+    new Set(["twitter", "linkedin", ...Object.keys(accountsByPlatform)])
+  ).map((platformId) => {
+    const metadata =
+      platformCatalog[platformId as keyof typeof platformCatalog] ?? {
+        id: platformId,
+        name: platformId,
+        icon: "🌐",
+        color: "bg-zinc-700",
+        description: "Legacy connection",
+        stats: "New connections disabled",
+        connectEnabled: false,
+      };
+
+    return metadata;
+  });
 
   function canConnectMore(platformId: string): boolean {
     if (!subscriptionState) return false;
@@ -113,7 +136,7 @@ export function AccountsClient({
       } else {
         alert("Failed to disconnect account");
       }
-    } catch (error) {
+    } catch {
       alert("An error occurred");
     } finally {
       setDisconnectingId(null);
@@ -218,20 +241,34 @@ export function AccountsClient({
                       </div>
                     </div>
 
-                    <button
-                      onClick={() => handleConnect(selectedPlatform)}
-                      disabled={!canConnectMore(selectedPlatform)}
-                      className="px-6 py-3 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white font-semibold rounded-xl transition shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      + Connect New Account
-                    </button>
-                    {!canConnectMore(selectedPlatform) && (
-                      <p className="text-xs text-zinc-500 mt-1">
-                        {!subscriptionState
-                          ? "Subscribe to connect accounts."
-                          : "Limit reached for this platform. Upgrade to add more."}
-                      </p>
-                    )}
+                    <div className="text-right">
+                      <button
+                        onClick={() => handleConnect(selectedPlatform)}
+                        disabled={
+                          !platform?.connectEnabled ||
+                          !canConnectMore(selectedPlatform)
+                        }
+                        className="px-6 py-3 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white font-semibold rounded-xl transition shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {platform?.connectEnabled
+                          ? "+ Connect New Account"
+                          : "Unavailable"}
+                      </button>
+                      {platform && !platform.connectEnabled && (
+                        <p className="mt-1 text-xs text-zinc-500">
+                          New {platform.name} connections are disabled in
+                          production.
+                        </p>
+                      )}
+                      {platform?.connectEnabled &&
+                        !canConnectMore(selectedPlatform) && (
+                          <p className="mt-1 text-xs text-zinc-500">
+                            {!subscriptionState
+                              ? "Subscribe to connect accounts."
+                              : "Limit reached for this platform. Upgrade to add more."}
+                          </p>
+                        )}
+                    </div>
                   </div>
                 );
               })()}
@@ -262,18 +299,30 @@ export function AccountsClient({
                       </p>
                       <button
                         onClick={() => handleConnect(selectedPlatform)}
-                        disabled={!canConnectMore(selectedPlatform)}
+                        disabled={
+                          !platform?.connectEnabled ||
+                          !canConnectMore(selectedPlatform)
+                        }
                         className="px-4 py-2 bg-zinc-900 text-white text-sm font-medium rounded-lg hover:bg-zinc-800 transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        Connect {platform?.name}
+                        {platform?.connectEnabled
+                          ? `Connect ${platform?.name}`
+                          : `${platform?.name} unavailable`}
                       </button>
-                    {!canConnectMore(selectedPlatform) && (
-                      <p className="text-xs text-zinc-500 mt-2">
-                        {!subscriptionState
-                          ? "Subscribe to connect accounts."
-                          : "Limit reached. Upgrade to add more."}
-                      </p>
-                    )}
+                      {!platform?.connectEnabled && (
+                        <p className="mt-2 text-xs text-zinc-500">
+                          New connections for this platform are disabled in
+                          production.
+                        </p>
+                      )}
+                      {platform?.connectEnabled &&
+                        !canConnectMore(selectedPlatform) && (
+                          <p className="text-xs text-zinc-500 mt-2">
+                            {!subscriptionState
+                              ? "Subscribe to connect accounts."
+                              : "Limit reached. Upgrade to add more."}
+                          </p>
+                        )}
                     </div>
                   );
                 }
@@ -292,7 +341,7 @@ export function AccountsClient({
                           Followers
                         </th>
                         <th className="px-6 py-3 font-semibold text-zinc-500 text-xs uppercase tracking-wider text-right">
-                          Posts
+                          Platform
                         </th>
                         <th className="px-6 py-3 font-semibold text-zinc-500 text-xs uppercase tracking-wider text-right">
                           Connected
@@ -359,8 +408,10 @@ export function AccountsClient({
                               : "—"}
                           </td>
                           <td className="px-6 py-3 text-right font-medium text-zinc-700">
-                            {/* Mock post count for now */}
-                            {Math.floor(Math.random() * 500) + 12}
+                            {
+                              platforms.find((p) => p.id === account.platform)
+                                ?.name
+                            }
                           </td>
                           <td className="px-6 py-3 text-right text-zinc-500 text-xs">
                             {account.createdAt.toLocaleDateString()}

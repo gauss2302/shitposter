@@ -1,13 +1,10 @@
 import { auth } from "@/lib/auth";
 import { db, socialAccount } from "@/lib/db";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { TwitterAnalytics } from "./twitter-analytics";
-import { LinkedInAnalytics } from "./linkedin-analytics";
-import { InstagramAnalytics } from "./instagram-analytics";
-import { TikTokAnalytics } from "./tiktok-analytics";
 import { LogoutButton } from "@/app/ui/logout-button";
 
 export default async function AnalyticsPage() {
@@ -23,23 +20,16 @@ export default async function AnalyticsPage() {
     orderBy: desc(socialAccount.createdAt),
   });
 
-  const accountsByPlatform = {
-    twitter: allAccounts.filter((a) => a.platform === "twitter" && a.isActive),
-    linkedin: allAccounts.filter(
-      (a) => a.platform === "linkedin" && a.isActive
-    ),
-    instagram: allAccounts.filter(
-      (a) => a.platform === "instagram" && a.isActive
-    ),
-    tiktok: allAccounts.filter((a) => a.platform === "tiktok" && a.isActive),
-  };
+  const twitterAccounts = allAccounts.filter(
+    (account) => account.platform === "twitter" && account.isActive
+  );
 
-  const totalFollowers = allAccounts.reduce(
+  const totalFollowers = twitterAccounts.reduce(
     (sum, acc) => sum + (acc.followerCount || 0),
     0
   );
 
-  const activeAccountsCount = allAccounts.filter((a) => a.isActive).length;
+  const activeAccountsCount = twitterAccounts.length;
 
   return (
     <div className="space-y-8">
@@ -51,10 +41,10 @@ export default async function AnalyticsPage() {
               Analytics
             </p>
             <h1 className="text-3xl font-bold text-zinc-900">
-              Cross-Platform Performance
+              X Analytics
             </h1>
             <p className="text-zinc-500">
-              Track your growth across Twitter, LinkedIn, Instagram, and TikTok
+              Analytics are currently available for connected X accounts only.
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -73,23 +63,22 @@ export default async function AnalyticsPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {[
           {
-            label: "Connected Accounts",
-            value: allAccounts.length,
-            helper: `${activeAccountsCount} active`,
+            label: "Active X Accounts",
+            value: activeAccountsCount,
+            helper:
+              activeAccountsCount === 1 ? "1 connected account" : "Connected accounts",
             color: "from-blue-50 to-blue-100",
           },
           {
-            label: "Total Audience",
+            label: "Estimated Audience",
             value: totalFollowers,
-            helper: "Across all platforms",
+            helper: "Across connected X accounts",
             color: "from-violet-50 to-violet-100",
           },
           {
-            label: "Platforms Active",
-            value: Object.values(accountsByPlatform).filter(
-              (list) => list.length > 0
-            ).length,
-            helper: "Out of 4 supported",
+            label: "API Dependency",
+            value: twitterAccounts.length > 0 ? "Live" : "Idle",
+            helper: "This view depends on X API access",
             color: "from-green-50 to-green-100",
           },
         ].map((stat) => (
@@ -101,24 +90,25 @@ export default async function AnalyticsPage() {
               {stat.label}
             </p>
             <p className="text-3xl font-bold text-zinc-900 mb-1">
-              {stat.value.toLocaleString()}
+              {typeof stat.value === "number"
+                ? stat.value.toLocaleString()
+                : stat.value}
             </p>
             <p className="text-sm text-zinc-600">{stat.helper}</p>
           </div>
         ))}
       </div>
 
-      {/* Twitter Analytics */}
-      {accountsByPlatform.twitter.length > 0 && (
+      {twitterAccounts.length > 0 ? (
         <section className="space-y-6">
           <div className="flex items-center gap-3 pb-2 border-b border-zinc-200">
             <span className="text-2xl">𝕏</span>
             <h2 className="text-xl font-bold text-zinc-900">
-              Twitter Analytics
+              Account Performance
             </h2>
           </div>
           <div className="space-y-8">
-            {accountsByPlatform.twitter.map((account) => (
+            {twitterAccounts.map((account) => (
               <div
                 key={account.id}
                 className="bg-white rounded-2xl border border-zinc-200 p-6"
@@ -128,81 +118,25 @@ export default async function AnalyticsPage() {
             ))}
           </div>
         </section>
-      )}
-
-      {/* LinkedIn Analytics */}
-      {accountsByPlatform.linkedin.length > 0 && (
-        <section className="space-y-6">
-          <div className="flex items-center gap-3 pb-2 border-b border-zinc-200">
-            <span className="text-2xl text-blue-600">👔</span>
-            <h2 className="text-xl font-bold text-zinc-900">
-              LinkedIn Analytics
-            </h2>
-          </div>
-          <div className="space-y-8">
-            {accountsByPlatform.linkedin.map((account) => (
-              <div
-                key={account.id}
-                className="bg-white rounded-2xl border border-zinc-200 p-6"
-              >
-                <LinkedInAnalytics account={account} />
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Instagram Analytics */}
-      {accountsByPlatform.instagram.length > 0 && (
-        <section className="space-y-6">
-          <div className="flex items-center gap-3 pb-2 border-b border-zinc-200">
-            <span className="text-2xl">📸</span>
-            <h2 className="text-xl font-bold text-zinc-900">
-              Instagram Analytics
-            </h2>
-          </div>
-          <div className="space-y-8">
-            {accountsByPlatform.instagram.map((account) => (
-              <div
-                key={account.id}
-                className="bg-white rounded-2xl border border-zinc-200 p-6"
-              >
-                <InstagramAnalytics account={account} />
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* TikTok Analytics */}
-      {accountsByPlatform.tiktok.length > 0 && (
-        <section className="space-y-6">
-          <div className="flex items-center gap-3 pb-2 border-b border-zinc-200">
-            <span className="text-2xl">🎵</span>
-            <h2 className="text-xl font-bold text-zinc-900">
-              TikTok Analytics
-            </h2>
-          </div>
-          <div className="space-y-8">
-            {accountsByPlatform.tiktok.map((account) => (
-              <div
-                key={account.id}
-                className="bg-white rounded-2xl border border-zinc-200 p-6"
-              >
-                <TikTokAnalytics account={account} />
-              </div>
-            ))}
-          </div>
-        </section>
+      ) : (
+        <div className="rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 p-8 text-center">
+          <h2 className="text-lg font-bold text-zinc-900">
+            Connect X to unlock analytics
+          </h2>
+          <p className="mt-2 text-zinc-500">
+            Other analytics views were removed until they can be implemented
+            with reliable production data.
+          </p>
+        </div>
       )}
 
       {/* Empty State / Connect More */}
       <div className="bg-zinc-50 border border-zinc-200 rounded-2xl p-8 text-center">
         <h3 className="text-lg font-bold text-zinc-900 mb-2">
-          Connect More Accounts
+          Manage account connections
         </h3>
         <p className="text-zinc-500 mb-6">
-          Add more platforms to see all your analytics in one place.
+          X analytics stay available only while X API access is enabled.
         </p>
         <Link
           href="/dashboard/accounts"

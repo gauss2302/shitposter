@@ -8,6 +8,8 @@ import { db, post, postTarget, socialAccount } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import { schedulePost, publishPostNow } from "@/lib/queue/queues";
 
+const SUPPORTED_PUBLISHING_PLATFORMS = new Set(["twitter", "linkedin"]);
+
 export async function POST(request: NextRequest) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) {
@@ -91,6 +93,20 @@ export async function POST(request: NextRequest) {
         {
           error: `Some accounts are disconnected: ${inactiveAccounts
             .map((a) => a.platformUsername)
+            .join(", ")}`,
+        },
+        { status: 400 }
+      );
+    }
+
+    const unsupportedAccounts = accounts.filter(
+      (account) => !SUPPORTED_PUBLISHING_PLATFORMS.has(account.platform)
+    );
+    if (unsupportedAccounts.length > 0) {
+      return NextResponse.json(
+        {
+          error: `Posting is currently limited to X and LinkedIn. Unsupported accounts: ${unsupportedAccounts
+            .map((account) => account.platformUsername)
             .join(", ")}`,
         },
         { status: 400 }
@@ -258,7 +274,7 @@ export async function POST(request: NextRequest) {
 }
 
 // GET handler remains the same
-export async function GET(request: NextRequest) {
+export async function GET() {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

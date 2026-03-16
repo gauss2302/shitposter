@@ -1,5 +1,6 @@
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
+import { getBaseUrl } from "@/lib/env";
 import { polar } from "@/lib/polar";
 
 export async function POST() {
@@ -18,8 +19,7 @@ export async function POST() {
     );
   }
 
-  const baseUrl = process.env.BETTER_AUTH_URL || "http://localhost:3000";
-  const returnUrl = `${baseUrl}/dashboard/accounts`;
+  const returnUrl = `${getBaseUrl()}/dashboard/accounts`;
 
   try {
     const customerSession = await polar.customerSessions.create({

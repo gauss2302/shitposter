@@ -4,6 +4,7 @@ import { nanoid } from "nanoid";
 import { eq } from "drizzle-orm";
 import { db, socialAccount } from "@/lib/db";
 import { canConnectPlatformAccount } from "@/lib/billing";
+import { getBaseUrl } from "@/lib/env";
 import { logger } from "@/lib/logger";
 import { getRedis } from "@/lib/queue/connection";
 import { encrypt } from "@/lib/utils";
@@ -147,8 +148,7 @@ export async function GET(
 
 // Twitter token exchange
 async function exchangeTwitterCode(code: string, codeVerifier: string) {
-  const baseUrl = process.env.BETTER_AUTH_URL || "http://localhost:3000";
-  const redirectUri = `${baseUrl}/api/social/callback/twitter`;
+  const redirectUri = `${getBaseUrl()}/api/social/callback/twitter`;
 
   const clientId = process.env.TWITTER_CLIENT_ID!;
   const clientSecret = process.env.TWITTER_CLIENT_SECRET!;
@@ -209,8 +209,7 @@ async function exchangeTwitterCode(code: string, codeVerifier: string) {
 
 // LinkedIn token exchange
 async function exchangeLinkedInCode(code: string) {
-  const baseUrl = process.env.BETTER_AUTH_URL || "http://localhost:3000";
-  const redirectUri = `${baseUrl}/api/social/callback/linkedin`;
+  const redirectUri = `${getBaseUrl()}/api/social/callback/linkedin`;
 
   const clientId = process.env.LINKEDIN_CLIENT_ID!;
   const clientSecret = process.env.LINKEDIN_CLIENT_SECRET!;

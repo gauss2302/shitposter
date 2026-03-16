@@ -1,18 +1,12 @@
 import Image from "next/image";
-import { headers } from "next/headers";
-import { redirect } from "next/navigation";
 import Link from "next/link";
-import { auth } from "@/lib/auth";
+import { MarketingHeader } from "@/app/ui/marketing-header";
 
 export default async function HomePage() {
-  const session = await auth.api.getSession({ headers: await headers() });
-
-  if (session) {
-    redirect("/dashboard");
-  }
-
   return (
     <div className="min-h-screen bg-[#FBFBFB] text-zinc-900 selection:bg-[#C5BAFF] selection:text-white overflow-x-hidden">
+      <MarketingHeader />
+
       {/* Hero Section */}
       <section className="relative pt-40 pb-20 lg:pt-52 lg:pb-32 px-6 overflow-hidden">
         {/* Background Blobs */}
@@ -75,7 +69,7 @@ export default async function HomePage() {
       </section>
 
       {/* Functionality Section */}
-      <section className="py-32 px-6 bg-white relative">
+      <section id="features" className="py-32 px-6 bg-white relative">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-20">
             <h2 className="text-4xl lg:text-5xl font-black tracking-tight mb-6">
@@ -129,7 +123,7 @@ export default async function HomePage() {
       </section>
 
       {/* System Structure Section */}
-      <section className="py-32 px-6 bg-[#FBFBFB] overflow-hidden">
+      <section id="demo" className="py-32 px-6 bg-[#FBFBFB] overflow-hidden">
         <div className="max-w-7xl mx-auto">
           <div className="grid lg:grid-cols-2 gap-20 items-center">
             <div>

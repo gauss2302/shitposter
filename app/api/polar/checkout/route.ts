@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
+import { getBaseUrl } from "@/lib/env";
 import { polar, polarProductIds, type PlanSlug } from "@/lib/polar";
 
 const VALID_PLANS: PlanSlug[] = ["basic", "business", "enterprise"];
@@ -47,7 +48,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const baseUrl = process.env.BETTER_AUTH_URL || "http://localhost:3000";
+  const baseUrl = getBaseUrl();
   const successUrl = `${baseUrl}/dashboard/accounts?success=subscribed`;
   const returnUrl = `${baseUrl}/dashboard/accounts`;
 

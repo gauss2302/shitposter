@@ -7,7 +7,7 @@ const nextConfig: NextConfig = {
   output: "standalone",
   basePath: basePath || undefined,
   assetPrefix: basePath ? `${basePath}/` : undefined,
-  allowedDevOrigins: ["eda33c1daf37.ngrok-free.app"],
+  allowedDevOrigins: ["app.shitposter.art"],
   // Bundle ioredis instead of externalizing it - fixes Node.js resolution of ioredis/built/utils
   serverExternalPackages: [],
   async headers() {

@@ -36,7 +36,7 @@ docker-compose up -d --no-deps web worker
 echo "⏳ Waiting for health checks..."
 sleep 15
 
-WEB_URL="${NEXT_PUBLIC_APP_URL:-http://localhost:3010}"
+WEB_URL="${NEXT_PUBLIC_APP_URL:?NEXT_PUBLIC_APP_URL must be set}"
 WEB_HEALTH="${WEB_URL}/api/health"
 WORKER_HEALTH="http://localhost:3001/health"
 

@@ -1,9 +1,9 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { NextRequest } from "next/server";
 import { nanoid } from "nanoid";
 import { auth } from "@/lib/auth";
 import { canConnectPlatformAccount } from "@/lib/billing";
+import { getBaseUrl } from "@/lib/env";
 import { logger } from "@/lib/logger";
 import { getRedis } from "@/lib/queue/connection";
 import { generateTwitterOAuth1AuthLink } from "@/lib/social/twitter-oauth1";
@@ -12,7 +12,7 @@ import { generateTwitterOAuth1AuthLink } from "@/lib/social/twitter-oauth1";
  * Step 1: Request OAuth 1.0a request token from Twitter
  * This initiates the 3-legged OAuth flow for obtaining access tokens
  */
-export async function GET(request: NextRequest) {
+export async function GET() {
   // Verify user is authenticated
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) {
@@ -31,8 +31,7 @@ export async function GET(request: NextRequest) {
     redirect("/dashboard/accounts?error=subscription_required");
   }
 
-  const baseUrl = process.env.BETTER_AUTH_URL || "http://localhost:3000";
-  const callbackUrl = `${baseUrl}/api/social/callback/twitter-oauth1`;
+  const callbackUrl = `${getBaseUrl()}/api/social/callback/twitter-oauth1`;
 
   try {
     const authLink = await generateTwitterOAuth1AuthLink({

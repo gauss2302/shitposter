@@ -17,11 +17,6 @@ services:
       - NODE_ENV=development
       - REDIS_URL=redis://redis:6379
       - DATABASE_URL=postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-socialposter}
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_NAME=${DB_NAME:-socialposter}
-      - DB_USER=${DB_USER:-postgres}
-      - DB_PASSWORD=${DB_PASSWORD:-postgres}
       - TOKEN_ENCRYPTION_KEY=${TOKEN_ENCRYPTION_KEY}
       - TWITTER_CLIENT_ID=${TWITTER_CLIENT_ID}
       - TWITTER_CLIENT_SECRET=${TWITTER_CLIENT_SECRET}
@@ -38,4 +33,4 @@ services:
       - "3001:3001"
     networks:
       - shitpost-network
-    command: bun --watch run workers/start.ts
+    command: npx tsx watch workers/start.ts

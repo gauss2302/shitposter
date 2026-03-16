@@ -7,7 +7,6 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { PostsNotification } from "./notification";
-import { ScheduledTime } from "./scheduled-time";
 import { PostsClient } from "./posts-client";
 import { PostsViewClient } from "./posts-view-client";
 
@@ -18,16 +17,6 @@ const platformIcons: Record<string, string> = {
   linkedin: "💼",
   facebook: "📘",
   threads: "🧵",
-};
-
-const statusColors: Record<string, string> = {
-  draft: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
-  scheduled: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
-  publishing:
-    "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300",
-  published:
-    "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
-  failed: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
 };
 
 const headerMenu = [
@@ -54,6 +43,10 @@ export default async function PostsPage() {
     where: eq(socialAccount.userId, session.user.id),
     orderBy: desc(socialAccount.createdAt),
   });
+  const composeAccounts = allAccounts.filter(
+    (account) =>
+      account.platform === "twitter" || account.platform === "linkedin"
+  );
 
   // Get targets for each post
   const postsWithTargets = await Promise.all(
@@ -167,7 +160,7 @@ export default async function PostsPage() {
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <PostsClient accounts={allAccounts} />
+            <PostsClient accounts={composeAccounts} />
             <Link
               href="/dashboard"
               className="inline-flex items-center gap-2 rounded-lg bg-zinc-900 px-3 py-1.5 text-white text-sm transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
@@ -377,23 +370,4 @@ export default async function PostsPage() {
       </div>
     </div>
   );
-}
-
-function getPlatformUrl(
-  platform: string,
-  username: string,
-  postId: string
-): string {
-  switch (platform) {
-    case "twitter":
-      return `https://twitter.com/${username}/status/${postId}`;
-    case "instagram":
-      return `https://www.instagram.com/p/${postId}/`;
-    case "tiktok":
-      return `https://www.tiktok.com/@${username}/video/${postId}`;
-    case "linkedin":
-      return `https://www.linkedin.com/feed/update/${postId}`;
-    default:
-      return "#";
-  }
 }

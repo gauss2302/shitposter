@@ -1,11 +1,6 @@
 import Link from "next/link";
-import type { Session } from "@/lib/auth";
 
-interface SiteFooterProps {
-  session: Session | null;
-}
-
-export function SiteFooter({ session }: SiteFooterProps) {
+export function SiteFooter() {
   const year = new Date().getFullYear();
 
   return (
@@ -17,9 +12,7 @@ export function SiteFooter({ session }: SiteFooterProps) {
               shitpost.art
             </p>
             <p className="text-sm text-zinc-500 dark:text-zinc-400">
-              {session
-                ? `Signed in as ${session.user.email}`
-                : "You are browsing as a guest. Join to unlock the dashboard."}
+              Plan, publish, and review your social accounts from one place.
             </p>
           </div>
           <div className="flex flex-wrap gap-4 text-sm text-zinc-600 dark:text-zinc-400">
