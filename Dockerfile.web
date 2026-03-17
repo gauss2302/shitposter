@@ -23,8 +23,19 @@ ENV NEXT_PUBLIC_BASE_PATH=${NEXT_PUBLIC_BASE_PATH}
 # Real values come from docker-compose at runtime
 ENV REDIS_URL=redis://localhost:6379
 ENV BETTER_AUTH_SECRET=build-placeholder-not-used-at-runtime
+ENV BETTER_AUTH_URL=https://app.example.com
+ENV NEXT_PUBLIC_APP_URL=https://app.example.com
 ENV DATABASE_URL=postgresql://postgres:postgres@localhost:5432/socialposter
 ENV TOKEN_ENCRYPTION_KEY=build-placeholder-not-used-at-runtime
+ENV GOOGLE_CLIENT_ID=build-placeholder
+ENV GOOGLE_CLIENT_SECRET=build-placeholder
+ENV TWITTER_CLIENT_ID=build-placeholder
+ENV TWITTER_CLIENT_SECRET=build-placeholder
+ENV LINKEDIN_CLIENT_ID=build-placeholder
+ENV LINKEDIN_CLIENT_SECRET=build-placeholder
+ENV NEXT_PUBLIC_SENTRY_DSN=
+ENV SENTRY_DSN=
+ENV SENTRY_ENVIRONMENT=build
 
 RUN npm run build
 

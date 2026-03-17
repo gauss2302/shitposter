@@ -2,25 +2,6 @@ import { Queue } from "bullmq";
 import { logger } from "@/lib/logger";
 import { createRedisConnection } from "./connection";
 
-// Post publishing queue
-export const postQueue = new Queue("post-publishing", {
-  connection: createRedisConnection(),
-  defaultJobOptions: {
-    attempts: 3,
-    backoff: {
-      type: "exponential",
-      delay: 30000, // Start with 30s, then 60s, then 120s
-    },
-    removeOnComplete: {
-      age: 86400, // Keep completed jobs for 24 hours
-      count: 1000, // Keep last 1000 completed jobs
-    },
-    removeOnFail: {
-      age: 604800, // Keep failed jobs for 7 days
-    },
-  },
-});
-
 // Types for job data
 export interface PublishPostJobData {
   postId: string;
@@ -29,6 +10,32 @@ export interface PublishPostJobData {
   socialAccountId: string;
   content: string;
   mediaData?: Array<{ data: string; mimeType: string }>; // Base64 media
+}
+
+let postQueue: Queue<PublishPostJobData> | null = null;
+
+function getPostQueue() {
+  if (!postQueue) {
+    postQueue = new Queue<PublishPostJobData>("post-publishing", {
+      connection: createRedisConnection(),
+      defaultJobOptions: {
+        attempts: 3,
+        backoff: {
+          type: "exponential",
+          delay: 30000, // Start with 30s, then 60s, then 120s
+        },
+        removeOnComplete: {
+          age: 86400, // Keep completed jobs for 24 hours
+          count: 1000, // Keep last 1000 completed jobs
+        },
+        removeOnFail: {
+          age: 604800, // Keep failed jobs for 7 days
+        },
+      },
+    });
+  }
+
+  return postQueue;
 }
 
 // Helper to schedule a post
@@ -53,7 +60,7 @@ export async function schedulePost(
     delaySeconds: Math.round(delay / 1000),
   });
 
-  return postQueue.add("publish", data, {
+  return getPostQueue().add("publish", data, {
     delay,
     jobId: `post-${data.postId}-${data.targetId}`, // Prevent duplicates
   });
@@ -63,7 +70,7 @@ export async function schedulePost(
 export async function publishPostNow(data: PublishPostJobData) {
   logger.debug("Publishing post immediately (1s delay)");
 
-  return postQueue.add("publish", data, {
+  return getPostQueue().add("publish", data, {
     delay: 1000, // 1 second delay to ensure DB commit completes
     jobId: `post-${data.postId}-${data.targetId}`,
   });
