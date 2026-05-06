@@ -30,14 +30,14 @@ export interface SocialAccount {
   platformUsername: string;
   accessToken?: string;
   refreshToken?: string | null;
-  tokenExpiresAt?: Date | string | null;
+  tokenExpiresAt?: Date | null;
   oauth1AccessToken?: string | null;
   accessTokenSecret?: string | null;
   profileImageUrl?: string | null;
-  followerCount?: number | null;
+  followerCount: number | null;
   isActive: boolean;
-  createdAt: Date | string;
-  updatedAt: Date | string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface PostTarget {
@@ -46,9 +46,9 @@ export interface PostTarget {
   socialAccountId: string;
   status: string;
   platformPostId?: string | null;
-  publishedAt?: Date | string | null;
+  publishedAt?: Date | null;
   errorMessage?: string | null;
-  account?: SocialAccount | null;
+  account: SocialAccount | null;
 }
 
 export interface Post {
@@ -56,10 +56,10 @@ export interface Post {
   userId: string;
   content: string;
   mediaUrls?: string[] | null;
-  scheduledFor?: Date | string | null;
+  scheduledFor?: Date | null;
   status: string;
-  createdAt: Date | string;
-  updatedAt: Date | string;
+  createdAt: Date;
+  updatedAt: Date;
   targets?: PostTarget[];
 }
 
