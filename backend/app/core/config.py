@@ -25,7 +25,11 @@ class Settings(BaseSettings):
     environment: str = Field(default="development", alias="NODE_ENV")
     api_v1_prefix: str = "/api/v1"
 
-    database_url: PostgresDsn | str = "postgresql+asyncpg://postgres:postgres@localhost:5444/socialposter"
+    database_url: PostgresDsn | str = (
+        "postgresql+asyncpg://postgres:postgres@localhost:5444/socialposter"
+    )
+    database_pool_size: int = 5
+    database_max_overflow: int = 10
     redis_url: RedisDsn | str = "redis://localhost:6344/0"
 
     frontend_public_url: AnyHttpUrl | str = "http://localhost:3000"

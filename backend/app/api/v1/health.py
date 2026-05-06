@@ -5,9 +5,12 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, Response, status
 from pydantic import BaseModel
+from sqlalchemy import text
 
 from app.api.deps import get_settings
 from app.core.config import Settings
+from app.infrastructure.db.session import health_check as db_health_check
+from app.infrastructure.redis import redis_health_check
 
 router = APIRouter(prefix="/health", tags=["health"])
 SettingsDep = Annotated[Settings, Depends(get_settings)]
@@ -42,9 +45,13 @@ async def health(
         deep=deep,
     )
     if deep:
-        body.database = "not_configured"
-        body.redis = "not_configured"
-        response.status_code = status.HTTP_200_OK
+        db_ok = await db_health_check(text("SELECT 1"))
+        redis_ok = await redis_health_check()
+        body.database = "connected" if db_ok else "disconnected"
+        body.redis = "connected" if redis_ok else "disconnected"
+        if not (db_ok and redis_ok):
+            body.status = "unhealthy"
+            response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
     return body
 
 
