@@ -9,6 +9,9 @@ export const apiEndpoints = {
     socialStart(provider: string, callbackQuery = "") {
       return `${API_V1}/auth/${provider}/start${callbackQuery}`;
     },
+    oauthStart(provider: string, callbackQuery = "") {
+      return `${API_V1}/auth/${provider}/start${callbackQuery}`;
+    },
   },
   dashboard: {
     accounts: `${API_V1}/dashboard/accounts`,
@@ -18,6 +21,7 @@ export const apiEndpoints = {
   },
   posts: {
     collection: `${API_V1}/posts`,
+    create: `${API_V1}/posts`,
   },
   social: {
     connect(platform: string) {
@@ -37,3 +41,5 @@ export const apiEndpoints = {
     portal: `${API_V1}/billing/portal`,
   },
 } as const;
+
+export const apiPaths = apiEndpoints;

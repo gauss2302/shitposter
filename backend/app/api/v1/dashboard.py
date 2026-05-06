@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db_session
@@ -63,7 +63,7 @@ class PostResponse(BaseModel):
     status: str
     createdAt: str
     updatedAt: str
-    targets: list[PostTargetResponse] = []
+    targets: list[PostTargetResponse] = Field(default_factory=list)
 
 
 class DashboardSummaryResponse(BaseModel):

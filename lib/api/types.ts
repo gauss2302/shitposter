@@ -5,6 +5,15 @@ export interface UserDto {
   image?: string | null;
 }
 
+export interface AuthSession {
+  user: UserDto | null;
+}
+
+export type AuthResult = {
+  data?: AuthSession;
+  error?: { message: string } | null;
+};
+
 export interface SubscriptionState {
   plan: "basic" | "business" | "enterprise" | string;
   limitPerPlatform: number | null;
