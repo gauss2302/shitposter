@@ -69,8 +69,15 @@ async def polar_webhook(
 ) -> dict[str, bool]:
     raw_body = await request.body()
     signature = request.headers.get("webhook-signature") or request.headers.get("polar-signature")
+    webhook_id = request.headers.get("webhook-id")
+    webhook_timestamp = request.headers.get("webhook-timestamp")
     try:
-        await BillingService(db, settings).handle_polar_webhook(raw_body, signature)
+        await BillingService(db, settings).handle_polar_webhook(
+            raw_body,
+            signature,
+            webhook_id=webhook_id,
+            webhook_timestamp=webhook_timestamp,
+        )
         await db.commit()
     except PermissionError as exc:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc

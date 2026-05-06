@@ -99,10 +99,22 @@ class BillingService:
             return_url=f"{self.settings.frontend_public_url}/dashboard/accounts",
         )
 
-    async def handle_polar_webhook(self, raw_body: bytes, signature: str | None) -> None:
+    async def handle_polar_webhook(
+        self,
+        raw_body: bytes,
+        signature: str | None,
+        *,
+        webhook_id: str | None,
+        webhook_timestamp: str | None,
+    ) -> None:
         if self.settings is None or not self.settings.polar_webhook_secret:
             raise PolarNotConfiguredError("Webhook not configured")
-        if not self._verify_standard_webhook_signature(raw_body, signature):
+        if not self._verify_standard_webhook_signature(
+            raw_body,
+            signature,
+            webhook_id=webhook_id,
+            webhook_timestamp=webhook_timestamp,
+        ):
             raise PermissionError("Invalid signature")
         import json
 
@@ -187,6 +199,9 @@ class BillingService:
         self,
         raw_body: bytes,
         signature_header: str | None,
+        *,
+        webhook_id: str | None,
+        webhook_timestamp: str | None,
     ) -> bool:
         """Verify Polar's Standard Webhooks HMAC signature.
 
@@ -198,8 +213,8 @@ class BillingService:
 
         if self.settings is None or not signature_header:
             return False
-        webhook_id = ""
-        webhook_timestamp = ""
+        if not webhook_id or not webhook_timestamp:
+            return False
         # Some deployments concatenate standard webhook headers into the
         # signature header; support the common "v1,<sig>" shape first.
         signatures = [
