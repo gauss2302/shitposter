@@ -18,5 +18,9 @@ class ConflictError(DomainError):
     """Raised when a requested mutation conflicts with existing state."""
 
 
+class RateLimitError(DomainError):
+    """Raised when an upstream service asks the client to retry later."""
+
+
 class ValidationError(DomainError):
     """Raised when a use case receives invalid input."""
