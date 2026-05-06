@@ -13,6 +13,11 @@ from app.domain.exceptions import NotFoundError, ValidationError
 from app.infrastructure.crypto import encrypt
 from app.infrastructure.db import models
 from app.infrastructure.db.repositories import SocialAccountRepository
+from app.infrastructure.external.twitter_oauth1 import (
+    exchange_twitter_oauth1_access_token,
+    generate_twitter_oauth1_auth_link,
+    verify_twitter_oauth1_credentials,
+)
 from app.infrastructure.redis import get_redis
 
 
@@ -228,6 +233,105 @@ class SocialService:
             account.is_active = is_active
         await self.accounts.flush()
 
+    async def build_twitter_oauth1_connect_url(self, user_id: str) -> str:
+        if not await self.billing.can_connect_platform_account(user_id, "twitter"):
+            raise ValidationError("subscription_required")
+        if not self.settings.twitter_client_id or not self.settings.twitter_client_secret:
+            raise ValidationError("twitter OAuth is not configured")
+        callback_url = f"{self.settings.backend_public_url}/api/v1/social/callback/twitter-oauth1"
+        auth_link = await generate_twitter_oauth1_auth_link(
+            callback_url=callback_url,
+            consumer_key=self.settings.twitter_client_id,
+            consumer_secret=self.settings.twitter_client_secret,
+        )
+        state = secrets.token_urlsafe(24)
+        await get_redis().setex(
+            f"oauth1:twitter:{state}",
+            600,
+            json.dumps(
+                {
+                    "userId": user_id,
+                    "oauthToken": auth_link["oauth_token"],
+                    "oauthTokenSecret": auth_link["oauth_token_secret"],
+                }
+            ),
+        )
+        return auth_link["url"]
+
+    async def handle_twitter_oauth1_callback(
+        self,
+        *,
+        oauth_token: str | None,
+        oauth_verifier: str | None,
+        denied: str | None,
+    ) -> None:
+        if denied:
+            raise ValidationError("oauth1_denied")
+        if not oauth_token or not oauth_verifier:
+            raise ValidationError("missing_oauth1_params")
+
+        redis = get_redis()
+        stored: dict[str, str] | None = None
+        stored_key: str | None = None
+        for key in await redis.keys("oauth1:twitter:*"):
+            value = await redis.get(key)
+            if not value:
+                continue
+            parsed = json.loads(value)
+            if parsed.get("oauthToken") == oauth_token:
+                stored = parsed
+                stored_key = key
+                break
+        if stored is None:
+            raise ValidationError("oauth1_invalid_token")
+        if stored_key:
+            await redis.delete(stored_key)
+
+        token = await exchange_twitter_oauth1_access_token(
+            oauth_token=oauth_token,
+            oauth_token_secret=stored["oauthTokenSecret"],
+            oauth_verifier=oauth_verifier,
+            consumer_key=self.settings.twitter_client_id,
+            consumer_secret=self.settings.twitter_client_secret,
+        )
+        profile = await verify_twitter_oauth1_credentials(
+            access_token=token["oauth_token"],
+            access_token_secret=token["oauth_token_secret"],
+            consumer_key=self.settings.twitter_client_id,
+            consumer_secret=self.settings.twitter_client_secret,
+        )
+        platform_user_id = str(profile.get("id_str") or token.get("user_id") or "")
+        username = str(profile.get("screen_name") or token.get("screen_name") or "")
+        if not platform_user_id or not username:
+            raise ValidationError("oauth1_invalid_profile")
+
+        user_id = stored["userId"]
+        account = await self.accounts.get_by_platform_identity(
+            user_id, "twitter", platform_user_id
+        )
+        if account is None:
+            if not await self.billing.can_connect_platform_account(user_id, "twitter"):
+                raise ValidationError("limit_reached")
+            account = models.SocialAccount(
+                id=secrets.token_urlsafe(16),
+                user_id=user_id,
+                platform="twitter",
+                platform_user_id=platform_user_id,
+                platform_username=username,
+                access_token=encrypt(token["oauth_token"]),
+                oauth1_access_token=encrypt(token["oauth_token"]),
+                access_token_secret=encrypt(token["oauth_token_secret"]),
+                is_active=True,
+            )
+            await self.accounts.add(account)
+            return
+
+        account.oauth1_access_token = encrypt(token["oauth_token"])
+        account.access_token_secret = encrypt(token["oauth_token_secret"])
+        account.platform_username = username
+        account.is_active = True
+        await self.accounts.flush()
+
     async def upsert_social_account(
         self,
         *,
@@ -255,24 +359,16 @@ class SocialService:
                 platform=platform,
                 platform_user_id=platform_user.platform_user_id,
                 platform_username=platform_user.username,
-                access_token=encrypt(access_token, self.settings.token_encryption_key),
-                refresh_token=(
-                    encrypt(refresh_token, self.settings.token_encryption_key)
-                    if refresh_token
-                    else None
-                ),
+                access_token=encrypt(access_token),
+                refresh_token=encrypt(refresh_token) if refresh_token else None,
                 token_expires_at=token_expires_at,
                 profile_image_url=platform_user.profile_image_url,
                 is_active=True,
             )
             return await self.accounts.add(existing)
 
-        existing.access_token = encrypt(access_token, self.settings.token_encryption_key)
-        existing.refresh_token = (
-            encrypt(refresh_token, self.settings.token_encryption_key)
-            if refresh_token
-            else None
-        )
+        existing.access_token = encrypt(access_token)
+        existing.refresh_token = encrypt(refresh_token) if refresh_token else None
         existing.token_expires_at = token_expires_at
         existing.platform_username = platform_user.username
         existing.profile_image_url = platform_user.profile_image_url

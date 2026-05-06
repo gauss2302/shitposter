@@ -1,29 +1,37 @@
 from __future__ import annotations
 
-import base64
+import hashlib
 import os
 
-from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
 from app.core.config import get_settings
 
+IV_LENGTH = 16
+AUTH_TAG_LENGTH = 16
+
 
 def _key() -> bytes:
-    raw = get_settings().token_encryption_key.encode("utf-8")
-    # Match the legacy TypeScript behavior of deriving a 32-byte AES key from
-    # the configured secret with SHA-256 semantics via AESGCM key length.
-    import hashlib
-
-    return hashlib.sha256(raw).digest()
+    # Match the legacy TypeScript implementation:
+    # crypto.createHash("sha256").update(TOKEN_ENCRYPTION_KEY).digest()
+    return hashlib.sha256(get_settings().token_encryption_key.encode("utf-8")).digest()
 
 
 def encrypt(value: str) -> str:
-    nonce = os.urandom(12)
-    encrypted = AESGCM(_key()).encrypt(nonce, value.encode("utf-8"), None)
-    return base64.urlsafe_b64encode(nonce + encrypted).decode("ascii")
+    """Encrypt a token using the legacy hex `iv + authTag + ciphertext` format."""
+
+    iv = os.urandom(IV_LENGTH)
+    encryptor = Cipher(algorithms.AES(_key()), modes.GCM(iv)).encryptor()
+    ciphertext = encryptor.update(value.encode("utf-8")) + encryptor.finalize()
+    return iv.hex() + encryptor.tag.hex() + ciphertext.hex()
 
 
 def decrypt(value: str) -> str:
-    data = base64.urlsafe_b64decode(value.encode("ascii"))
-    nonce, encrypted = data[:12], data[12:]
-    return AESGCM(_key()).decrypt(nonce, encrypted, None).decode("utf-8")
+    """Decrypt a token stored by either the old TypeScript or new Python backend."""
+
+    raw = bytes.fromhex(value)
+    iv = raw[:IV_LENGTH]
+    tag = raw[IV_LENGTH : IV_LENGTH + AUTH_TAG_LENGTH]
+    ciphertext = raw[IV_LENGTH + AUTH_TAG_LENGTH :]
+    decryptor = Cipher(algorithms.AES(_key()), modes.GCM(iv, tag)).decryptor()
+    return (decryptor.update(ciphertext) + decryptor.finalize()).decode("utf-8")

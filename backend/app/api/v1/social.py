@@ -24,6 +24,32 @@ class UpdateSocialAccountRequest(BaseModel):
     isActive: bool | None = None
 
 
+@router.get("/connect/twitter-oauth1")
+async def connect_twitter_oauth1(current: CurrentUserDep, db: DbSessionDep) -> RedirectResponse:
+    try:
+        url = await SocialService(db).build_twitter_oauth1_authorization_url(current.user.id)
+    except ValidationError as exc:
+        return RedirectResponse(f"/dashboard/accounts?error={str(exc)}")
+    return RedirectResponse(url)
+
+
+@router.get("/callback/twitter-oauth1")
+async def callback_twitter_oauth1(request: Request, db: DbSessionDep) -> RedirectResponse:
+    denied = request.query_params.get("denied")
+    if denied:
+        return RedirectResponse("/dashboard/accounts?error=oauth1_denied")
+    try:
+        await SocialService(db).handle_twitter_oauth1_callback(
+            oauth_token=request.query_params.get("oauth_token"),
+            oauth_verifier=request.query_params.get("oauth_verifier"),
+        )
+        await db.commit()
+    except ValidationError as exc:
+        await db.rollback()
+        return RedirectResponse(f"/dashboard/accounts?error={str(exc)}")
+    return RedirectResponse("/dashboard/accounts?success=oauth1_connected")
+
+
 @router.get("/connect/{platform}")
 async def connect_platform(
     platform: str,
