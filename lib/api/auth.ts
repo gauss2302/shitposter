@@ -72,7 +72,8 @@ export async function signOut(): Promise<void> {
 
 export async function getSession(): Promise<AuthSession | null> {
   const result = await authRequest<AuthSession | null>(apiEndpoints.auth.session);
-  return result.data ?? null;
+  const session = result.data ?? null;
+  return session?.user ? session : null;
 }
 
 export function useSession(): { data: AuthSession | null; isPending: boolean } {
