@@ -245,6 +245,14 @@ class PostRepository:
         )
         return result.scalars().all()
 
+    async def get_owned(self, post_id: str, user_id: str) -> models.Post | None:
+        result = await self.session.execute(
+            select(models.Post).where(
+                and_(models.Post.id == post_id, models.Post.user_id == user_id)
+            )
+        )
+        return result.scalar_one_or_none()
+
     async def add(self, post: models.Post) -> models.Post:
         self.session.add(post)
         await self.session.flush()
