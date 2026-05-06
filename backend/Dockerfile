@@ -11,7 +11,7 @@ RUN apt-get update \
 
 COPY backend/pyproject.toml ./pyproject.toml
 RUN pip install --no-cache-dir --upgrade pip \
-  && pip install --no-cache-dir ".[dev]"
+  && pip install --no-cache-dir "."
 
 COPY backend/app ./app
 COPY backend/alembic ./alembic
