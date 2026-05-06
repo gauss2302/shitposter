@@ -101,7 +101,7 @@ class AuthService:
         if user is None:
             raise AuthenticationError("Invalid email or password")
 
-        account = await self.accounts.get_credentials_account(user.id)
+        account = await self.accounts.get_password_account(user.id)
         if account is None or not account.password:
             raise AuthenticationError("Invalid email or password")
         if not verify_password(password, account.password):
@@ -125,6 +125,9 @@ class AuthService:
             return None
         user = await self.users.get_by_id(session.user_id)
         return to_authenticated_user(user) if user else None
+
+    async def get_authenticated_user(self, session_token: str | None) -> AuthenticatedUser | None:
+        return await self.get_user_for_session(session_token)
 
     async def sign_out(self, session_token: str | None) -> None:
         if session_token:

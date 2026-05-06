@@ -95,7 +95,7 @@ async def sign_up(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
 
     await db.commit()
-    _set_session_cookie(response, settings, authenticated.session.token)
+    _set_session_cookie(response, settings, authenticated.session_token)
     return _to_response(authenticated)
 
 
@@ -122,7 +122,7 @@ async def sign_in(
         ) from exc
 
     await db.commit()
-    _set_session_cookie(response, settings, authenticated.session.token)
+    _set_session_cookie(response, settings, authenticated.session_token)
     return _to_response(authenticated)
 
 
