@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { signUp, signIn } from "@/lib/auth-client";
+import { signIn, signUp } from "@/lib/api/auth";
 import { AuthLayout } from "../components/auth-layout";
 
 export default function SignUpPage() {

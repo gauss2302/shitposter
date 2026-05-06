@@ -26,7 +26,7 @@ async def enqueue_publish_job(
 ) -> None:
     """Enqueue a post publishing job for the Python worker.
 
-    The current Next/BullMQ worker used a small delay for immediate jobs so the
+    The legacy TypeScript worker used a small delay for immediate jobs so the
     database transaction was visible to workers. Preserve that behavior.
     """
 

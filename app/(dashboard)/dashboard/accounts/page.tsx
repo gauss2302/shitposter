@@ -3,7 +3,7 @@ import { AccountsClient } from "./accounts-client";
 import { BillingBanner } from "./billing-banner";
 import { LogoutButton } from "@/app/ui/logout-button";
 import { PricingSection } from "./pricing-section";
-import { getBackendSession, getDashboardAccounts, getSubscriptionState } from "@/lib/server-api";
+import { getBackendSession, getDashboardAccounts, getSubscriptionState } from "@/lib/api/server";
 
 export default async function AccountsPage() {
   const session = await getBackendSession();

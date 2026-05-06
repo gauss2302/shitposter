@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { getDashboardSummary, isApiUnauthorizedError } from "@/lib/server-api";
+import { getDashboardSummary, isApiUnauthorizedError } from "@/lib/api/server";
 import { DashboardHeader } from "./components/dashboard-header";
 import { QuickActions } from "./components/quick-actions";
 import { DashboardContent } from "./components/dashboard-content";

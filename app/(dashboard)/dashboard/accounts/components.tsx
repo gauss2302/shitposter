@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { apiUrl } from "@/lib/api-client";
+import { apiUrl } from "@/lib/api/browser";
+import { apiEndpoints } from "@/lib/api/endpoints";
 
 export function ConnectButton({ platform }: { platform: string }) {
   const [loading, setLoading] = useState(false);
@@ -10,7 +11,7 @@ export function ConnectButton({ platform }: { platform: string }) {
   const handleConnect = async () => {
     setLoading(true);
     // Redirect to OAuth flow
-    window.location.href = apiUrl(`/api/v1/social/connect/${platform}`);
+    window.location.href = apiUrl(apiEndpoints.social.connect(platform));
   };
 
   return (
@@ -33,7 +34,7 @@ export function DisconnectButton({ accountId }: { accountId: string }) {
 
     setLoading(true);
     try {
-      const res = await fetch(apiUrl(`/api/v1/social/accounts/${accountId}`), {
+      const res = await fetch(apiUrl(apiEndpoints.social.account(accountId)), {
         method: "DELETE",
         credentials: "include",
       });

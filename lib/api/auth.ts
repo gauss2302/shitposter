@@ -1,38 +1,18 @@
-/* Client-side auth adapter for the separated FastAPI backend.
- *
- * The UI intentionally keeps a small compatibility surface (`signIn.email`,
- * `signUp.email`, `authClient.signOut`, `useSession`) so auth components can
- * migrate away from Better Auth without a large rewrite.
- */
+/* Client-side auth adapter for the separated FastAPI backend. */
 
 "use client";
 
 import { useEffect, useState } from "react";
 
-export interface AuthUser {
-  id: string;
-  name: string;
-  email: string;
-  image?: string | null;
-}
-
-export interface AuthSession {
-  user: AuthUser;
-}
-
-interface AuthResult {
-  data?: AuthSession | null;
-  error?: { message: string } | null;
-}
-
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") || "";
+import { apiUrl } from "@/lib/api/browser";
+import { apiEndpoints } from "@/lib/api/endpoints";
+import type { AuthResult, AuthSession } from "@/lib/api/types";
 
 async function authRequest<T>(
   path: string,
   init?: RequestInit
 ): Promise<{ data?: T; error?: { message: string } | null }> {
-  const response = await fetch(`${API_BASE_URL}/api/v1${path}`, {
+  const response = await fetch(apiUrl(path), {
     ...init,
     credentials: "include",
     headers: {
@@ -60,7 +40,7 @@ async function authRequest<T>(
 
 export const signIn = {
   async email(input: { email: string; password: string }): Promise<AuthResult> {
-    return authRequest<AuthSession>("/auth/sign-in", {
+    return authRequest<AuthSession>(apiEndpoints.auth.signIn, {
       method: "POST",
       body: JSON.stringify(input),
     });
@@ -69,7 +49,7 @@ export const signIn = {
     const callback = input.callbackURL
       ? `?callback_url=${encodeURIComponent(input.callbackURL)}`
       : "";
-    window.location.href = `${API_BASE_URL}/api/v1/auth/${input.provider}/start${callback}`;
+    window.location.href = apiUrl(apiEndpoints.auth.oauthStart(input.provider, callback));
   },
 };
 
@@ -79,7 +59,7 @@ export const signUp = {
     password: string;
     name: string;
   }): Promise<AuthResult> {
-    return authRequest<AuthSession>("/auth/sign-up", {
+    return authRequest<AuthSession>(apiEndpoints.auth.signUp, {
       method: "POST",
       body: JSON.stringify(input),
     });
@@ -87,11 +67,11 @@ export const signUp = {
 };
 
 export async function signOut(): Promise<void> {
-  await authRequest("/auth/sign-out", { method: "POST" });
+  await authRequest(apiEndpoints.auth.signOut, { method: "POST" });
 }
 
 export async function getSession(): Promise<AuthSession | null> {
-  const result = await authRequest<AuthSession | null>("/auth/session");
+  const result = await authRequest<AuthSession | null>(apiEndpoints.auth.session);
   return result.data ?? null;
 }
 

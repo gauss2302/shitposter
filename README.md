@@ -74,7 +74,6 @@ To run the full stack (web, backend, backend-worker, postgres, redis) with Docke
 ```bash
 # Run migrations before first start (from host, with DB reachable)
 ./scripts/run-migrations.sh
-# or: npm run db:migrate
 
 # Start all services
 docker compose up -d
@@ -90,8 +89,8 @@ See **[docs/DEPLOY.md](docs/DEPLOY.md)** for production env vars, TLS, and CI/CD
 
 **Before deploying:**
 
-1. **Migrations** — Run before starting or updating app/worker. Use `./scripts/run-migrations.sh` or `npm run db:migrate`. See [docs/MIGRATIONS.md](docs/MIGRATIONS.md).
-2. **App URL** — Set `NEXT_PUBLIC_APP_URL` and `BETTER_AUTH_URL` to your public base URL (e.g. `https://your-domain.com`) for auth callbacks.
+1. **Migrations** — Run before starting or updating backend/worker. Use `./scripts/run-migrations.sh`. See [docs/MIGRATIONS.md](docs/MIGRATIONS.md).
+2. **App URLs** — Set `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_API_BASE_URL`, and `BACKEND_PUBLIC_URL` to the public frontend/backend URLs.
 3. **Secrets** — Use strong values for `TOKEN_ENCRYPTION_KEY`, DB passwords, and OAuth credentials.
 4. **Reverse proxy** — Put nginx, Caddy, or Traefik in front for TLS and domain routing.
 

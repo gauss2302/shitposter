@@ -1,8 +1,9 @@
 # Database migrations
 
-Migrations are now owned by the FastAPI backend and managed with Alembic in
-`backend/alembic/`. The historical Drizzle migrations remain in `drizzle/` as
-the record of the schema the Python baseline mirrors.
+Migrations are owned by the FastAPI backend and managed with Alembic in
+`backend/alembic/`. The initial Alembic revision is a baseline of the
+pre-separation PostgreSQL schema; future schema evolution should happen only
+through backend Alembic revisions.
 
 ## Running migrations
 

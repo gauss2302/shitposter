@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { SocialAccount, SubscriptionState } from "@/lib/api-types";
-import { apiUrl } from "@/lib/api-client";
+import type { SocialAccount, SubscriptionState } from "@/lib/api/types";
+import { apiUrl } from "@/lib/api/browser";
+import { apiEndpoints } from "@/lib/api/endpoints";
 
 const platformCatalog = {
   twitter: {
@@ -109,7 +110,7 @@ export function AccountsClient({
   }
 
   const handleConnect = (platformId: string) => {
-    window.location.href = apiUrl(`/api/v1/social/connect/${platformId}`);
+    window.location.href = apiUrl(apiEndpoints.social.connect(platformId));
   };
 
   const handleDisconnectClick = (account: SocialAccount) => {
@@ -123,7 +124,7 @@ export function AccountsClient({
     setDisconnectingId(accountToDisconnect.id);
     try {
       const res = await fetch(
-        apiUrl(`/api/v1/social/accounts/${accountToDisconnect.id}`),
+        apiUrl(apiEndpoints.social.account(accountToDisconnect.id)),
         {
           method: "DELETE",
           credentials: "include",
