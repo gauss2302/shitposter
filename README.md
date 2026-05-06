@@ -35,11 +35,41 @@ The easiest way to deploy your Next.js app is to use the [Vercel Platform](https
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
 
+## Architecture
+
+The app is split into three runtime services:
+
+- `web`: Next.js frontend. It renders UI and calls the backend through
+  `NEXT_PUBLIC_API_BASE_URL`.
+- `backend`: FastAPI service. It owns auth/session cookies, PostgreSQL access,
+  Redis access, OAuth/social integrations, Polar billing, post scheduling,
+  analytics, health checks, and migrations.
+- `backend-worker`: Python ARQ worker. It consumes Redis publishing jobs created
+  by the backend and updates post/target status in PostgreSQL.
+
+Server-side business logic should live in `backend/app/**`, not in Next.js API
+routes or frontend components.
+
+## Local development
+
+```bash
+# Frontend only
+npm run dev
+
+# Full stack
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+# Backend checks
+cd backend
+python -m ruff check .
+python -m pytest
+```
+
 ## Production
 
 ### Docker deployment
 
-To run the full stack (web, worker, postgres, redis) with Docker:
+To run the full stack (web, backend, backend-worker, postgres, redis) with Docker:
 
 ```bash
 # Run migrations before first start (from host, with DB reachable)
@@ -67,7 +97,7 @@ See **[docs/DEPLOY.md](docs/DEPLOY.md)** for production env vars, TLS, and CI/CD
 
 ### Health and monitoring
 
-- **Web**: `GET /api/health` (lightweight) or `GET /api/health?deep=1` (checks DB + Redis).
-- **Worker**: `GET http://worker-host:3001/health` — queue and Redis status; `GET .../ready` for readiness; `GET .../metrics` for Prometheus.
+- **Backend**: `GET /api/v1/health` (lightweight) or `GET /api/v1/health?deep=1` (checks DB + Redis).
+- **Worker**: ARQ worker process; inspect via backend logs and Redis/ARQ queue keys.
 
 See **[docs/RUNBOOK.md](docs/RUNBOOK.md)** for logs and common issues, and **[docs/METRICS.md](docs/METRICS.md)** for Prometheus and alerting.

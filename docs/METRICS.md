@@ -1,8 +1,16 @@
 # Metrics and alerting
 
-## Worker Prometheus metrics
+## Backend and worker metrics
 
-The worker exposes Prometheus-style metrics at **GET http://localhost:3001/metrics** (or the host/port where the worker health server is reachable).
+The FastAPI backend owns operational endpoints:
+
+- `GET http://localhost:8000/api/v1/health`
+- `GET http://localhost:8000/api/v1/health?deep=1`
+- `GET http://localhost:8000/api/v1/health/ready`
+
+The legacy Node worker metrics endpoint was removed with the BullMQ worker.
+The Python worker now runs as an ARQ worker process; monitor its container
+health/logs and Redis queue keys until a dedicated exporter is added.
 
 ### Metrics
 
@@ -24,8 +32,8 @@ Add to your `prometheus.yml`:
 scrape_configs:
   - job_name: shitposter-worker
     static_configs:
-      - targets: ["localhost:3001"]  # or your worker host
-    metrics_path: /metrics
+      - targets: ["localhost:8000"]
+    metrics_path: /api/v1/health
     scrape_interval: 15s
 ```
 
@@ -37,9 +45,9 @@ If the app is behind a reverse proxy, expose the worker metrics path or scrape f
 
 Adjust thresholds to your needs.
 
-### Worker unhealthy
+### Backend unhealthy
 
-- **Condition**: Worker `/health` returns 503 or is down.
+- **Condition**: Backend deep health returns 503 or is down.
 - **Action**: Alert and check Redis, then worker logs (see [RUNBOOK.md](RUNBOOK.md)).
 
 ### Too many failed jobs
@@ -54,14 +62,14 @@ Adjust thresholds to your needs.
 
 ### Ready probe failing
 
-- **Condition**: Worker `/ready` returns non-200 (e.g. for Kubernetes readiness).
+- **Condition**: Backend `/api/v1/health/ready` returns non-200.
 - **Action**: Worker may be shutting down or stuck; check logs and restart.
 
 ---
 
 ## Web app
 
-The Next.js app does not expose Prometheus metrics. Use:
+The Next.js frontend no longer exposes backend health. Use:
 
 - **Sentry** for errors and performance (if configured).
-- **Uptime / deep health**: Monitor `GET /api/health` and `GET /api/health?deep=1` with your preferred uptime tool and alert on 5xx or timeout.
+- **Uptime / deep health**: Monitor the FastAPI backend health endpoints with your preferred uptime tool and alert on 5xx or timeout.
