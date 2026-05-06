@@ -23,6 +23,6 @@ if [ -z "$DATABASE_URL" ]; then
   exit 1
 fi
 
-echo "Running database migrations..."
-npm run db:migrate
+echo "Running backend database migrations..."
+python3 -m alembic -c backend/alembic.ini upgrade head
 echo "Migrations complete."

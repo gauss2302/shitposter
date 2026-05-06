@@ -64,22 +64,9 @@ services:
         condition: service_healthy
     environment:
       - NODE_ENV=production
-      - REDIS_URL=redis://redis:6379
-      - DATABASE_URL=postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-socialposter}
-      - TOKEN_ENCRYPTION_KEY=${TOKEN_ENCRYPTION_KEY}
       - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
-      - BETTER_AUTH_URL=${BETTER_AUTH_URL}
+      - NEXT_PUBLIC_API_BASE_URL=${BACKEND_PUBLIC_URL}
       - NEXT_PUBLIC_BASE_PATH=${NEXT_PUBLIC_BASE_PATH:-}
-      - TWITTER_CLIENT_ID=${TWITTER_CLIENT_ID:-}
-      - TWITTER_CLIENT_SECRET=${TWITTER_CLIENT_SECRET:-}
-      - TIKTOK_CLIENT_KEY=${TIKTOK_CLIENT_KEY:-}
-      - TIKTOK_CLIENT_SECRET=${TIKTOK_CLIENT_SECRET:-}
-      - LINKEDIN_CLIENT_ID=${LINKEDIN_CLIENT_ID:-}
-      - LINKEDIN_CLIENT_SECRET=${LINKEDIN_CLIENT_SECRET:-}
-      - FACEBOOK_APP_ID=${FACEBOOK_APP_ID:-}
-      - FACEBOOK_APP_SECRET=${FACEBOOK_APP_SECRET:-}
-      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
-      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
       - SENTRY_DSN=${SENTRY_DSN:-}
       - NEXT_PUBLIC_SENTRY_DSN=${NEXT_PUBLIC_SENTRY_DSN:-}
       - SENTRY_ENVIRONMENT=${SENTRY_ENVIRONMENT:-production}
@@ -93,7 +80,7 @@ services:
           "--no-verbose",
           "--tries=1",
           "--spider",
-          "http://localhost:3000/api/health",
+          "http://localhost:3000",
         ]
       interval: 30s
       timeout: 10s
@@ -108,10 +95,11 @@ services:
       - shitpost-network
       - dokploy-network
 
-  worker:
+  backend:
     build:
       context: .
-      dockerfile: Dockerfile.worker
+      dockerfile: backend/Dockerfile
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
     restart: unless-stopped
     depends_on:
       migrate:
@@ -123,26 +111,63 @@ services:
     environment:
       - NODE_ENV=production
       - REDIS_URL=redis://redis:6379
-      - DATABASE_URL=postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-socialposter}
+      - DATABASE_URL=postgresql+asyncpg://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-socialposter}
       - TOKEN_ENCRYPTION_KEY=${TOKEN_ENCRYPTION_KEY}
+      - FRONTEND_PUBLIC_URL=${NEXT_PUBLIC_APP_URL}
+      - BACKEND_PUBLIC_URL=${BACKEND_PUBLIC_URL}
+      - CORS_ORIGINS=${NEXT_PUBLIC_APP_URL}
       - TWITTER_CLIENT_ID=${TWITTER_CLIENT_ID:-}
       - TWITTER_CLIENT_SECRET=${TWITTER_CLIENT_SECRET:-}
-      - TIKTOK_CLIENT_KEY=${TIKTOK_CLIENT_KEY:-}
-      - TIKTOK_CLIENT_SECRET=${TIKTOK_CLIENT_SECRET:-}
       - LINKEDIN_CLIENT_ID=${LINKEDIN_CLIENT_ID:-}
       - LINKEDIN_CLIENT_SECRET=${LINKEDIN_CLIENT_SECRET:-}
-      - FACEBOOK_APP_ID=${FACEBOOK_APP_ID:-}
-      - FACEBOOK_APP_SECRET=${FACEBOOK_APP_SECRET:-}
-      - WORKER_CONCURRENCY=${WORKER_CONCURRENCY:-3}
-      - WORKER_RATE_LIMIT=${WORKER_RATE_LIMIT:-10}
-      - HEALTH_PORT=3001
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+      - POLAR_ACCESS_TOKEN=${POLAR_ACCESS_TOKEN:-}
+      - POLAR_WEBHOOK_SECRET=${POLAR_WEBHOOK_SECRET:-}
+      - POLAR_PRODUCT_ID_BASIC=${POLAR_PRODUCT_ID_BASIC:-}
+      - POLAR_PRODUCT_ID_BUSINESS=${POLAR_PRODUCT_ID_BUSINESS:-}
+      - POLAR_PRODUCT_ID_ENTERPRISE=${POLAR_PRODUCT_ID_ENTERPRISE:-}
       - SENTRY_DSN=${SENTRY_DSN:-}
       - SENTRY_ENVIRONMENT=${SENTRY_ENVIRONMENT:-production}
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 10s
+      retries: 3
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
+    networks:
+      - shitpost-network
+      - dokploy-network
+
+  backend-worker:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command: arq app.worker.publisher_worker.WorkerSettings
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    environment:
+      - NODE_ENV=production
+      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=postgresql+asyncpg://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-socialposter}
+      - TOKEN_ENCRYPTION_KEY=${TOKEN_ENCRYPTION_KEY}
+      - TWITTER_CLIENT_ID=${TWITTER_CLIENT_ID:-}
+      - TWITTER_CLIENT_SECRET=${TWITTER_CLIENT_SECRET:-}
+      - LINKEDIN_CLIENT_ID=${LINKEDIN_CLIENT_ID:-}
+      - LINKEDIN_CLIENT_SECRET=${LINKEDIN_CLIENT_SECRET:-}
     networks:
       - shitpost-network
 

@@ -19,20 +19,7 @@ ENV NODE_OPTIONS="--max-old-space-size=4096"
 ARG NEXT_PUBLIC_BASE_PATH=
 ENV NEXT_PUBLIC_BASE_PATH=${NEXT_PUBLIC_BASE_PATH}
 
-# Placeholder env vars for build-time "Collecting page data" (Next.js imports API routes)
-# Real values come from docker-compose at runtime
-ENV REDIS_URL=redis://localhost:6379
-ENV BETTER_AUTH_SECRET=build-placeholder-not-used-at-runtime
-ENV BETTER_AUTH_URL=https://app.example.com
-ENV NEXT_PUBLIC_APP_URL=https://app.example.com
-ENV DATABASE_URL=postgresql://postgres:postgres@localhost:5432/socialposter
-ENV TOKEN_ENCRYPTION_KEY=build-placeholder-not-used-at-runtime
-ENV GOOGLE_CLIENT_ID=build-placeholder
-ENV GOOGLE_CLIENT_SECRET=build-placeholder
-ENV TWITTER_CLIENT_ID=build-placeholder
-ENV TWITTER_CLIENT_SECRET=build-placeholder
-ENV LINKEDIN_CLIENT_ID=build-placeholder
-ENV LINKEDIN_CLIENT_SECRET=build-placeholder
+ENV NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
 ENV NEXT_PUBLIC_SENTRY_DSN=
 ENV SENTRY_DSN=
 ENV SENTRY_ENVIRONMENT=build
@@ -61,6 +48,6 @@ ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1
 
 CMD ["node", "server.js"]

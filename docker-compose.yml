@@ -36,135 +36,98 @@ services:
     networks:
       - shitpost-network
 
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: shitpost-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql+asyncpg://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-socialposter}
+      - REDIS_URL=redis://redis:6379/0
+      - FRONTEND_PUBLIC_URL=${NEXT_PUBLIC_APP_URL}
+      - BACKEND_PUBLIC_URL=${BACKEND_PUBLIC_URL:-http://localhost:8000}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3010}
+      - TOKEN_ENCRYPTION_KEY=${TOKEN_ENCRYPTION_KEY}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+      - TWITTER_CLIENT_ID=${TWITTER_CLIENT_ID:-}
+      - TWITTER_CLIENT_SECRET=${TWITTER_CLIENT_SECRET:-}
+      - LINKEDIN_CLIENT_ID=${LINKEDIN_CLIENT_ID:-}
+      - LINKEDIN_CLIENT_SECRET=${LINKEDIN_CLIENT_SECRET:-}
+      - POLAR_ACCESS_TOKEN=${POLAR_ACCESS_TOKEN:-}
+      - POLAR_WEBHOOK_SECRET=${POLAR_WEBHOOK_SECRET:-}
+      - POLAR_PRODUCT_ID_BASIC=${POLAR_PRODUCT_ID_BASIC:-}
+      - POLAR_PRODUCT_ID_BUSINESS=${POLAR_PRODUCT_ID_BUSINESS:-}
+      - POLAR_PRODUCT_ID_ENTERPRISE=${POLAR_PRODUCT_ID_ENTERPRISE:-}
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health').read()"]
+      interval: 30s
+      timeout: 10s
+      start_period: 10s
+      retries: 3
+    networks:
+      - shitpost-network
+
+  backend-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: shitpost-backend-worker
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql+asyncpg://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-socialposter}
+      - REDIS_URL=redis://redis:6379/0
+      - TOKEN_ENCRYPTION_KEY=${TOKEN_ENCRYPTION_KEY}
+      - TWITTER_CLIENT_ID=${TWITTER_CLIENT_ID:-}
+      - TWITTER_CLIENT_SECRET=${TWITTER_CLIENT_SECRET:-}
+      - LINKEDIN_CLIENT_ID=${LINKEDIN_CLIENT_ID:-}
+      - LINKEDIN_CLIENT_SECRET=${LINKEDIN_CLIENT_SECRET:-}
+    command: ["arq", "app.worker.publisher_worker.WorkerSettings"]
+    networks:
+      - shitpost-network
+
   web:
     build:
       context: .
       dockerfile: Dockerfile.web
       args:
         - NEXT_PUBLIC_BASE_PATH=${NEXT_PUBLIC_BASE_PATH:-}
+        - NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}
     container_name: shitpost-web
     restart: unless-stopped
     depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
+      backend:
         condition: service_healthy
     environment:
       - NODE_ENV=production
-      - REDIS_URL=redis://redis:6379
-      - DATABASE_URL=postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-socialposter}
-      - TOKEN_ENCRYPTION_KEY=${TOKEN_ENCRYPTION_KEY}
       - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
-      - BETTER_AUTH_URL=${BETTER_AUTH_URL}
+      - NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}
       - NEXT_PUBLIC_BASE_PATH=${NEXT_PUBLIC_BASE_PATH:-}
-      - TWITTER_CLIENT_ID=${TWITTER_CLIENT_ID:-}
-      - TWITTER_CLIENT_SECRET=${TWITTER_CLIENT_SECRET:-}
-      - TIKTOK_CLIENT_KEY=${TIKTOK_CLIENT_KEY:-}
-      - TIKTOK_CLIENT_SECRET=${TIKTOK_CLIENT_SECRET:-}
-      - LINKEDIN_CLIENT_ID=${LINKEDIN_CLIENT_ID:-}
-      - LINKEDIN_CLIENT_SECRET=${LINKEDIN_CLIENT_SECRET:-}
-      - FACEBOOK_APP_ID=${FACEBOOK_APP_ID:-}
-      - FACEBOOK_APP_SECRET=${FACEBOOK_APP_SECRET:-}
-      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
-      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
-      - SENTRY_DSN=${SENTRY_DSN:-}
       - NEXT_PUBLIC_SENTRY_DSN=${NEXT_PUBLIC_SENTRY_DSN:-}
       - SENTRY_ENVIRONMENT=${SENTRY_ENVIRONMENT:-production}
     ports:
       - "3010:3000"
     healthcheck:
-      test:
-        [
-          "CMD",
-          "wget",
-          "--no-verbose",
-          "--tries=1",
-          "--spider",
-          "http://localhost:3000/api/health",
-        ]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
       interval: 30s
       timeout: 10s
       start_period: 10s
       retries: 3
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
     networks:
       - shitpost-network
-
-  worker:
-    build:
-      context: .
-      dockerfile: Dockerfile.worker
-    container_name: shitpost-worker
-    restart: unless-stopped
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    environment:
-      - NODE_ENV=production
-      - REDIS_URL=redis://redis:6379
-      - DATABASE_URL=postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-socialposter}
-      - TOKEN_ENCRYPTION_KEY=${TOKEN_ENCRYPTION_KEY}
-      - TWITTER_CLIENT_ID=${TWITTER_CLIENT_ID:-}
-      - TWITTER_CLIENT_SECRET=${TWITTER_CLIENT_SECRET:-}
-      - TIKTOK_CLIENT_KEY=${TIKTOK_CLIENT_KEY:-}
-      - TIKTOK_CLIENT_SECRET=${TIKTOK_CLIENT_SECRET:-}
-      - LINKEDIN_CLIENT_ID=${LINKEDIN_CLIENT_ID:-}
-      - LINKEDIN_CLIENT_SECRET=${LINKEDIN_CLIENT_SECRET:-}
-      - FACEBOOK_APP_ID=${FACEBOOK_APP_ID:-}
-      - FACEBOOK_APP_SECRET=${FACEBOOK_APP_SECRET:-}
-      - WORKER_CONCURRENCY=3
-      - WORKER_RATE_LIMIT=10
-      - HEALTH_PORT=3001
-      - SENTRY_DSN=${SENTRY_DSN:-}
-      - SENTRY_ENVIRONMENT=${SENTRY_ENVIRONMENT:-production}
-    ports:
-      - "3001:3001"
-    healthcheck:
-      test:
-        [
-          "CMD",
-          "wget",
-          "--no-verbose",
-          "--tries=1",
-          "--spider",
-          "http://localhost:3001/health",
-        ]
-      interval: 30s
-      timeout: 10s
-      start_period: 10s
-      retries: 3
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-    networks:
-      - shitpost-network
-
-  # Optional: BullMQ Dashboard
-  bull-board:
-    image: deadly0/bull-board
-    container_name: shitpost-bull-board
-    restart: unless-stopped
-    depends_on:
-      - redis
-    environment:
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - REDIS_USE_TLS=false
-      - BULL_PREFIX=bull
-    ports:
-      - "3002:3000"
-    networks:
-      - shitpost-network
-    profiles:
-      - monitoring
 
 volumes:
   postgres_data:
