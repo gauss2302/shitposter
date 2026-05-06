@@ -10,6 +10,8 @@ const authedLinks = [
   { label: "Posts", href: "/dashboard/posts" },
   { label: "Accounts", href: "/dashboard/accounts" },
   { label: "Analytics", href: "/dashboard/analytics" },
+  { label: "AI", href: "/dashboard/ai" },
+  { label: "API", href: "/dashboard/developer" },
 ];
 
 const marketingLinks = [
@@ -20,10 +22,11 @@ const marketingLinks = [
 
 export function SiteHeader() {
   const { data: session } = useSession();
-  const links = session ? authedLinks : marketingLinks;
+  const user = session?.user;
+  const links = user ? authedLinks : marketingLinks;
   const initials =
-    session?.user.name?.slice(0, 1)?.toUpperCase() ||
-    session?.user.email?.slice(0, 1)?.toUpperCase() ||
+    user?.name?.slice(0, 1)?.toUpperCase() ||
+    user?.email?.slice(0, 1)?.toUpperCase() ||
     "S";
 
   return (
@@ -58,7 +61,7 @@ export function SiteHeader() {
         </nav>
 
         <div className="flex items-center gap-3">
-          {session ? (
+          {user ? (
             <>
               <div className="flex items-center gap-2 rounded-full border border-zinc-200 px-3 py-1 text-sm text-zinc-600 dark:border-zinc-700 dark:text-zinc-300">
                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-violet-100 text-violet-700 dark:bg-violet-900/50 dark:text-violet-200">
@@ -66,10 +69,10 @@ export function SiteHeader() {
                 </div>
                 <div className="hidden flex-col leading-tight sm:flex">
                   <span className="font-semibold text-zinc-900 dark:text-white">
-                    {session.user.name || session.user.email}
+                    {user.name || user.email}
                   </span>
                   <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                    {session.user.email}
+                    {user.email}
                   </span>
                 </div>
               </div>

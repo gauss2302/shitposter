@@ -5,6 +5,15 @@ export interface UserDto {
   image?: string | null;
 }
 
+export interface AuthSession {
+  user: UserDto | null;
+}
+
+export type AuthResult = {
+  data?: AuthSession;
+  error?: { message: string } | null;
+};
+
 export interface SubscriptionState {
   plan: "basic" | "business" | "enterprise" | string;
   limitPerPlatform: number | null;
@@ -21,14 +30,14 @@ export interface SocialAccount {
   platformUsername: string;
   accessToken?: string;
   refreshToken?: string | null;
-  tokenExpiresAt?: Date | string | null;
+  tokenExpiresAt?: Date | null;
   oauth1AccessToken?: string | null;
   accessTokenSecret?: string | null;
   profileImageUrl?: string | null;
-  followerCount?: number | null;
+  followerCount: number | null;
   isActive: boolean;
-  createdAt: Date | string;
-  updatedAt: Date | string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface PostTarget {
@@ -37,9 +46,9 @@ export interface PostTarget {
   socialAccountId: string;
   status: string;
   platformPostId?: string | null;
-  publishedAt?: Date | string | null;
+  publishedAt?: Date | null;
   errorMessage?: string | null;
-  account?: SocialAccount | null;
+  account: SocialAccount | null;
 }
 
 export interface Post {
@@ -47,10 +56,10 @@ export interface Post {
   userId: string;
   content: string;
   mediaUrls?: string[] | null;
-  scheduledFor?: Date | string | null;
+  scheduledFor?: Date | null;
   status: string;
-  createdAt: Date | string;
-  updatedAt: Date | string;
+  createdAt: Date;
+  updatedAt: Date;
   targets?: PostTarget[];
 }
 
@@ -71,4 +80,53 @@ export interface DashboardSummary {
     scheduledPosts: number;
     publishedPosts: number;
   };
+}
+
+export interface ApiKey {
+  id: string;
+  name: string;
+  prefix: string;
+  scopes: string[];
+  isActive: boolean;
+  expiresAt?: string | null;
+  lastUsedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreatedApiKey {
+  apiKey: ApiKey;
+  token: string;
+}
+
+export interface AiProviderCredential {
+  id: string;
+  provider: string;
+  displayName: string;
+  baseUrl?: string | null;
+  defaultModel: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AiProviderCredentialRequest {
+  provider: string;
+  displayName: string;
+  apiKey: string;
+  baseUrl?: string | null;
+  defaultModel: string;
+}
+
+export interface AiGeneratedCandidate {
+  content: string;
+  platformFit: Record<string, boolean>;
+  charCount: number;
+  warnings: string[];
+}
+
+export interface AiGenerateResponse {
+  candidates: AiGeneratedCandidate[];
+  provider: string;
+  model: string;
 }

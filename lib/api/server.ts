@@ -2,6 +2,8 @@ import { cookies } from "next/headers";
 
 import type {
   DashboardSummary,
+  AiProviderCredential,
+  ApiKey,
   PostWithTargets,
   SocialAccount,
   SubscriptionState,
@@ -122,6 +124,14 @@ export async function getDashboardPosts(): Promise<{
   accounts: SocialAccount[];
 }> {
   return getPostsPageData();
+}
+
+export async function getApiKeys(): Promise<ApiKey[]> {
+  return backendFetch<ApiKey[]>(apiPaths.apiKeys.collection);
+}
+
+export async function getAiProviders(): Promise<AiProviderCredential[]> {
+  return backendFetch<AiProviderCredential[]>(apiPaths.ai.providers);
 }
 
 export async function getPostsPageData(): Promise<{

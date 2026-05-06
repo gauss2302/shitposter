@@ -36,6 +36,7 @@ export function ComposeForm({ accounts }: ComposeFormProps) {
   const [scheduleDate, setScheduleDate] = useState("");
   const [scheduleTime, setScheduleTime] = useState("");
   const [loading, setLoading] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
   const [error, setError] = useState("");
 
   // Media upload state
@@ -144,6 +145,47 @@ export function ComposeForm({ accounts }: ComposeFormProps) {
     logger.debug("Removed media file", { index });
   };
 
+  const handleGenerateWithAi = async () => {
+    setError("");
+    const selectedPlatforms = accounts
+      .filter((account) => selectedAccounts.includes(account.id))
+      .map((account) => account.platform);
+
+    setAiLoading(true);
+    try {
+      const res = await fetch(apiUrl(apiEndpoints.ai.generate), {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt:
+            content.trim() ||
+            "Write a concise, useful social media post for my selected platforms.",
+          socialAccountIds: selectedAccounts,
+          platforms: selectedPlatforms,
+          maxCandidates: 1,
+          context: {
+            existingDraft: content || null,
+            selectedPlatforms,
+          },
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.detail || data.error || "Failed to generate content");
+      }
+      const candidate = data.candidates?.[0]?.content;
+      if (!candidate) {
+        throw new Error("AI did not return a candidate");
+      }
+      setContent(candidate);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "AI generation failed");
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -224,7 +266,7 @@ export function ComposeForm({ accounts }: ComposeFormProps) {
 
       if (!res.ok) {
         logger.error("API error", data);
-        throw new Error(data.error || "Failed to create post");
+        throw new Error(data.detail || data.error || "Failed to create post");
       }
 
       logger.info("Post created successfully", { postId: data.post?.id });
@@ -397,6 +439,14 @@ export function ComposeForm({ accounts }: ComposeFormProps) {
                 )}
               </div>
             </label>
+            <button
+              type="button"
+              onClick={handleGenerateWithAi}
+              disabled={loading || processingMedia || aiLoading}
+              className="h-9 rounded-full border border-violet-200 bg-white px-3 text-xs font-semibold text-violet-700 hover:bg-violet-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-violet-800 dark:bg-zinc-900 dark:text-violet-300"
+            >
+              {aiLoading ? "Generating…" : "✨ Generate"}
+            </button>
             {mediaFiles.length > 0 && (
               <div className="flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
                 <span className="font-medium">
@@ -492,6 +542,7 @@ export function ComposeForm({ accounts }: ComposeFormProps) {
           disabled={
             loading ||
             processingMedia ||
+            aiLoading ||
             (!content.trim() && mediaFiles.length === 0) ||
             selectedAccounts.length === 0 ||
             isOverLimit

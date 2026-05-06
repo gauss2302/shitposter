@@ -87,6 +87,81 @@ class SessionRepository:
             await self.session.flush()
 
 
+class ApiKeyRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def list_for_user(self, user_id: str) -> Sequence[models.ApiKey]:
+        result = await self.session.execute(
+            select(models.ApiKey)
+            .where(models.ApiKey.user_id == user_id)
+            .order_by(desc(models.ApiKey.created_at))
+        )
+        return result.scalars().all()
+
+    async def get_owned(self, key_id: str, user_id: str) -> models.ApiKey | None:
+        result = await self.session.execute(
+            select(models.ApiKey).where(
+                and_(models.ApiKey.id == key_id, models.ApiKey.user_id == user_id)
+            )
+        )
+        return result.scalar_one_or_none()
+
+    async def get_by_prefix(self, prefix: str) -> models.ApiKey | None:
+        result = await self.session.execute(
+            select(models.ApiKey).where(models.ApiKey.prefix == prefix)
+        )
+        return result.scalar_one_or_none()
+
+    async def add(self, api_key: models.ApiKey) -> models.ApiKey:
+        self.session.add(api_key)
+        await self.session.flush()
+        return api_key
+
+    async def flush(self) -> None:
+        await self.session.flush()
+
+
+class AiCredentialRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def list_for_user(self, user_id: str) -> Sequence[models.AiProviderCredential]:
+        result = await self.session.execute(
+            select(models.AiProviderCredential)
+            .where(models.AiProviderCredential.user_id == user_id)
+            .order_by(desc(models.AiProviderCredential.created_at))
+        )
+        return result.scalars().all()
+
+    async def get_owned(
+        self, credential_id: str, user_id: str
+    ) -> models.AiProviderCredential | None:
+        result = await self.session.execute(
+            select(models.AiProviderCredential).where(
+                and_(
+                    models.AiProviderCredential.id == credential_id,
+                    models.AiProviderCredential.user_id == user_id,
+                )
+            )
+        )
+        return result.scalar_one_or_none()
+
+    async def add(
+        self, credential: models.AiProviderCredential
+    ) -> models.AiProviderCredential:
+        self.session.add(credential)
+        await self.session.flush()
+        return credential
+
+    async def delete(self, credential: models.AiProviderCredential) -> None:
+        await self.session.delete(credential)
+        await self.session.flush()
+
+    async def flush(self) -> None:
+        await self.session.flush()
+
+
 class SubscriptionRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
@@ -209,6 +284,14 @@ class PostRepository:
             .limit(limit)
         )
         return result.scalars().all()
+
+    async def get_owned(self, post_id: str, user_id: str) -> models.Post | None:
+        result = await self.session.execute(
+            select(models.Post).where(
+                and_(models.Post.id == post_id, models.Post.user_id == user_id)
+            )
+        )
+        return result.scalar_one_or_none()
 
     async def add(self, post: models.Post) -> models.Post:
         self.session.add(post)

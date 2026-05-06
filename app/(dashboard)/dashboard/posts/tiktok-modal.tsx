@@ -217,7 +217,7 @@ export function TikTokModal({
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || "Failed to create post");
+        throw new Error(data.detail || data.error || "Failed to create post");
       }
 
       await new Promise((resolve) => setTimeout(resolve, 500));

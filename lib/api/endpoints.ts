@@ -9,6 +9,9 @@ export const apiEndpoints = {
     socialStart(provider: string, callbackQuery = "") {
       return `${API_V1}/auth/${provider}/start${callbackQuery}`;
     },
+    oauthStart(provider: string, callbackQuery = "") {
+      return `${API_V1}/auth/${provider}/start${callbackQuery}`;
+    },
   },
   dashboard: {
     accounts: `${API_V1}/dashboard/accounts`,
@@ -18,6 +21,20 @@ export const apiEndpoints = {
   },
   posts: {
     collection: `${API_V1}/posts`,
+    create: `${API_V1}/posts`,
+  },
+  apiKeys: {
+    collection: `${API_V1}/api-keys`,
+    item(apiKeyId: string) {
+      return `${API_V1}/api-keys/${apiKeyId}`;
+    },
+  },
+  ai: {
+    providers: `${API_V1}/ai/providers`,
+    provider(providerId: string) {
+      return `${API_V1}/ai/providers/${providerId}`;
+    },
+    generate: `${API_V1}/ai/generate`,
   },
   social: {
     connect(platform: string) {
@@ -26,6 +43,12 @@ export const apiEndpoints = {
     account(accountId: string) {
       return `${API_V1}/social/accounts/${accountId}`;
     },
+  },
+  socialConnect(platform: string) {
+    return `${API_V1}/social/connect/${platform}`;
+  },
+  socialAccount(accountId: string) {
+    return `${API_V1}/social/accounts/${accountId}`;
   },
   analytics: {
     twitter(accountId: string, tweetLimit: number) {
@@ -37,3 +60,5 @@ export const apiEndpoints = {
     portal: `${API_V1}/billing/portal`,
   },
 } as const;
+
+export const apiPaths = apiEndpoints;
