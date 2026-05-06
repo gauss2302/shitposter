@@ -25,23 +25,32 @@ class UpdateSocialAccountRequest(BaseModel):
 
 
 @router.get("/connect/twitter-oauth1")
-async def connect_twitter_oauth1(current: CurrentUserDep, db: DbSessionDep) -> RedirectResponse:
+async def connect_twitter_oauth1(
+    current: CurrentUserDep,
+    db: DbSessionDep,
+    settings: SettingsDep,
+) -> RedirectResponse:
     try:
-        url = await SocialService(db).build_twitter_oauth1_authorization_url(current.user.id)
+        url = await SocialService(db, settings).build_twitter_oauth1_connect_url(current.id)
     except ValidationError as exc:
         return RedirectResponse(f"/dashboard/accounts?error={str(exc)}")
     return RedirectResponse(url)
 
 
 @router.get("/callback/twitter-oauth1")
-async def callback_twitter_oauth1(request: Request, db: DbSessionDep) -> RedirectResponse:
+async def callback_twitter_oauth1(
+    request: Request,
+    db: DbSessionDep,
+    settings: SettingsDep,
+) -> RedirectResponse:
     denied = request.query_params.get("denied")
     if denied:
         return RedirectResponse("/dashboard/accounts?error=oauth1_denied")
     try:
-        await SocialService(db).handle_twitter_oauth1_callback(
+        await SocialService(db, settings).handle_twitter_oauth1_callback(
             oauth_token=request.query_params.get("oauth_token"),
             oauth_verifier=request.query_params.get("oauth_verifier"),
+            denied=denied,
         )
         await db.commit()
     except ValidationError as exc:
@@ -59,7 +68,7 @@ async def connect_platform(
 ) -> RedirectResponse:
     try:
         url = await SocialService(db, settings).build_connect_url(
-            user_id=current.user.id,
+            user_id=current.id,
             platform=platform,
         )
     except ValidationError as exc:
@@ -96,7 +105,7 @@ async def delete_account(
     settings: SettingsDep,
 ) -> dict[str, bool]:
     try:
-        await SocialService(db, settings).disconnect_account(current.user.id, account_id)
+        await SocialService(db, settings).disconnect_account(current.id, account_id)
         await db.commit()
     except NotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
@@ -113,7 +122,7 @@ async def update_account(
 ) -> dict[str, bool]:
     try:
         await SocialService(db, settings).update_account(
-            current.user.id,
+            current.id,
             account_id,
             is_active=payload.isActive,
         )

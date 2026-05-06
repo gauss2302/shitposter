@@ -49,7 +49,7 @@ async def create_post(
     try:
         media_inputs = [await file_to_media(file) for file in media or []]
         created = await PostsService(db).create_post(
-            user_id=current.user.id,
+                user_id=current.id,
             content=content,
             social_account_ids=account_ids,
             scheduled_for_raw=scheduledFor,

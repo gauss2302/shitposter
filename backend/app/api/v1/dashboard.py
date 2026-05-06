@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db_session
 from app.application.auth_service import AuthenticatedUser
+from app.application.billing_service import BillingService
 from app.application.dashboard_service import DashboardService
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
@@ -114,7 +115,7 @@ async def _service(db: AsyncSession) -> DashboardService:
 
 @router.get("/accounts", response_model=list[SocialAccountResponse])
 async def accounts(current: CurrentUserDep, db: DbSessionDep) -> list[SocialAccountResponse]:
-    rows = await (await _service(db)).list_accounts(current.user.id)
+    rows = await (await _service(db)).list_accounts(current.id)
     return [_social_account(row) for row in rows]
 
 
@@ -123,7 +124,7 @@ async def subscription(
     current: CurrentUserDep,
     db: DbSessionDep,
 ) -> SubscriptionStateResponse | None:
-    state = await (await _service(db)).get_subscription_state(current.user.id)
+    state = await BillingService(db).get_subscription_state(current.id)
     if state is None:
         return None
     return SubscriptionStateResponse(
@@ -137,7 +138,7 @@ async def subscription(
 
 @router.get("/posts", response_model=list[PostResponse])
 async def posts(current: CurrentUserDep, db: DbSessionDep) -> list[PostResponse]:
-    rows = await (await _service(db)).list_posts_with_targets(current.user.id)
+    rows = await (await _service(db)).list_posts_with_targets(current.id)
     result: list[PostResponse] = []
     for post, targets in rows:
         serialized_targets = [
@@ -160,16 +161,16 @@ async def posts(current: CurrentUserDep, db: DbSessionDep) -> list[PostResponse]
 @router.get("/summary", response_model=DashboardSummaryResponse)
 async def summary(current: CurrentUserDep, db: DbSessionDep) -> DashboardSummaryResponse:
     svc = await _service(db)
-    accounts_rows = await svc.list_accounts(current.user.id)
-    post_rows = await svc.list_posts(current.user.id)
+    accounts_rows = await svc.list_accounts(current.id)
+    post_rows = await svc.list_posts(current.id)
     accounts_data = [_social_account(row) for row in accounts_rows]
     posts_data = [_post(row) for row in post_rows]
     return DashboardSummaryResponse(
         user={
-            "id": current.user.id,
-            "name": current.user.name,
-            "email": current.user.email,
-            "image": current.user.image,
+            "id": current.id,
+            "name": current.name,
+            "email": current.email,
+            "image": current.image,
         },
         accounts=accounts_data,
         posts=posts_data,

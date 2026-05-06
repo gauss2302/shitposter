@@ -35,7 +35,7 @@ async def get_current_user(
     token = request.cookies.get(settings.session_cookie_name)
     if not token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
-    authenticated = await AuthService(db, settings).get_authenticated_user(token)
+    authenticated = await AuthService(db, settings).get_user_for_session(token)
     if authenticated is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
     return authenticated

@@ -56,6 +56,9 @@ class AccountRepository:
         )
         return result.scalar_one_or_none()
 
+    async def get_credentials_account(self, user_id: str) -> models.Account | None:
+        return await self.get_password_account(user_id)
+
     async def add(self, account: models.Account) -> models.Account:
         self.session.add(account)
         await self.session.flush()
@@ -98,6 +101,22 @@ class SubscriptionRepository:
         self.session.add(subscription)
         await self.session.flush()
         return subscription
+
+    async def upsert(self, subscription: models.Subscription) -> models.Subscription:
+        existing = await self.get_by_user_id(subscription.user_id)
+        if existing is None:
+            return await self.add(subscription)
+        existing.polar_customer_id = subscription.polar_customer_id
+        existing.polar_subscription_id = subscription.polar_subscription_id
+        existing.plan = subscription.plan
+        existing.status = subscription.status
+        existing.current_period_start = subscription.current_period_start
+        existing.current_period_end = subscription.current_period_end
+        existing.cancel_at_period_end = subscription.cancel_at_period_end
+        existing.canceled_at = subscription.canceled_at
+        existing.metadata_json = subscription.metadata_json
+        await self.session.flush()
+        return existing
 
 
 class SocialAccountRepository:
@@ -148,6 +167,9 @@ class SocialAccountRepository:
             )
         )
         return len(result.scalars().all())
+
+    async def flush(self) -> None:
+        await self.session.flush()
 
     async def get_by_platform_identity(
         self, user_id: str, platform: str, platform_user_id: str
@@ -200,6 +222,16 @@ class PostRepository:
     async def get_targets(self, post_id: str) -> Sequence[models.PostTarget]:
         result = await self.session.execute(
             select(models.PostTarget).where(models.PostTarget.post_id == post_id)
+        )
+        return result.scalars().all()
+
+    async def list_accounts_by_target_ids(
+        self, account_ids: Sequence[str]
+    ) -> Sequence[models.SocialAccount]:
+        if not account_ids:
+            return []
+        result = await self.session.execute(
+            select(models.SocialAccount).where(models.SocialAccount.id.in_(account_ids))
         )
         return result.scalars().all()
 

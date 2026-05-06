@@ -11,7 +11,7 @@ from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db_session, get_settings
-from app.application.auth_service import AuthenticatedUser, AuthService
+from app.application.auth_service import AuthenticatedUser, AuthResult, AuthService
 from app.core.config import Settings
 from app.domain.exceptions import AuthenticationError, ConflictError
 from app.infrastructure.redis import get_redis
@@ -68,13 +68,14 @@ def _clear_session_cookie(response: Response, settings: Settings) -> None:
     )
 
 
-def _to_response(authenticated: AuthenticatedUser) -> SessionResponse:
+def _to_response(authenticated: AuthResult | AuthenticatedUser) -> SessionResponse:
+    user = authenticated.user if isinstance(authenticated, AuthResult) else authenticated
     return SessionResponse(
         user=UserResponse(
-            id=authenticated.user.id,
-            name=authenticated.user.name,
-            email=authenticated.user.email,
-            image=authenticated.user.image,
+            id=user.id,
+            name=user.name,
+            email=user.email,
+            image=user.image,
         )
     )
 
@@ -227,10 +228,13 @@ async def google_callback(
     profile = user_response.json()
     authenticated = await AuthService(db, settings).oauth_sign_in(
         provider_id="google",
-        provider_account_id=profile["sub"],
+        account_id=profile["sub"],
         email=profile["email"],
         name=profile.get("name") or profile["email"],
         image=profile.get("picture"),
+        access_token=access_token,
+        refresh_token=None,
+        id_token=token_response.json().get("id_token"),
         user_agent=request.headers.get("user-agent"),
         ip_address=request.client.host if request.client else None,
     )

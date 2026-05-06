@@ -87,9 +87,9 @@ async def publish_post(ctx: dict[str, Any], payload: dict[str, Any]) -> dict[str
                 )
             elif account.platform == "linkedin":
                 platform_post_id = await publish_to_linkedin(
-                    access_token,
-                    account.platform_user_id,
-                    content,
+                    access_token=access_token,
+                    account_id=account.platform_user_id,
+                    content=content,
                 )
             else:
                 raise RuntimeError(f"Unsupported platform: {account.platform}")

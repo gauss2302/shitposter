@@ -25,7 +25,7 @@ async def twitter_analytics(
 ) -> dict:
     try:
         return await AnalyticsService(db).get_twitter_analytics(
-            user_id=current.user.id,
+            user_id=current.id,
             account_id=account_id,
             tweet_limit=limit,
         )

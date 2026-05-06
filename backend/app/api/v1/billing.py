@@ -32,9 +32,9 @@ async def checkout(
 ) -> dict[str, str]:
     try:
         return await BillingService(db, settings).create_checkout(
-            user_id=current.user.id,
-            email=current.user.email,
-            name=current.user.name,
+            user_id=current.id,
+            email=current.email,
+            name=current.name,
             plan=payload.plan,
         )
     except ValidationError as exc:
@@ -53,7 +53,7 @@ async def portal(
     settings: SettingsDep,
 ) -> dict[str, str]:
     try:
-        return await BillingService(db, settings).create_portal(user_id=current.user.id)
+        return await BillingService(db, settings).create_portal(user_id=current.id)
     except RuntimeError as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,

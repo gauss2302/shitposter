@@ -5,7 +5,6 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, Response, status
 from pydantic import BaseModel
-from sqlalchemy import text
 
 from app.api.deps import get_settings
 from app.core.config import Settings
@@ -28,8 +27,8 @@ class HealthResponse(BaseModel):
 @router.get("", response_model=HealthResponse)
 async def health(
     response: Response,
+    settings: SettingsDep,
     deep: bool = Query(default=False),
-    settings: SettingsDep = None,
 ) -> HealthResponse:
     """Return lightweight or deep health.
 
@@ -45,7 +44,7 @@ async def health(
         deep=deep,
     )
     if deep:
-        db_ok = await db_health_check(text("SELECT 1"))
+        db_ok = await db_health_check()
         redis_ok = await redis_health_check()
         body.database = "connected" if db_ok else "disconnected"
         body.redis = "connected" if redis_ok else "disconnected"

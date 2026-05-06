@@ -20,15 +20,38 @@ class PolarClient:
     def configured(self) -> bool:
         return bool(self.access_token)
 
-    async def create_checkout(self, payload: dict[str, Any]) -> dict[str, Any]:
+    async def create_checkout(
+        self,
+        *,
+        user_id: str,
+        email: str,
+        name: str,
+        product_id: str,
+        success_url: str,
+        return_url: str,
+    ) -> dict[str, str]:
         if not self.configured:
             raise PolarNotConfiguredError("Polar is not configured")
-        return await self._post("/v1/checkouts/", payload)
+        payload = {
+            "products": [product_id],
+            "successUrl": success_url,
+            "returnUrl": return_url,
+            "customerEmail": email,
+            "customerName": name,
+            "externalCustomerId": user_id,
+            "metadata": {"userId": user_id},
+        }
+        response = await self._post("/v1/checkouts/", payload)
+        return {"url": str(response.get("url", "")), "checkoutId": str(response.get("id", ""))}
 
-    async def create_customer_session(self, payload: dict[str, Any]) -> dict[str, Any]:
+    async def create_portal(self, *, user_id: str, return_url: str) -> dict[str, str]:
         if not self.configured:
             raise PolarNotConfiguredError("Polar is not configured")
-        return await self._post("/v1/customer-sessions/", payload)
+        response = await self._post(
+            "/v1/customer-sessions/",
+            {"externalCustomerId": user_id, "returnUrl": return_url},
+        )
+        return {"url": str(response.get("customerPortalUrl", response.get("url", "")))}
 
     async def _post(self, path: str, payload: dict[str, Any]) -> dict[str, Any]:
         async with httpx.AsyncClient(timeout=30) as client:

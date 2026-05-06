@@ -5,6 +5,7 @@ from dataclasses import dataclass
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.application.billing_service import BillingService, SubscriptionState
 from app.infrastructure.db import models
 from app.infrastructure.db.repositories import PostRepository, SocialAccountRepository
 
@@ -42,3 +43,25 @@ class DashboardService:
 
     async def list_posts(self, user_id: str) -> Sequence[models.Post]:
         return await self.posts.list_for_user(user_id, limit=50)
+
+    async def get_subscription_state(self, user_id: str) -> SubscriptionState | None:
+        return await BillingService(self.posts.session).get_subscription_state(user_id)
+
+    async def list_posts_with_targets(
+        self, user_id: str
+    ) -> Sequence[tuple[models.Post, list[tuple[models.PostTarget, models.SocialAccount | None]]]]:
+        posts = await self.posts.list_for_user(user_id, limit=50)
+        enriched = []
+        for post in posts:
+            targets = await self.posts.get_targets(post.id)
+            accounts = await self.posts.list_accounts_by_target_ids(
+                [target.social_account_id for target in targets]
+            )
+            by_id = {account.id: account for account in accounts}
+            enriched.append(
+                (
+                    post,
+                    [(target, by_id.get(target.social_account_id)) for target in targets],
+                )
+            )
+        return enriched
