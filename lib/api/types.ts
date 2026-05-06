@@ -81,3 +81,52 @@ export interface DashboardSummary {
     publishedPosts: number;
   };
 }
+
+export interface ApiKey {
+  id: string;
+  name: string;
+  prefix: string;
+  scopes: string[];
+  isActive: boolean;
+  expiresAt?: string | null;
+  lastUsedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreatedApiKey {
+  apiKey: ApiKey;
+  token: string;
+}
+
+export interface AiProviderCredential {
+  id: string;
+  provider: string;
+  displayName: string;
+  baseUrl?: string | null;
+  defaultModel: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AiProviderCredentialRequest {
+  provider: string;
+  displayName: string;
+  apiKey: string;
+  baseUrl?: string | null;
+  defaultModel: string;
+}
+
+export interface AiGeneratedCandidate {
+  content: string;
+  platformFit: Record<string, boolean>;
+  charCount: number;
+  warnings: string[];
+}
+
+export interface AiGenerateResponse {
+  candidates: AiGeneratedCandidate[];
+  provider: string;
+  model: string;
+}

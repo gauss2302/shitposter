@@ -23,6 +23,19 @@ export const apiEndpoints = {
     collection: `${API_V1}/posts`,
     create: `${API_V1}/posts`,
   },
+  apiKeys: {
+    collection: `${API_V1}/api-keys`,
+    item(apiKeyId: string) {
+      return `${API_V1}/api-keys/${apiKeyId}`;
+    },
+  },
+  ai: {
+    providers: `${API_V1}/ai/providers`,
+    provider(providerId: string) {
+      return `${API_V1}/ai/providers/${providerId}`;
+    },
+    generate: `${API_V1}/ai/generate`,
+  },
   social: {
     connect(platform: string) {
       return `${API_V1}/social/connect/${platform}`;
