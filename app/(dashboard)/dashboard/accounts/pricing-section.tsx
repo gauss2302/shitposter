@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { apiUrl } from "@/lib/api-client";
 
 const PLANS = [
   {
@@ -33,8 +34,9 @@ export function PricingSection() {
   async function handleSubscribe(plan: string) {
     setLoadingPlan(plan);
     try {
-      const res = await fetch("/api/polar/checkout", {
+      const res = await fetch(apiUrl("/api/v1/billing/checkout"), {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ plan }),
       });
