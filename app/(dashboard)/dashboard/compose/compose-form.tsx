@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { SocialAccount } from "@/lib/api-types";
+import { apiUrl } from "@/lib/api-client";
 import { logger } from "@/lib/logger";
 
 const platformIcons: Record<string, string> = {
@@ -208,10 +209,11 @@ export function ComposeForm({ accounts }: ComposeFormProps) {
         formData.append("media", file);
       });
 
-      logger.debug("Sending request to /api/posts");
+      logger.debug("Sending request to backend posts API");
 
-      const res = await fetch("/api/posts", {
+      const res = await fetch(apiUrl("/api/v1/posts"), {
         method: "POST",
+        credentials: "include",
         body: formData,
       });
 
