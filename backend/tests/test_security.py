@@ -1,6 +1,7 @@
 from app.core.security import (
     api_key_lookup_prefix,
     create_api_key,
+    hash_api_key,
     hash_password,
     new_session_token,
     verify_api_key,
