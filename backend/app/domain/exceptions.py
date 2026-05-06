@@ -10,5 +10,13 @@ class UnauthorizedError(DomainError):
     """Raised when the current request has no valid authenticated user."""
 
 
+class AuthenticationError(UnauthorizedError):
+    """Raised when supplied credentials or sessions are invalid."""
+
+
+class ConflictError(DomainError):
+    """Raised when a requested mutation conflicts with existing state."""
+
+
 class ValidationError(DomainError):
     """Raised when a use case receives invalid input."""

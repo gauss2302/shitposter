@@ -199,3 +199,13 @@ class PostTargetModel(Base):
 
     post: Mapped[PostModel] = relationship(back_populates="targets")
     social_account: Mapped[SocialAccountModel] = relationship(back_populates="targets")
+
+
+User = UserModel
+Session = SessionModel
+Account = AccountModel
+Verification = VerificationModel
+Subscription = SubscriptionModel
+SocialAccount = SocialAccountModel
+Post = PostModel
+PostTarget = PostTargetModel

@@ -28,6 +28,40 @@ class UserRepository:
         return user
 
 
+class AccountRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def get_by_provider_account(
+        self, provider_id: str, account_id: str
+    ) -> models.Account | None:
+        result = await self.session.execute(
+            select(models.Account).where(
+                and_(
+                    models.Account.provider_id == provider_id,
+                    models.Account.account_id == account_id,
+                )
+            )
+        )
+        return result.scalar_one_or_none()
+
+    async def get_password_account(self, user_id: str) -> models.Account | None:
+        result = await self.session.execute(
+            select(models.Account).where(
+                and_(
+                    models.Account.user_id == user_id,
+                    models.Account.provider_id == "credential",
+                )
+            )
+        )
+        return result.scalar_one_or_none()
+
+    async def add(self, account: models.Account) -> models.Account:
+        self.session.add(account)
+        await self.session.flush()
+        return account
+
+
 class SessionRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
@@ -37,6 +71,11 @@ class SessionRepository:
             select(models.Session).where(models.Session.token == token)
         )
         return result.scalar_one_or_none()
+
+    async def add(self, session: models.Session) -> models.Session:
+        self.session.add(session)
+        await self.session.flush()
+        return session
 
     async def delete_by_token(self, token: str) -> None:
         row = await self.get_by_token(token)
