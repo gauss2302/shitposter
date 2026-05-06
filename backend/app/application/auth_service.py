@@ -113,6 +113,69 @@ class AuthService:
             user_agent=user_agent,
         )
 
+    async def oauth_sign_in(
+        self,
+        *,
+        provider_id: str,
+        account_id: str,
+        email: str,
+        name: str,
+        image: str | None,
+        access_token: str | None,
+        refresh_token: str | None,
+        id_token: str | None,
+        user_agent: str | None = None,
+        ip_address: str | None = None,
+    ) -> AuthResult:
+        now = datetime.now(UTC).replace(tzinfo=None)
+        existing_account = await self.accounts.get_by_provider_account(provider_id, account_id)
+        if existing_account is not None:
+            user = await self.users.get_by_id(existing_account.user_id)
+            if user is None:
+                raise AuthenticationError("OAuth account is orphaned")
+            existing_account.access_token = access_token
+            existing_account.refresh_token = refresh_token
+            existing_account.id_token = id_token
+            existing_account.updated_at = now
+            return await self._create_session(
+                user=user,
+                ip_address=ip_address,
+                user_agent=user_agent,
+            )
+
+        normalized_email = email.strip().lower()
+        user = await self.users.get_by_email(normalized_email)
+        if user is None:
+            user = await self.users.add(
+                models.User(
+                    id=uuid4().hex,
+                    name=name.strip() or normalized_email,
+                    email=normalized_email,
+                    email_verified=True,
+                    image=image,
+                    created_at=now,
+                    updated_at=now,
+                )
+            )
+        await self.accounts.add(
+            models.Account(
+                id=uuid4().hex,
+                account_id=account_id,
+                provider_id=provider_id,
+                user_id=user.id,
+                access_token=access_token,
+                refresh_token=refresh_token,
+                id_token=id_token,
+                created_at=now,
+                updated_at=now,
+            )
+        )
+        return await self._create_session(
+            user=user,
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+
     async def get_user_for_session(self, session_token: str | None) -> AuthenticatedUser | None:
         if not session_token:
             return None
