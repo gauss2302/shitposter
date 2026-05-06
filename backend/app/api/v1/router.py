@@ -10,3 +10,8 @@ api_router.include_router(dashboard.router)
 api_router.include_router(health.router, tags=["health"])
 api_router.include_router(posts.router)
 api_router.include_router(social.router)
+
+
+@api_router.get("/ready", tags=["health"])
+async def ready() -> dict[str, bool]:
+    return {"ready": True}
