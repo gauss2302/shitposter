@@ -14,7 +14,7 @@ Set `LOG_LEVEL` on the backend to `debug`, `info`, `warn`, or `error`.
 - **Frontend process**: `GET /`
 - **Backend lightweight**: `GET /api/v1/health`
 - **Backend deep**: `GET /api/v1/health?deep=1` checks PostgreSQL and Redis.
-- **Backend ready**: `GET /api/v1/health/ready`
+- **Backend ready**: `GET /api/v1/ready`
 
 The Python worker is an ARQ worker. It should be supervised by Docker Compose; inspect
 `backend-worker` logs for job failures.

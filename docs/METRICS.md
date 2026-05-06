@@ -6,7 +6,7 @@ The FastAPI backend owns operational endpoints:
 
 - `GET http://localhost:8000/api/v1/health`
 - `GET http://localhost:8000/api/v1/health?deep=1`
-- `GET http://localhost:8000/api/v1/health/ready`
+- `GET http://localhost:8000/api/v1/ready`
 
 The legacy Node worker metrics endpoint was removed with the BullMQ worker.
 The Python worker now runs as an ARQ worker process; monitor its container
@@ -62,7 +62,7 @@ Adjust thresholds to your needs.
 
 ### Ready probe failing
 
-- **Condition**: Backend `/api/v1/health/ready` returns non-200.
+- **Condition**: Backend `/api/v1/ready` returns non-200.
 - **Action**: Worker may be shutting down or stuck; check logs and restart.
 
 ---
