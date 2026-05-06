@@ -87,6 +87,41 @@ class SessionRepository:
             await self.session.flush()
 
 
+class ApiKeyRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def list_for_user(self, user_id: str) -> Sequence[models.ApiKey]:
+        result = await self.session.execute(
+            select(models.ApiKey)
+            .where(models.ApiKey.user_id == user_id)
+            .order_by(desc(models.ApiKey.created_at))
+        )
+        return result.scalars().all()
+
+    async def get_owned(self, key_id: str, user_id: str) -> models.ApiKey | None:
+        result = await self.session.execute(
+            select(models.ApiKey).where(
+                and_(models.ApiKey.id == key_id, models.ApiKey.user_id == user_id)
+            )
+        )
+        return result.scalar_one_or_none()
+
+    async def get_by_prefix(self, prefix: str) -> models.ApiKey | None:
+        result = await self.session.execute(
+            select(models.ApiKey).where(models.ApiKey.prefix == prefix)
+        )
+        return result.scalar_one_or_none()
+
+    async def add(self, api_key: models.ApiKey) -> models.ApiKey:
+        self.session.add(api_key)
+        await self.session.flush()
+        return api_key
+
+    async def flush(self) -> None:
+        await self.session.flush()
+
+
 class SubscriptionRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
