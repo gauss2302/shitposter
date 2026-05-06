@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { apiUrl } from "@/lib/api-client";
 
 export function ConnectButton({ platform }: { platform: string }) {
   const [loading, setLoading] = useState(false);
@@ -9,7 +10,7 @@ export function ConnectButton({ platform }: { platform: string }) {
   const handleConnect = async () => {
     setLoading(true);
     // Redirect to OAuth flow
-    window.location.href = `/api/social/connect/${platform}`;
+    window.location.href = apiUrl(`/api/v1/social/connect/${platform}`);
   };
 
   return (
@@ -32,8 +33,9 @@ export function DisconnectButton({ accountId }: { accountId: string }) {
 
     setLoading(true);
     try {
-      const res = await fetch(`/api/social/accounts/${accountId}`, {
+      const res = await fetch(apiUrl(`/api/v1/social/accounts/${accountId}`), {
         method: "DELETE",
+        credentials: "include",
       });
 
       if (res.ok) {
