@@ -1,12 +1,12 @@
-"""Baseline the existing Drizzle-owned schema.
+"""Baseline the existing application schema.
 
 Revision ID: 0001_baseline_existing_schema
 Revises:
 Create Date: 2026-05-06
 
-This migration mirrors the current PostgreSQL schema produced by the historical
-Drizzle migrations in the repository. It lets the FastAPI backend own future
-schema evolution through Alembic while preserving compatibility with existing
+This migration mirrors the PostgreSQL schema that existed before the backend
+split. It lets the FastAPI backend own future schema evolution through Alembic
+while preserving compatibility with existing
 tables and data.
 """
 

@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { authClient } from "@/lib/auth-client";
+import { authClient } from "@/lib/api/auth";
 import { logger } from "@/lib/logger";
 
 interface LogoutButtonProps {

@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { SocialAccount } from "@/lib/api-types";
-import { apiUrl } from "@/lib/api-client";
+import type { SocialAccount } from "@/lib/api/types";
+import { apiUrl } from "@/lib/api/browser";
+import { apiEndpoints } from "@/lib/api/endpoints";
 import { logger } from "@/lib/logger";
 
 const platformIcons: Record<string, string> = {
@@ -211,7 +212,7 @@ export function ComposeForm({ accounts }: ComposeFormProps) {
 
       logger.debug("Sending request to backend posts API");
 
-      const res = await fetch(apiUrl("/api/v1/posts"), {
+      const res = await fetch(apiUrl(apiEndpoints.posts.create), {
         method: "POST",
         credentials: "include",
         body: formData,

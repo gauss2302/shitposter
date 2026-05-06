@@ -6,7 +6,7 @@ import {
   ApiUnauthorizedError,
   getBackendSession,
   getDashboardAccounts,
-} from "@/lib/server-api";
+} from "@/lib/api/server";
 
 export default async function AnalyticsPage() {
   let allAccounts;
