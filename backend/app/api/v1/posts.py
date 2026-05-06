@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_current_user, get_db_session
 from app.application.auth_service import AuthenticatedUser
 from app.application.posts_service import PostsService, file_to_media
-from app.domain.exceptions import ValidationError
+from app.domain.exceptions import NotFoundError, ValidationError
 
 router = APIRouter(prefix="/posts", tags=["posts"])
 
@@ -55,6 +55,9 @@ async def create_post(
             scheduled_for_raw=scheduledFor,
             media=media_inputs,
         )
+    except NotFoundError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except ValidationError as exc:
         await db.rollback()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
