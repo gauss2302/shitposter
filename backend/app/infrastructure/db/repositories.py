@@ -144,6 +144,29 @@ class SocialAccountRepository:
         )
         return len(result.scalars().all())
 
+    async def get_by_platform_identity(
+        self, user_id: str, platform: str, platform_user_id: str
+    ) -> models.SocialAccount | None:
+        result = await self.session.execute(
+            select(models.SocialAccount).where(
+                and_(
+                    models.SocialAccount.user_id == user_id,
+                    models.SocialAccount.platform == platform,
+                    models.SocialAccount.platform_user_id == platform_user_id,
+                )
+            )
+        )
+        return result.scalar_one_or_none()
+
+    async def add(self, account: models.SocialAccount) -> models.SocialAccount:
+        self.session.add(account)
+        await self.session.flush()
+        return account
+
+    async def delete(self, account: models.SocialAccount) -> None:
+        await self.session.delete(account)
+        await self.session.flush()
+
 
 class PostRepository:
     def __init__(self, session: AsyncSession) -> None:
