@@ -165,6 +165,10 @@ class PostRepository:
         await self.session.flush()
         return post
 
+    async def delete(self, post: models.Post) -> None:
+        await self.session.delete(post)
+        await self.session.flush()
+
     async def get_targets(self, post_id: str) -> Sequence[models.PostTarget]:
         result = await self.session.execute(
             select(models.PostTarget).where(models.PostTarget.post_id == post_id)
