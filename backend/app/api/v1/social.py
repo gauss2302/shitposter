@@ -7,15 +7,17 @@ from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user, get_db_session
+from app.api.deps import get_current_user, get_db_session, get_settings
 from app.application.auth_service import AuthenticatedUser
 from app.application.social_service import SocialService
+from app.core.config import Settings
 from app.domain.exceptions import NotFoundError, ValidationError
 
 router = APIRouter(prefix="/social", tags=["social"])
 
 DbSessionDep = Annotated[AsyncSession, Depends(get_db_session)]
 CurrentUserDep = Annotated[AuthenticatedUser, Depends(get_current_user)]
+SettingsDep = Annotated[Settings, Depends(get_settings)]
 
 
 class UpdateSocialAccountRequest(BaseModel):
@@ -27,9 +29,10 @@ async def connect_platform(
     platform: str,
     current: CurrentUserDep,
     db: DbSessionDep,
+    settings: SettingsDep,
 ) -> RedirectResponse:
     try:
-        url = await SocialService(db).build_oauth2_authorization_url(
+        url = await SocialService(db, settings).build_connect_url(
             user_id=current.user.id,
             platform=platform,
         )
@@ -39,9 +42,14 @@ async def connect_platform(
 
 
 @router.get("/callback/{platform}")
-async def callback_platform(platform: str, request: Request, db: DbSessionDep) -> RedirectResponse:
+async def callback_platform(
+    platform: str,
+    request: Request,
+    db: DbSessionDep,
+    settings: SettingsDep,
+) -> RedirectResponse:
     try:
-        await SocialService(db).handle_oauth2_callback(
+        await SocialService(db, settings).handle_oauth2_callback(
             platform=platform,
             code=request.query_params.get("code"),
             state=request.query_params.get("state"),
@@ -59,9 +67,10 @@ async def delete_account(
     account_id: str,
     current: CurrentUserDep,
     db: DbSessionDep,
+    settings: SettingsDep,
 ) -> dict[str, bool]:
     try:
-        await SocialService(db).delete_account(current.user.id, account_id)
+        await SocialService(db, settings).disconnect_account(current.user.id, account_id)
         await db.commit()
     except NotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
@@ -74,9 +83,10 @@ async def update_account(
     payload: UpdateSocialAccountRequest,
     current: CurrentUserDep,
     db: DbSessionDep,
+    settings: SettingsDep,
 ) -> dict[str, bool]:
     try:
-        await SocialService(db).update_account(
+        await SocialService(db, settings).update_account(
             current.user.id,
             account_id,
             is_active=payload.isActive,

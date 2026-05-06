@@ -110,6 +110,110 @@ class SocialService:
             raise NotFoundError("Account not found")
         await self.accounts.delete(account)
 
+    async def handle_oauth2_callback(
+        self,
+        *,
+        platform: str,
+        code: str | None,
+        state: str | None,
+        error: str | None,
+    ) -> None:
+        if error:
+            raise ValidationError("oauth_denied")
+        if not code or not state:
+            raise ValidationError("missing_params")
+
+        redis = get_redis()
+        stored = await redis.get(f"oauth:{platform}:{state}")
+        if not stored:
+            raise ValidationError("invalid_state")
+        await redis.delete(f"oauth:{platform}:{state}")
+        data = json.loads(stored)
+        user_id = data["userId"]
+        code_verifier = data.get("codeVerifier")
+
+        if platform == "twitter":
+            tokens, platform_user = await self._exchange_twitter_code(code, code_verifier)
+        elif platform == "linkedin":
+            tokens, platform_user = await self._exchange_linkedin_code(code)
+        else:
+            raise ValidationError(f"Unsupported platform: {platform}")
+
+        await self.upsert_social_account(
+            user_id=user_id,
+            platform=platform,
+            platform_user=platform_user,
+            access_token=tokens["access_token"],
+            refresh_token=tokens.get("refresh_token"),
+            expires_in=tokens.get("expires_in"),
+        )
+
+    async def _exchange_twitter_code(
+        self, code: str, code_verifier: str | None
+    ) -> tuple[dict[str, object], ConnectedPlatformUser]:
+        config = self.oauth_config("twitter")
+        redirect_uri = f"{self.settings.backend_public_url}{config.callback_path}"
+        async with httpx.AsyncClient(timeout=30) as client:
+            token_response = await client.post(
+                "https://api.twitter.com/2/oauth2/token",
+                data={
+                    "code": code,
+                    "grant_type": "authorization_code",
+                    "redirect_uri": redirect_uri,
+                    "code_verifier": code_verifier or "",
+                },
+                auth=(config.client_id, config.client_secret),
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+            )
+            if not token_response.is_success:
+                raise ValidationError("connection_failed")
+            tokens = token_response.json()
+            user_response = await client.get(
+                "https://api.twitter.com/2/users/me?user.fields=profile_image_url",
+                headers={"Authorization": f"Bearer {tokens['access_token']}"},
+            )
+            if not user_response.is_success:
+                raise ValidationError("connection_failed")
+            user = user_response.json()["data"]
+        return tokens, ConnectedPlatformUser(
+            platform_user_id=user["id"],
+            username=user["username"],
+            profile_image_url=user.get("profile_image_url"),
+        )
+
+    async def _exchange_linkedin_code(
+        self, code: str
+    ) -> tuple[dict[str, object], ConnectedPlatformUser]:
+        config = self.oauth_config("linkedin")
+        redirect_uri = f"{self.settings.backend_public_url}{config.callback_path}"
+        async with httpx.AsyncClient(timeout=30) as client:
+            token_response = await client.post(
+                "https://www.linkedin.com/oauth/v2/accessToken",
+                data={
+                    "grant_type": "authorization_code",
+                    "code": code,
+                    "redirect_uri": redirect_uri,
+                    "client_id": config.client_id,
+                    "client_secret": config.client_secret,
+                },
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+            )
+            if not token_response.is_success:
+                raise ValidationError("connection_failed")
+            tokens = token_response.json()
+            user_response = await client.get(
+                "https://api.linkedin.com/v2/userinfo",
+                headers={"Authorization": f"Bearer {tokens['access_token']}"},
+            )
+            if not user_response.is_success:
+                raise ValidationError("connection_failed")
+            user = user_response.json()
+        return tokens, ConnectedPlatformUser(
+            platform_user_id=user.get("sub") or user.get("id"),
+            username=user.get("name") or user.get("given_name") or "LinkedIn User",
+            profile_image_url=user.get("picture"),
+        )
+
     async def update_account(
         self,
         user_id: str,
