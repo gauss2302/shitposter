@@ -1,14 +1,9 @@
-// app/(dashboard)/dashboard/posts/page.tsx
-import { auth } from "@/lib/auth";
-import { db, post, postTarget, socialAccount } from "@/lib/db";
-import { logger } from "@/lib/logger";
-import { eq, desc, inArray } from "drizzle-orm";
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { PostsNotification } from "./notification";
 import { PostsClient } from "./posts-client";
 import { PostsViewClient } from "./posts-view-client";
+import { ApiUnauthorizedError, getBackendSession, getDashboardPosts } from "@/lib/server-api";
 
 const platformIcons: Record<string, string> = {
   twitter: "𝕏",
@@ -26,60 +21,22 @@ const headerMenu = [
 ];
 
 export default async function PostsPage() {
-  const session = await auth.api.getSession({ headers: await headers() });
-
-  if (!session) {
-    redirect("/sign-in");
+  let data;
+  try {
+    const [session, posts] = await Promise.all([
+      getBackendSession(),
+      getDashboardPosts(),
+    ]);
+    if (!session.user) redirect("/sign-in");
+    data = posts;
+  } catch (error) {
+    if (error instanceof ApiUnauthorizedError) redirect("/sign-in");
+    throw error;
   }
 
-  const posts = await db.query.post.findMany({
-    where: eq(post.userId, session.user.id),
-    orderBy: desc(post.createdAt),
-    limit: 50,
-  });
-
-  // Fetch all user's social accounts for the compose modal
-  const allAccounts = await db.query.socialAccount.findMany({
-    where: eq(socialAccount.userId, session.user.id),
-    orderBy: desc(socialAccount.createdAt),
-  });
-  const composeAccounts = allAccounts.filter(
-    (account) =>
-      account.platform === "twitter" || account.platform === "linkedin"
-  );
-
-  // Get targets for each post
-  const postsWithTargets = await Promise.all(
-    posts.map(async (p) => {
-      try {
-        const targets = await db.query.postTarget.findMany({
-          where: eq(postTarget.postId, p.id),
-        });
-
-        const targetAccountIds = targets.map((t) => t.socialAccountId);
-        const accounts =
-          targetAccountIds.length > 0
-            ? await db.query.socialAccount.findMany({
-                where: inArray(socialAccount.id, targetAccountIds),
-              })
-            : [];
-
-        return {
-          ...p,
-          targets: targets.map((t) => ({
-            ...t,
-            account: accounts.find((a) => a.id === t.socialAccountId) ?? null,
-          })),
-        };
-      } catch (error) {
-        logger.error("Error fetching targets for post", { postId: p.id, error });
-        // Return post without targets if query fails
-        return {
-          ...p,
-          targets: [],
-        };
-      }
-    })
+  const postsWithTargets = data.posts;
+  const composeAccounts = data.accounts.filter(
+    (account) => account.platform === "twitter" || account.platform === "linkedin"
   );
 
   const totalPosts = postsWithTargets.length;

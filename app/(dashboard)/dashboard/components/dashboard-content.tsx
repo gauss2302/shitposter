@@ -5,7 +5,7 @@ import Link from "next/link";
 import { CalendarView } from "./calendar-view";
 import { ViewToggle } from "./view-toggle";
 import { EmptyState } from "./empty-state";
-import type { Post, SocialAccount } from "@/lib/db/schema";
+import type { Post, SocialAccount } from "@/lib/api-types";
 
 interface DashboardContentProps {
   posts: Post[];

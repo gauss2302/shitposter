@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import type { SocialAccount } from "@/lib/db/schema";
+import type { SocialAccount } from "@/lib/api-types";
 
 interface TikTokModalProps {
   accounts: SocialAccount[];

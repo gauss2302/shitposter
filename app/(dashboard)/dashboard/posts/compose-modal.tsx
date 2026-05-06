@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import type { SocialAccount } from "@/lib/db/schema";
+import type { SocialAccount } from "@/lib/api-types";
 
 const platformIcons: Record<string, string> = {
   twitter: "𝕏",

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
-import type { SubscriptionState } from "@/lib/billing";
+import type { SubscriptionState } from "@/lib/api-types";
 
 const PLAN_LABELS: Record<string, string> = {
   basic: "Basic",

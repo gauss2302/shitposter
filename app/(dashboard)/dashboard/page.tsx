@@ -1,47 +1,28 @@
-import { auth } from "@/lib/auth";
-import { db, socialAccount, post } from "@/lib/db";
-import { eq, desc } from "drizzle-orm";
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { getDashboardSummary, isApiUnauthorizedError } from "@/lib/server-api";
 import { DashboardHeader } from "./components/dashboard-header";
 import { QuickActions } from "./components/quick-actions";
-import { EmptyState } from "./components/empty-state";
 import { DashboardContent } from "./components/dashboard-content";
 
 export default async function DashboardPage() {
-  const session = await auth.api.getSession({ headers: await headers() });
-
-  if (!session) {
-    redirect("/sign-in");
+  let summary;
+  try {
+    summary = await getDashboardSummary();
+  } catch (error) {
+    if (isApiUnauthorizedError(error)) redirect("/sign-in");
+    throw error;
   }
 
-  // Fetch user's connected accounts
-  const accounts = await db.query.socialAccount.findMany({
-    where: eq(socialAccount.userId, session.user.id),
-    orderBy: desc(socialAccount.createdAt),
-  });
-
-  // Fetch recent posts (increased limit for calendar view)
-  const recentPosts = await db.query.post.findMany({
-    where: eq(post.userId, session.user.id),
-    orderBy: desc(post.createdAt),
-    limit: 50, // Increased to show more posts in calendar
-  });
-
-  const stats = {
-    connectedAccounts: accounts.length,
-    scheduledPosts: recentPosts.filter((p) => p.status === "scheduled").length,
-    publishedPosts: recentPosts.filter((p) => p.status === "published").length,
-  };
+  const { user: sessionUser, accounts, posts: recentPosts, stats } = summary;
 
   return (
     <div className="min-h-screen bg-[#F5F7FF]">
       <div className="mx-auto max-w-7xl px-2 md:px-4 py-4 md:py-6 space-y-4 md:space-y-6">
         <DashboardHeader
-          name={session.user.name}
-          email={session.user.email}
-          avatarUrl={session.user.image}
+          name={sessionUser.name}
+          email={sessionUser.email}
+          avatarUrl={sessionUser.image}
           stats={stats}
         />
 

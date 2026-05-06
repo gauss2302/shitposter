@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import type { Post, SocialAccount } from "@/lib/db/schema";
+import type { Post, SocialAccount } from "@/lib/api-types";
 
 interface CalendarViewProps {
   posts: Post[];

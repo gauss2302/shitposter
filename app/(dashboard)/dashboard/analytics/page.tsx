@@ -1,24 +1,26 @@
-import { auth } from "@/lib/auth";
-import { db, socialAccount } from "@/lib/db";
-import { eq, desc } from "drizzle-orm";
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { TwitterAnalytics } from "./twitter-analytics";
 import { LogoutButton } from "@/app/ui/logout-button";
+import {
+  ApiUnauthorizedError,
+  getBackendSession,
+  getDashboardAccounts,
+} from "@/lib/server-api";
 
 export default async function AnalyticsPage() {
-  const session = await auth.api.getSession({ headers: await headers() });
-
-  if (!session) {
-    redirect("/sign-in");
+  let allAccounts;
+  try {
+    const [session, accounts] = await Promise.all([
+      getBackendSession(),
+      getDashboardAccounts(),
+    ]);
+    if (!session.user) redirect("/sign-in");
+    allAccounts = accounts;
+  } catch (error) {
+    if (error instanceof ApiUnauthorizedError) redirect("/sign-in");
+    throw error;
   }
-
-  // Fetch all connected accounts
-  const allAccounts = await db.query.socialAccount.findMany({
-    where: eq(socialAccount.userId, session.user.id),
-    orderBy: desc(socialAccount.createdAt),
-  });
 
   const twitterAccounts = allAccounts.filter(
     (account) => account.platform === "twitter" && account.isActive

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import type { Post, PostTarget, SocialAccount } from "@/lib/db/schema";
+import type { Post, PostTarget, SocialAccount } from "@/lib/api-types";
 
 const platformIcons: Record<string, string> = {
   twitter: "𝕏",

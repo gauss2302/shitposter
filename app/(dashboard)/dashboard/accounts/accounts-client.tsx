@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { SocialAccount } from "@/lib/db/schema";
-import type { SubscriptionState } from "@/lib/billing";
+import type { SocialAccount, SubscriptionState } from "@/lib/api-types";
 
 const platformCatalog = {
   twitter: {

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { SocialAccount } from "@/lib/db/schema";
+import type { SocialAccount } from "@/lib/api-types";
 
 interface EmptyStateProps {
   accounts: SocialAccount[];

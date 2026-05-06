@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { SocialAccount } from "@/lib/db/schema";
+import type { SocialAccount } from "@/lib/api-types";
 
 interface AccountsSidebarProps {
   isOpen: boolean;
