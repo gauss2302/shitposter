@@ -137,3 +137,29 @@ async def post_tweet(
     if not response.is_success:
         raise RuntimeError(_error_message(body, response.status_code))
     return str(body.get("data", {}).get("id", ""))
+
+
+async def refresh_twitter_token(
+    *,
+    refresh_token: str,
+    client_id: str,
+    client_secret: str,
+) -> dict[str, Any]:
+    async with httpx.AsyncClient(timeout=30) as client:
+        response = await client.post(
+            "https://api.twitter.com/2/oauth2/token",
+            data={
+                "grant_type": "refresh_token",
+                "refresh_token": refresh_token,
+                "client_id": client_id,
+            },
+            auth=(client_id, client_secret),
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+        )
+    try:
+        body = response.json()
+    except ValueError:
+        body = {}
+    if not response.is_success:
+        raise RuntimeError(_error_message(body, response.status_code))
+    return body

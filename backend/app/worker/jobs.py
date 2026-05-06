@@ -1,15 +1,18 @@
 from __future__ import annotations
 
+import base64
 from datetime import datetime
 from typing import Any
 
 from sqlalchemy import select
 
-from app.infrastructure.crypto import decrypt
+from app.core.config import get_settings
+from app.infrastructure.crypto import decrypt, encrypt
 from app.infrastructure.db import models
 from app.infrastructure.db.session import async_session_factory
 from app.infrastructure.external.linkedin import publish_to_linkedin
-from app.infrastructure.external.twitter import post_tweet
+from app.infrastructure.external.twitter import post_tweet, refresh_twitter_token
+from app.infrastructure.external.twitter_oauth1 import upload_media_to_twitter
 
 
 async def publish_post(ctx: dict[str, Any], payload: dict[str, Any]) -> dict[str, str]:
@@ -30,10 +33,58 @@ async def publish_post(ctx: dict[str, Any], payload: dict[str, Any]) -> dict[str
             raise RuntimeError(f"Social account {account.id} is not active")
 
         try:
+            settings = get_settings()
             access_token = decrypt(account.access_token)
             content = str(payload.get("content") or "")
+            if account.token_expires_at and account.token_expires_at < datetime.utcnow():
+                if account.platform == "twitter" and account.refresh_token:
+                    tokens = await refresh_twitter_token(
+                        refresh_token=decrypt(account.refresh_token),
+                        client_id=settings.twitter_client_id,
+                        client_secret=settings.twitter_client_secret,
+                    )
+                    access_token = tokens["access_token"]
+                    account.access_token = encrypt(access_token)
+                    if tokens.get("refresh_token"):
+                        account.refresh_token = encrypt(str(tokens["refresh_token"]))
+                    expires_in = int(tokens.get("expires_in") or 0)
+                    if expires_in:
+                        from datetime import timedelta
+
+                        account.token_expires_at = datetime.utcnow() + timedelta(seconds=expires_in)
+                    await session.flush()
+                else:
+                    account.is_active = False
+                    raise RuntimeError("Token expired and cannot be refreshed")
+
             if account.platform == "twitter":
-                platform_post_id = await post_tweet(access_token, content)
+                media_ids = []
+                media_payload = payload.get("media_data") or []
+                if media_payload:
+                    if not account.access_token_secret:
+                        raise RuntimeError("OAuth 1.0a credentials are required for Twitter media")
+                    oauth1_token = (
+                        decrypt(account.oauth1_access_token)
+                        if account.oauth1_access_token
+                        else access_token
+                    )
+                    oauth1_secret = decrypt(account.access_token_secret)
+                    for item in media_payload:
+                        media_ids.append(
+                            await upload_media_to_twitter(
+                                media=base64.b64decode(str(item["data"])),
+                                mime_type=str(item["mimeType"]),
+                                access_token=oauth1_token,
+                                access_token_secret=oauth1_secret,
+                                consumer_key=settings.twitter_client_id,
+                                consumer_secret=settings.twitter_client_secret,
+                            )
+                        )
+                platform_post_id = await post_tweet(
+                    access_token=access_token,
+                    content=content,
+                    media_ids=media_ids,
+                )
             elif account.platform == "linkedin":
                 platform_post_id = await publish_to_linkedin(
                     access_token,
