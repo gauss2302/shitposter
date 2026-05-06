@@ -24,13 +24,14 @@ services:
   migrate:
     build:
       context: .
-      dockerfile: Dockerfile.migrate
+      dockerfile: backend/Dockerfile
+    command: alembic upgrade head
     restart: "no"
     depends_on:
       postgres:
         condition: service_healthy
     environment:
-      - DATABASE_URL=postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-socialposter}
+      - DATABASE_URL=postgresql+asyncpg://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-socialposter}
     networks:
       - shitpost-network
 
@@ -170,22 +171,6 @@ services:
       - LINKEDIN_CLIENT_SECRET=${LINKEDIN_CLIENT_SECRET:-}
     networks:
       - shitpost-network
-
-  bull-board:
-    image: deadly0/bull-board
-    restart: unless-stopped
-    depends_on:
-      - redis
-    environment:
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - REDIS_USE_TLS=false
-      - BULL_PREFIX=bull
-    expose:
-      - "3000"
-    networks:
-      - shitpost-network
-      - dokploy-network
 
 volumes:
   postgres_data:

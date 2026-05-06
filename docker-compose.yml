@@ -36,13 +36,30 @@ services:
     networks:
       - shitpost-network
 
+  migrate:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: shitpost-migrate
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-socialposter}
+    command: ["alembic", "upgrade", "head"]
+    networks:
+      - shitpost-network
+
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
     container_name: shitpost-backend
     restart: unless-stopped
     depends_on:
+      migrate:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
       redis:
@@ -79,8 +96,8 @@ services:
 
   backend-worker:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
     container_name: shitpost-backend-worker
     restart: unless-stopped
     depends_on:
