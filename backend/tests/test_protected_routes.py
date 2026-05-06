@@ -12,6 +12,12 @@ def test_expected_route_groups_are_registered(client: TestClient) -> None:
     routes = {route.path for route in client.app.routes}
 
     assert "/api/v1/auth/sign-in" in routes
+    assert "/api/v1/api-keys" in routes
+    assert "/api/v1/agent/me" in routes
+    assert "/api/v1/agent/posts" in routes
+    assert "/api/v1/agent/ai/generate" in routes
+    assert "/api/v1/ai/providers" in routes
+    assert "/api/v1/ai/generate" in routes
     assert "/api/v1/dashboard/summary" in routes
     assert "/api/v1/posts" in routes
     assert "/api/v1/social/connect/twitter-oauth1" in routes

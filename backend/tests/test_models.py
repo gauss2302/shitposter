@@ -5,6 +5,8 @@ from app.infrastructure.db.base import Base
 def test_models_match_existing_table_names() -> None:
     expected = {
         "account",
+        "ai_provider_credential",
+        "api_key",
         "post",
         "post_target",
         "session",
