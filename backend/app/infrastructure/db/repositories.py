@@ -122,6 +122,46 @@ class ApiKeyRepository:
         await self.session.flush()
 
 
+class AiCredentialRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def list_for_user(self, user_id: str) -> Sequence[models.AiProviderCredential]:
+        result = await self.session.execute(
+            select(models.AiProviderCredential)
+            .where(models.AiProviderCredential.user_id == user_id)
+            .order_by(desc(models.AiProviderCredential.created_at))
+        )
+        return result.scalars().all()
+
+    async def get_owned(
+        self, credential_id: str, user_id: str
+    ) -> models.AiProviderCredential | None:
+        result = await self.session.execute(
+            select(models.AiProviderCredential).where(
+                and_(
+                    models.AiProviderCredential.id == credential_id,
+                    models.AiProviderCredential.user_id == user_id,
+                )
+            )
+        )
+        return result.scalar_one_or_none()
+
+    async def add(
+        self, credential: models.AiProviderCredential
+    ) -> models.AiProviderCredential:
+        self.session.add(credential)
+        await self.session.flush()
+        return credential
+
+    async def delete(self, credential: models.AiProviderCredential) -> None:
+        await self.session.delete(credential)
+        await self.session.flush()
+
+    async def flush(self) -> None:
+        await self.session.flush()
+
+
 class SubscriptionRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session

@@ -39,6 +39,9 @@ class UserModel(Base):
     api_keys: Mapped[list[ApiKeyModel]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
+    ai_provider_credentials: Mapped[list[AiProviderCredentialModel]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
     posts: Mapped[list[PostModel]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
@@ -185,6 +188,29 @@ class ApiKeyModel(Base):
     user: Mapped[UserModel] = relationship(back_populates="api_keys")
 
 
+class AiProviderCredentialModel(Base):
+    __tablename__ = "ai_provider_credential"
+
+    id: Mapped[str] = mapped_column(Text, primary_key=True)
+    user_id: Mapped[str] = mapped_column(
+        Text, ForeignKey("user.id", ondelete="CASCADE"), nullable=False
+    )
+    provider: Mapped[str] = mapped_column(Text, nullable=False)
+    display_name: Mapped[str] = mapped_column(Text, nullable=False)
+    encrypted_api_key: Mapped[str] = mapped_column(Text, nullable=False)
+    base_url: Mapped[str | None] = mapped_column(Text)
+    default_model: Mapped[str] = mapped_column(Text, nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=False), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=False), nullable=False, server_default=func.now()
+    )
+
+    user: Mapped[UserModel] = relationship(back_populates="ai_provider_credentials")
+
+
 class PostModel(Base):
     __tablename__ = "post"
 
@@ -235,5 +261,6 @@ Verification = VerificationModel
 Subscription = SubscriptionModel
 SocialAccount = SocialAccountModel
 ApiKey = ApiKeyModel
+AiProviderCredential = AiProviderCredentialModel
 Post = PostModel
 PostTarget = PostTargetModel

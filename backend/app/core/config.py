@@ -52,6 +52,14 @@ class Settings(BaseSettings):
     linkedin_client_id: str = ""
     linkedin_client_secret: str = ""
 
+    openai_api_key: str = ""
+    openai_default_model: str = "gpt-4o-mini"
+    anthropic_api_key: str = ""
+    anthropic_default_model: str = "claude-3-5-haiku-latest"
+    openai_compatible_api_key: str = ""
+    openai_compatible_base_url: str = ""
+    openai_compatible_default_model: str = ""
+
     polar_access_token: str = ""
     polar_server_url: str = ""
     polar_webhook_secret: str = ""

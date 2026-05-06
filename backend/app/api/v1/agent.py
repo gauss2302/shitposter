@@ -12,13 +12,16 @@ from app.api.deps import (
     ApiPrincipal,
     get_current_api_principal,
     get_db_session,
+    get_settings,
     require_api_scope,
 )
+from app.application.ai_service import AiGenerationCandidate, AiService
 from app.application.posts_service import (
     SUPPORTED_PUBLISHING_PLATFORMS,
     MediaInput,
     PostsService,
 )
+from app.core.config import Settings
 from app.domain.exceptions import NotFoundError, ValidationError
 from app.infrastructure.db import models
 from app.infrastructure.db.repositories import PostRepository, SocialAccountRepository
@@ -26,9 +29,11 @@ from app.infrastructure.db.repositories import PostRepository, SocialAccountRepo
 router = APIRouter(prefix="/agent", tags=["agent"])
 
 DbSessionDep = Annotated[AsyncSession, Depends(get_db_session)]
+SettingsDep = Annotated[Settings, Depends(get_settings)]
 AccountsReadPrincipal = Annotated[ApiPrincipal, Depends(require_api_scope("accounts:read"))]
 PostsReadPrincipal = Annotated[ApiPrincipal, Depends(require_api_scope("posts:read"))]
 PostsWritePrincipal = Annotated[ApiPrincipal, Depends(require_api_scope("posts:write"))]
+AiGeneratePrincipal = Annotated[ApiPrincipal, Depends(require_api_scope("ai:generate"))]
 
 PLATFORM_LIMITS = {
     "twitter": 280,
@@ -107,6 +112,32 @@ class AgentCreatedPostResponse(BaseModel):
     mediaCount: int
 
 
+class AgentAiGenerateRequest(BaseModel):
+    prompt: str = Field(min_length=1, max_length=8000)
+    providerCredentialId: str | None = None
+    provider: str | None = None
+    model: str | None = None
+    platforms: list[str] = Field(default_factory=list)
+    socialAccountIds: list[str] = Field(default_factory=list)
+    language: str | None = None
+    tone: str | None = None
+    maxCandidates: int = Field(default=1, ge=1, le=5)
+    context: dict[str, object] | None = None
+
+
+class AgentAiCandidateResponse(BaseModel):
+    content: str
+    platformFit: dict[str, bool]
+    charCount: int
+    warnings: list[str]
+
+
+class AgentAiGenerateResponse(BaseModel):
+    provider: str
+    model: str
+    candidates: list[AgentAiCandidateResponse]
+
+
 def _iso(value: object) -> str | None:
     return value.isoformat() if hasattr(value, "isoformat") else None
 
@@ -178,6 +209,15 @@ def _media_inputs(items: list[AgentMediaInput]) -> list[MediaInput]:
             raise ValidationError("Invalid base64 media payload") from exc
         media.append(MediaInput(data=item.data, mime_type=item.mimeType))
     return media
+
+
+def _ai_candidate(candidate: AiGenerationCandidate) -> AgentAiCandidateResponse:
+    return AgentAiCandidateResponse(
+        content=candidate.content,
+        platformFit=candidate.platform_fit,
+        charCount=candidate.char_count,
+        warnings=candidate.warnings,
+    )
 
 
 @router.get("/me", response_model=AgentMeResponse)
@@ -274,4 +314,34 @@ async def create_post(
         ),
         targetCount=created.target_count,
         mediaCount=created.media_count,
+    )
+
+
+@router.post("/ai/generate", response_model=AgentAiGenerateResponse)
+async def generate_ai_content(
+    payload: AgentAiGenerateRequest,
+    principal: AiGeneratePrincipal,
+    db: DbSessionDep,
+    settings: SettingsDep,
+) -> AgentAiGenerateResponse:
+    try:
+        result = await AiService(db, settings).generate(
+            user_id=principal.user_id,
+            prompt=payload.prompt,
+            provider_credential_id=payload.providerCredentialId,
+            provider=payload.provider,
+            model=payload.model,
+            platforms=payload.platforms,
+            social_account_ids=payload.socialAccountIds,
+            language=payload.language or "English",
+            tone=payload.tone or "clear, useful, and engaging",
+            max_candidates=payload.maxCandidates,
+            context=str(payload.context) if payload.context else None,
+        )
+    except (NotFoundError, ValidationError) as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    return AgentAiGenerateResponse(
+        candidates=[_ai_candidate(candidate) for candidate in result.candidates],
+        provider=result.provider,
+        model=result.model,
     )
