@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ScheduledTime } from "./scheduled-time";
 import { PostsViewToggle } from "./posts-view-toggle";
 import { PostsTableView } from "./posts-table-view";
-import type { Post, PostTarget, SocialAccount } from "@/lib/db/schema";
+import type { Post, PostTarget, SocialAccount } from "@/lib/api-types";
 import Link from "next/link";
 
 const platformIcons: Record<string, string> = {

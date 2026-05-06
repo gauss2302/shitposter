@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
-import type { SubscriptionState } from "@/lib/billing";
+import type { SubscriptionState } from "@/lib/api-types";
+import { apiUrl } from "@/lib/api-client";
 
 const PLAN_LABELS: Record<string, string> = {
   basic: "Basic",
@@ -23,7 +24,10 @@ export function BillingBanner({
   async function openPortal() {
     setPortalLoading(true);
     try {
-      const res = await fetch("/api/polar/portal", { method: "POST" });
+      const res = await fetch(apiUrl("/api/v1/billing/portal"), {
+        method: "POST",
+        credentials: "include",
+      });
       const data = (await res.json()) as { url?: string; error?: string };
       if (data.url) window.location.href = data.url;
     } finally {

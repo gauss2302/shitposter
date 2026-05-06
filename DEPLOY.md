@@ -1,6 +1,7 @@
 # Deploying Shitposter to Dokploy
 
-This guide covers deploying the Shitposter app to [Dokploy](https://dokploy.com) on a VPS. Dokploy runs on port 3000; the app is served via Traefik on ports 80/443.
+This guide covers deploying the separated stack (Next.js frontend, FastAPI
+backend, Python ARQ worker, Postgres, Redis) to [Dokploy](https://dokploy.com).
 
 ## Prerequisites
 
@@ -26,10 +27,11 @@ In **Environment** tab, add variables from `.env.dokploy.example`. Required:
 
 | Variable | Description |
 |----------|-------------|
-| `NEXT_PUBLIC_APP_URL` | Full app URL, e.g. `https://shitposter.yourdomain.com` |
-| `BETTER_AUTH_URL` | Same as `NEXT_PUBLIC_APP_URL` |
+| `NEXT_PUBLIC_APP_URL` | Frontend URL, e.g. `https://shitposter.yourdomain.com` |
+| `NEXT_PUBLIC_API_BASE_URL` | Public backend URL, e.g. `https://api.shitposter.yourdomain.com` |
+| `FRONTEND_PUBLIC_URL` | Same as frontend URL |
+| `BACKEND_PUBLIC_URL` | Same as backend URL |
 | `DB_PASSWORD` | Strong Postgres password |
-| `BETTER_AUTH_SECRET` | Random 32+ char string |
 | `TOKEN_ENCRYPTION_KEY` | `openssl rand -base64 32` |
 | OAuth credentials | For Twitter, Google, LinkedIn, etc. |
 
@@ -37,8 +39,8 @@ In **Environment** tab, add variables from `.env.dokploy.example`. Required:
 
 In **Domains** tab:
 
-1. **Main app**: Add domain (e.g. `shitposter.yourdomain.com`) → select **web** service
-2. **Bull Board** (optional): Add `queue.yourdomain.com` → select **bull-board** service
+1. **Frontend**: Add domain (e.g. `shitposter.yourdomain.com`) → select **web** service.
+2. **Backend**: Add domain (e.g. `api.shitposter.yourdomain.com`) → select **backend** service.
 
 Dokploy will add Traefik labels and HTTPS (Let's Encrypt) automatically.
 
@@ -48,7 +50,8 @@ Click **Deploy**. First build may take 5–10 minutes.
 
 ## Migrations
 
-Database migrations run automatically on each deploy via the `migrate` service. It runs before `web` and `worker` start.
+Database migrations run automatically on each deploy via the `migrate`
+service. It runs Alembic before `web`, `backend`, and `backend-worker` start.
 
 ## Architecture
 
@@ -57,37 +60,35 @@ Database migrations run automatically on each deploy via the `migrate` service. 
                     │  Traefik (80/443)│
                     └────────┬────────┘
                              │ dokploy-network
-              ┌──────────────┼──────────────┐
-              ▼              ▼              ▼
-         ┌─────────┐   ┌─────────────┐
-         │   web   │   │  bull-board │
-         │ (Next.js)│   │  (optional) │
-         └────┬────┘   └─────────────┘
-              │
+              ┌──────────────┴──────────────┐
+              ▼                             ▼
+         ┌─────────┐                 ┌──────────┐
+         │   web   │                 │ backend  │
+         │ Next.js │                 │ FastAPI  │
+         └────┬────┘                 └────┬─────┘
+              │                           │
               │ shitpost-network
     ┌─────────┼─────────┬─────────────┐
     ▼         ▼         ▼             ▼
-┌────────┐ ┌──────┐ ┌───────┐   ┌──────────┐
-│postgres│ │ redis│ │ worker│   │bull-board│
-└────────┘ └──────┘ └───────┘   └──────────┘
+┌────────┐ ┌──────┐ ┌─────────┐ ┌──────────────┐
+│postgres│ │redis │ │ backend │ │backend-worker│
+└────────┘ └──────┘ └─────────┘ └──────────────┘
 ```
 
-- **migrate**: Runs Drizzle migrations (one-off, then exits)
-- **web**: Next.js app (port 3000)
-- **worker**: BullMQ job processor
+- **migrate**: Runs Alembic migrations (one-off, then exits)
+- **web**: Next.js frontend
+- **backend**: FastAPI API service
+- **backend-worker**: ARQ publishing worker
 - **postgres**: PostgreSQL 16
 - **redis**: Redis 7
-- **bull-board**: Queue dashboard (optional)
 
 ## OAuth callback URLs
 
 Update OAuth apps with your production URLs:
 
-- **Twitter**: `https://your-domain.com/api/auth/callback/twitter`
-- **Google**: `https://your-domain.com/api/auth/callback/google`
-- **LinkedIn**: `https://your-domain.com/api/auth/callback/linkedin`
-- **Facebook**: `https://your-domain.com/api/auth/callback/facebook`
-- **TikTok**: `https://your-domain.com/api/auth/callback/tiktok`
+- **Google**: `https://api.your-domain.com/api/v1/auth/google/callback`
+- **Twitter OAuth2**: `https://api.your-domain.com/api/v1/social/callback/twitter`
+- **LinkedIn**: `https://api.your-domain.com/api/v1/social/callback/linkedin`
 
 ## Subpath deployment
 
@@ -101,9 +102,9 @@ If Dokploy serves the app under a subpath (e.g. `/baas-shitposter-xxx`):
 | Issue | Solution |
 |-------|----------|
 | Domain not loading | Check A record, wait ~10s for Traefik certs |
-| OAuth redirect fails | Ensure `NEXT_PUBLIC_APP_URL` and `BETTER_AUTH_URL` match domain |
+| OAuth redirect fails | Ensure frontend/backend public URLs and provider callback URLs match |
 | Build fails (OOM) | Increase VPS RAM or add swap |
-| Worker not processing | Check Redis connection, view worker logs in Dokploy |
+| Worker not processing | Check Redis connection and backend-worker logs in Dokploy |
 
 ## Volumes & backups
 

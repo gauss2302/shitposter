@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import type { SocialAccount } from "@/lib/db/schema";
+import type { SocialAccount } from "@/lib/api-types";
+import { apiUrl } from "@/lib/api-client";
 
 interface TikTokModalProps {
   accounts: SocialAccount[];
@@ -206,8 +207,9 @@ export function TikTokModal({
       }
       formData.append("media", videoFile);
 
-      const res = await fetch("/api/posts", {
+      const res = await fetch(apiUrl("/api/v1/posts"), {
         method: "POST",
+        credentials: "include",
         body: formData,
       });
 

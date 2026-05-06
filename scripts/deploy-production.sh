@@ -3,7 +3,7 @@
 # Usage: run on VPS from repo root, with env set (e.g. .env.production) or export DATABASE_URL etc.
 set -e
 
-echo "🚀 Deploying shitposter (web + worker)..."
+echo "🚀 Deploying shitposter (frontend + FastAPI backend + Python worker)..."
 
 # Optional: backup DB before migrations (uncomment and set BACKUP_DIR if desired)
 # BACKUP_DIR="${BACKUP_DIR:-./backups}"
@@ -27,18 +27,19 @@ fi
 echo "📦 Running database migrations..."
 ./scripts/run-migrations.sh
 
-# 4. Build and start web + worker
+# 4. Build and start frontend/backend/worker
 echo "🔨 Building and starting services..."
-docker-compose build web worker
-docker-compose up -d --no-deps web worker
+docker-compose build web backend backend-worker
+docker-compose up -d --no-deps web backend backend-worker
 
 # 5. Wait and verify health
 echo "⏳ Waiting for health checks..."
 sleep 15
 
 WEB_URL="${NEXT_PUBLIC_APP_URL:?NEXT_PUBLIC_APP_URL must be set}"
-WEB_HEALTH="${WEB_URL}/api/health"
-WORKER_HEALTH="http://localhost:3001/health"
+BACKEND_URL="${BACKEND_PUBLIC_URL:-http://localhost:8000}"
+WEB_HEALTH="${WEB_URL}/"
+BACKEND_HEALTH="${BACKEND_URL}/api/v1/health?deep=1"
 
 if curl -sf "$WEB_HEALTH" > /dev/null; then
   echo "✅ Web is healthy ($WEB_HEALTH)"
@@ -48,12 +49,12 @@ else
   exit 1
 fi
 
-if curl -sf "$WORKER_HEALTH" > /dev/null; then
-  echo "✅ Worker is healthy ($WORKER_HEALTH)"
-  docker-compose logs --tail=20 worker
+if curl -sf "$BACKEND_HEALTH" > /dev/null; then
+  echo "✅ Backend is healthy ($BACKEND_HEALTH)"
+  docker-compose logs --tail=20 backend
 else
-  echo "❌ Worker health check failed ($WORKER_HEALTH)"
-  docker-compose logs --tail=50 worker
+  echo "❌ Backend health check failed ($BACKEND_HEALTH)"
+  docker-compose logs --tail=50 backend
   exit 1
 fi
 

@@ -22,12 +22,12 @@ The system now supports both OAuth flows:
 
 ### For Users
 
-1. **Connect via OAuth 2.0** (existing flow):
-   - Go to `/api/social/connect/twitter`
+1. **Connect via OAuth 2.0** (backend flow):
+   - Go to `/api/v1/social/connect/twitter` on the FastAPI backend
    - This provides access to API v2 endpoints
 
 2. **Connect via OAuth 1.0a** (for media upload):
-   - Go to `/api/social/connect/twitter-oauth1`
+   - Go to `/api/v1/social/connect/twitter-oauth1` on the FastAPI backend
    - This provides OAuth 1.0a credentials needed for media upload
    - Can be done in addition to OAuth 2.0 connection
 
@@ -35,14 +35,14 @@ The system now supports both OAuth flows:
 
 The OAuth 1.0a flow follows the 3-legged OAuth process:
 
-1. **Step 1**: `GET /api/social/connect/twitter-oauth1`
+1. **Step 1**: `GET /api/v1/social/connect/twitter-oauth1`
    - Requests a request token from Twitter
    - Redirects user to Twitter authorization page
 
 2. **Step 2**: User authorizes on Twitter
    - Twitter redirects to callback with `oauth_token` and `oauth_verifier`
 
-3. **Step 3**: `GET /api/social/callback/twitter-oauth1`
+3. **Step 3**: `GET /api/v1/social/callback/twitter-oauth1`
    - Exchanges request token for access token and secret
    - Stores credentials in database
 
@@ -74,7 +74,7 @@ Make sure these environment variables are set:
 
 In Twitter Developer Portal:
 1. Go to your app settings
-2. Add callback URL: `https://yourdomain.com/api/social/callback/twitter-oauth1`
+2. Add callback URL: `https://api.yourdomain.com/api/v1/social/callback/twitter-oauth1`
 3. Save changes
 
 ## Migration

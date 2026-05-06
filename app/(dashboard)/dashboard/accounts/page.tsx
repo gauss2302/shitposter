@@ -1,27 +1,20 @@
-import { auth } from "@/lib/auth";
-import { getSubscriptionState } from "@/lib/billing";
-import { db, socialAccount } from "@/lib/db";
-import { eq, desc } from "drizzle-orm";
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { AccountsClient } from "./accounts-client";
 import { BillingBanner } from "./billing-banner";
 import { LogoutButton } from "@/app/ui/logout-button";
 import { PricingSection } from "./pricing-section";
+import { getBackendSession, getDashboardAccounts, getSubscriptionState } from "@/lib/server-api";
 
 export default async function AccountsPage() {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await getBackendSession();
 
-  if (!session) {
+  if (!session.user) {
     redirect("/sign-in");
   }
 
   const [accounts, subscriptionState] = await Promise.all([
-    db.query.socialAccount.findMany({
-      where: eq(socialAccount.userId, session.user.id),
-      orderBy: desc(socialAccount.createdAt),
-    }),
-    getSubscriptionState(session.user.id),
+    getDashboardAccounts(),
+    getSubscriptionState(),
   ]);
 
   const totalAccounts = accounts.length;

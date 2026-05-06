@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import type { SocialAccount } from "@/lib/db/schema";
+import type { SocialAccount } from "@/lib/api-types";
+import { apiUrl } from "@/lib/api-client";
 
 const platformIcons: Record<string, string> = {
   twitter: "𝕏",
@@ -253,9 +254,10 @@ export function ComposeModal({
         formData.append("media", file);
       });
 
-      const res = await fetch("/api/posts", {
+      const res = await fetch(apiUrl("/api/v1/posts"), {
         method: "POST",
         body: formData,
+        credentials: "include",
       });
 
       const data = await res.json();

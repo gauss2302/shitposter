@@ -2,7 +2,10 @@
 
 ## Overview
 
-Deploy the full stack (Next.js web, BullMQ worker, Postgres, Redis) on a VPS using Docker Compose. TLS should be terminated at a reverse proxy (Caddy, nginx, or Traefik) in front of the app.
+Deploy the split stack (Next.js frontend, FastAPI backend, ARQ publishing
+worker, Postgres, Redis) on a VPS using Docker Compose. TLS should be
+terminated at a reverse proxy (Caddy, nginx, or Traefik) in front of the app
+and API.
 
 ## One-command deploy
 
@@ -16,8 +19,8 @@ This will:
 
 1. `git pull origin main`
 2. Run database migrations (`./scripts/run-migrations.sh`)
-3. Build and start `web` and `worker` with `docker-compose up -d --no-deps web worker`
-4. Verify web and worker health; exit 1 if either fails
+3. Build and start `web`, `backend`, and `backend-worker`
+4. Verify frontend and backend health; exit 1 if either fails
 
 Ensure Postgres and Redis are already running (e.g. `docker-compose up -d postgres redis` on first run, or use the same compose file and start all services once).
 
@@ -27,25 +30,28 @@ Set these in `.env.production` or export them before running the deploy script a
 
 | Variable | Description |
 |----------|-------------|
-| `DATABASE_URL` | Postgres connection string (used by migrations and app). |
+| `DATABASE_URL` | Postgres connection string (used by Alembic, backend, and worker). |
 | `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` | Alternative to `DATABASE_URL` for compose; can be derived from it. |
 | `REDIS_URL` | Redis connection string (e.g. `redis://redis:6379` inside compose). |
 | `TOKEN_ENCRYPTION_KEY` | Strong secret for encrypting tokens (e.g. 32+ chars). |
-| `NEXT_PUBLIC_APP_URL` | Public base URL (e.g. `https://your-domain.com`) for auth and redirects. |
-| `BETTER_AUTH_URL` | Same as `NEXT_PUBLIC_APP_URL` for better-auth. |
+| `NEXT_PUBLIC_APP_URL` / `FRONTEND_PUBLIC_URL` | Public frontend base URL. |
+| `NEXT_PUBLIC_API_BASE_URL` / `BACKEND_PUBLIC_URL` | Public backend API base URL. |
+| `SESSION_COOKIE_*` | Backend session cookie name/domain/security settings. |
 | `NEXT_PUBLIC_BASE_PATH` | Optional subpath (e.g. `/app`) if app is not at root. |
 | OAuth credentials | `TWITTER_*`, `TIKTOK_*`, `LINKEDIN_*`, `FACEBOOK_*`, `GOOGLE_*` as needed. |
 | `SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_ENVIRONMENT` | Optional; set for error tracking. |
 
-Migrations read `DATABASE_URL` from the environment or from `.env.production` / `.env.local`. See [MIGRATIONS.md](MIGRATIONS.md).
+Migrations read `DATABASE_URL` from the environment or from `.env.production` /
+`.env.local`. See [MIGRATIONS.md](MIGRATIONS.md).
 
 ## TLS and reverse proxy
 
-Do not expose the Next.js or worker ports directly to the internet. Use a reverse proxy to:
+Do not expose internal service ports directly to the internet. Use a reverse proxy to:
 
 - Terminate TLS (HTTPS).
-- Route your domain to the web container (e.g. port 3010 or 3000).
-- Optionally protect the worker health port or expose it only on localhost / internal network.
+- Route your app domain to the web container.
+- Route your API domain/path to the FastAPI backend.
+- Keep the worker internal.
 
 Example (Caddy): route `your-domain.com` to `http://localhost:3010` and let Caddy handle HTTPS.
 
@@ -74,7 +80,8 @@ On the VPS:
 ## Rollback and migrations
 
 - **Application**: Redeploy a previous commit (e.g. `git checkout <sha>` then run `./scripts/deploy-production.sh`). Migrations are run on each deploy; ensure older code is compatible with the current DB schema.
-- **Database**: Drizzle does not generate down migrations. Back up the DB before migrating (e.g. `pg_dump`). See [MIGRATIONS.md](MIGRATIONS.md).
+- **Database**: Alembic migrations are forward-only by convention in this repo.
+  Back up the DB before migrating (e.g. `pg_dump`). See [MIGRATIONS.md](MIGRATIONS.md).
 
 ## See also
 

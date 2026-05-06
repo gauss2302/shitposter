@@ -2,7 +2,8 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import type { Post, SocialAccount } from "@/lib/db/schema";
+import type { Post, SocialAccount } from "@/lib/api-types";
+import { apiUrl } from "@/lib/api-client";
 
 interface CalendarViewProps {
   posts: Post[];
@@ -196,7 +197,7 @@ export function CalendarView({ posts, accounts, selectedAccountId, onAccountSele
           {availablePlatforms.slice(0, 4).map((platform) => (
             <Link
               key={platform}
-              href={`/api/social/connect/${platform}`}
+              href={apiUrl(`/api/v1/social/connect/${platform}`)}
               className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-100 transition-colors group"
             >
               <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-sm text-slate-400 group-hover:text-slate-600">

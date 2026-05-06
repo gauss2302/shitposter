@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { SocialAccount } from "@/lib/db/schema";
+import type { SocialAccount } from "@/lib/api-types";
+import { apiUrl } from "@/lib/api-client";
 
 interface AccountsSidebarProps {
   isOpen: boolean;
@@ -69,7 +70,7 @@ export function AccountsSidebar({
 
   const handleConnect = async (platform: string) => {
     setLoading(true);
-    window.location.href = `/api/social/connect/${platform}`;
+    window.location.href = apiUrl(`/api/v1/social/connect/${platform}`);
   };
 
   const handleDisconnect = async (accountId: string) => {
@@ -77,8 +78,9 @@ export function AccountsSidebar({
 
     setLoading(true);
     try {
-      const res = await fetch(`/api/social/accounts/${accountId}`, {
+      const res = await fetch(apiUrl(`/api/v1/social/accounts/${accountId}`), {
         method: "DELETE",
+        credentials: "include",
       });
 
       if (res.ok) {

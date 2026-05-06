@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import type { SocialAccount } from "@/lib/db/schema";
+import type { SocialAccount } from "@/lib/api-types";
+import { apiUrl } from "@/lib/api-client";
 
 interface TwitterAnalytics {
   user: {
@@ -54,7 +55,8 @@ export function TwitterAnalytics({ account }: TwitterAnalyticsProps) {
 
     try {
       const response = await fetch(
-        `/api/analytics/twitter/${account.id}?limit=${tweetLimit}`
+        apiUrl(`/api/v1/analytics/twitter/${account.id}?limit=${tweetLimit}`),
+        { credentials: "include" }
       );
 
       if (!response.ok) {

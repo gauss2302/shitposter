@@ -2,13 +2,13 @@ import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
 
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
+const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "";
 
 const nextConfig: NextConfig = {
   output: "standalone",
   basePath: basePath || undefined,
   assetPrefix: basePath ? `${basePath}/` : undefined,
   allowedDevOrigins: ["app.shitposter.art"],
-  // Bundle ioredis instead of externalizing it - fixes Node.js resolution of ioredis/built/utils
   serverExternalPackages: [],
   async headers() {
     return [
@@ -32,7 +32,17 @@ const nextConfig: NextConfig = {
               "font-src 'self' https://fonts.gstatic.com",
               "img-src 'self' data: https: blob:",
               "frame-src 'self' https://accounts.google.com https://twitter.com https://www.linkedin.com https://www.facebook.com https://www.tiktok.com",
-              "connect-src 'self' https://api.twitter.com https://api.linkedin.com https://graph.facebook.com https://open.tiktokapis.com https://*.sentry.io",
+              [
+                "connect-src 'self'",
+                apiBaseUrl,
+                "https://api.twitter.com",
+                "https://api.linkedin.com",
+                "https://graph.facebook.com",
+                "https://open.tiktokapis.com",
+                "https://*.sentry.io",
+              ]
+                .filter(Boolean)
+                .join(" "),
             ].join("; "),
           },
         ],
