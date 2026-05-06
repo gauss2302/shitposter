@@ -111,3 +111,29 @@ async def get_twitter_analytics(access_token: str, tweet_limit: int) -> dict[str
             "avgEngagementRate": avg_engagement_rate,
         },
     }
+
+
+async def post_tweet(
+    *,
+    access_token: str,
+    content: str,
+    media_ids: list[str] | None = None,
+) -> str:
+    payload: dict[str, Any] = {"text": content}
+    if media_ids:
+        payload["media"] = {"media_ids": media_ids}
+    async with httpx.AsyncClient(timeout=30) as client:
+        response = await client.post(
+            "https://api.twitter.com/2/tweets",
+            json=payload,
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+    try:
+        body = response.json()
+    except ValueError:
+        body = {}
+    if response.status_code == 429:
+        raise TwitterRateLimitError(_error_message(body, response.status_code))
+    if not response.is_success:
+        raise RuntimeError(_error_message(body, response.status_code))
+    return str(body.get("data", {}).get("id", ""))
