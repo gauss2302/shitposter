@@ -7,11 +7,6 @@
     "build": "next build --webpack",
     "lint": "eslint .",
     "start": "next start",
-    "db:generate": "echo 'Database migrations are owned by backend Alembic'",
-    "db:migrate": "cd backend && alembic upgrade head",
-    "db:migrate:prod": "./scripts/run-migrations.sh",
-    "worker": "cd backend && arq app.worker.publisher_worker.WorkerSettings",
-    "worker:dev": "cd backend && arq app.worker.publisher_worker.WorkerSettings",
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down",
     "docker:logs": "docker-compose logs -f",
@@ -20,10 +15,6 @@
     "docker:rebuild": "docker-compose build --no-cache",
     "docker:dev": "docker-compose -f docker-compose.yml -f docker-compose.dev.yml up",
     "docker:prod": "docker-compose --profile monitoring up -d",
-    "queue:status": "echo 'Inspect ARQ jobs in Redis for backend-worker'",
-    "queue:clean": "echo 'Use Redis/ARQ tooling for backend-worker queues'",
-    "health": "curl -s http://localhost:8000/api/v1/health | jq",
-    "metrics": "curl -s http://localhost:8000/api/v1/health?deep=1",
     "test": "vitest run"
   },
   "dependencies": {

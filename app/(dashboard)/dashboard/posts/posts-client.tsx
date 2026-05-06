@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ComposeModal } from "./compose-modal";
 import { TikTokModal } from "./tiktok-modal";
-import type { SocialAccount } from "@/lib/api-types";
+import type { SocialAccount } from "@/lib/api/types";
 
 interface PostsClientProps {
   accounts: SocialAccount[];

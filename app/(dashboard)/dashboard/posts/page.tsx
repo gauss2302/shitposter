@@ -3,7 +3,7 @@ import Link from "next/link";
 import { PostsNotification } from "./notification";
 import { PostsClient } from "./posts-client";
 import { PostsViewClient } from "./posts-view-client";
-import { ApiUnauthorizedError, getBackendSession, getDashboardPosts } from "@/lib/server-api";
+import { ApiUnauthorizedError, getBackendSession, getDashboardPosts } from "@/lib/api/server";
 
 const platformIcons: Record<string, string> = {
   twitter: "𝕏",

@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
-import type { SubscriptionState } from "@/lib/api-types";
-import { apiUrl } from "@/lib/api-client";
+import { apiUrl } from "@/lib/api/browser";
+import { apiPaths } from "@/lib/api/endpoints";
+import type { SubscriptionState } from "@/lib/api/types";
 
 const PLAN_LABELS: Record<string, string> = {
   basic: "Basic",
@@ -24,7 +25,7 @@ export function BillingBanner({
   async function openPortal() {
     setPortalLoading(true);
     try {
-      const res = await fetch(apiUrl("/api/v1/billing/portal"), {
+      const res = await fetch(apiUrl(apiPaths.billing.portal), {
         method: "POST",
         credentials: "include",
       });

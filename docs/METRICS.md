@@ -8,7 +8,7 @@ The FastAPI backend owns operational endpoints:
 - `GET http://localhost:8000/api/v1/health?deep=1`
 - `GET http://localhost:8000/api/v1/ready`
 
-The legacy Node worker metrics endpoint was removed with the BullMQ worker.
+The legacy Node worker metrics endpoint was removed with the old worker.
 The Python worker now runs as an ARQ worker process; monitor its container
 health/logs and Redis queue keys until a dedicated exporter is added.
 

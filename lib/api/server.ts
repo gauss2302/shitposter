@@ -6,7 +6,8 @@ import type {
   SocialAccount,
   SubscriptionState,
   UserDto,
-} from "@/lib/api-types";
+} from "@/lib/api/types";
+import { apiPaths } from "@/lib/api/endpoints";
 
 const DEFAULT_API_BASE_URL = "http://localhost:8000";
 
@@ -87,7 +88,7 @@ function normalizePost(post: PostWithTargets): PostWithTargets {
 }
 
 export async function getDashboardSummary(): Promise<DashboardSummary> {
-  const summary = await backendFetch<DashboardSummary>("/api/v1/dashboard/summary");
+  const summary = await backendFetch<DashboardSummary>(apiPaths.dashboard.summary);
   return {
     ...summary,
     accounts: summary.accounts.map(normalizeAccount),
@@ -96,17 +97,17 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
 }
 
 export async function getBackendSession(): Promise<{ user: UserDto | null }> {
-  return backendFetch<{ user: UserDto | null }>("/api/v1/auth/session");
+  return backendFetch<{ user: UserDto | null }>(apiPaths.auth.session);
 }
 
 export async function getDashboardAccounts(): Promise<SocialAccount[]> {
-  const accounts = await backendFetch<SocialAccount[]>("/api/v1/dashboard/accounts");
+  const accounts = await backendFetch<SocialAccount[]>(apiPaths.dashboard.accounts);
   return accounts.map(normalizeAccount);
 }
 
 export async function getSubscriptionState(): Promise<SubscriptionState | null> {
   const subscriptionState = await backendFetch<SubscriptionState | null>(
-    "/api/v1/dashboard/subscription"
+    apiPaths.dashboard.subscription
   );
   return subscriptionState
     ? {
@@ -123,40 +124,16 @@ export async function getDashboardPosts(): Promise<{
   return getPostsPageData();
 }
 
-export async function getAccountsPageData(): Promise<{
-  accounts: SocialAccount[];
-  subscriptionState: SubscriptionState | null;
-}> {
-  const [accounts, subscriptionState] = await Promise.all([
-    backendFetch<SocialAccount[]>("/api/v1/dashboard/accounts"),
-    backendFetch<SubscriptionState | null>("/api/v1/dashboard/subscription"),
-  ]);
-  return {
-    accounts: accounts.map(normalizeAccount),
-    subscriptionState: subscriptionState
-      ? {
-          ...subscriptionState,
-          currentPeriodEnd: toDate(subscriptionState.currentPeriodEnd),
-        }
-      : null,
-  };
-}
-
 export async function getPostsPageData(): Promise<{
   posts: PostWithTargets[];
   accounts: SocialAccount[];
 }> {
   const [posts, accounts] = await Promise.all([
-    backendFetch<PostWithTargets[]>("/api/v1/dashboard/posts"),
-    backendFetch<SocialAccount[]>("/api/v1/dashboard/accounts"),
+    backendFetch<PostWithTargets[]>(apiPaths.dashboard.posts),
+    backendFetch<SocialAccount[]>(apiPaths.dashboard.accounts),
   ]);
   return {
     posts: posts.map(normalizePost),
     accounts: accounts.map(normalizeAccount),
   };
-}
-
-export async function getAnalyticsPageData(): Promise<{ accounts: SocialAccount[] }> {
-  const accounts = await backendFetch<SocialAccount[]>("/api/v1/dashboard/accounts");
-  return { accounts: accounts.map(normalizeAccount) };
 }

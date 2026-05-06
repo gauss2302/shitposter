@@ -75,7 +75,7 @@ On the VPS:
 
 1. Clone the repo (or ensure it exists) at `DEPLOY_PATH`.
 2. Create `.env.production` (or otherwise set env) so that when the workflow runs `./scripts/deploy-production.sh`, `DATABASE_URL` and other vars are available (e.g. by sourcing `.env.production` from the deploy script, which the script already does if the file exists).
-3. Ensure the SSH user can run `git pull`, `npm run db:migrate`, and `docker-compose` (e.g. add user to `docker` group).
+3. Ensure the SSH user can run `git pull`, `./scripts/run-migrations.sh`, and `docker-compose` (e.g. add user to `docker` group).
 
 ## Rollback and migrations
 
