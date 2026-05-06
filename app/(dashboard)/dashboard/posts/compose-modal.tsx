@@ -306,7 +306,7 @@ export function ComposeModal({
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || "Failed to create post");
+        throw new Error(data.detail || data.error || "Failed to create post");
       }
 
       // Success - close modal and refresh

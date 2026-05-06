@@ -89,6 +89,22 @@ export function AiSettingsClient({ initialProviders }: AiSettingsClientProps) {
     await refreshProviders();
   }
 
+  async function toggleProvider(provider: AiProviderCredential) {
+    setMessage("");
+    const res = await fetch(apiUrl(apiEndpoints.ai.provider(provider.id)), {
+      method: "PATCH",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isActive: !provider.isActive }),
+    });
+    const data = res.status === 204 ? null : await res.json().catch(() => null);
+    if (!res.ok) {
+      setMessage(data?.detail || "Failed to update provider.");
+      return;
+    }
+    await refreshProviders();
+  }
+
   async function generatePreview() {
     setGenerating(true);
     setMessage("");
@@ -220,14 +236,26 @@ export function AiSettingsClient({ initialProviders }: AiSettingsClientProps) {
                     <p className="text-sm text-zinc-500">
                       {provider.provider} · {provider.defaultModel} · key hidden
                     </p>
+                    <p className="mt-1 text-xs text-zinc-400">
+                      {provider.isActive ? "Active" : "Inactive"}
+                    </p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => deleteProvider(provider.id)}
-                    className="text-sm font-semibold text-red-600"
-                  >
-                    Delete
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => toggleProvider(provider)}
+                      className="text-sm font-semibold text-violet-600"
+                    >
+                      {provider.isActive ? "Disable" : "Enable"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => deleteProvider(provider.id)}
+                      className="text-sm font-semibold text-red-600"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
               ))
             )}
