@@ -94,6 +94,11 @@ class SubscriptionRepository:
         )
         return result.scalar_one_or_none()
 
+    async def add(self, subscription: models.Subscription) -> models.Subscription:
+        self.session.add(subscription)
+        await self.session.flush()
+        return subscription
+
 
 class SocialAccountRepository:
     def __init__(self, session: AsyncSession) -> None:

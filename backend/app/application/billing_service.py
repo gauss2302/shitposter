@@ -5,7 +5,9 @@ from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import Settings
 from app.infrastructure.db.repositories import SocialAccountRepository, SubscriptionRepository
+from app.infrastructure.external.polar import PolarClient, PolarNotConfiguredError
 
 PLAN_ACCOUNT_LIMITS: dict[str, int | None] = {
     "basic": 1,
@@ -28,9 +30,10 @@ class SubscriptionState:
 
 
 class BillingService:
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: AsyncSession, settings: Settings | None = None) -> None:
         self.subscriptions = SubscriptionRepository(session)
         self.social_accounts = SocialAccountRepository(session)
+        self.settings = settings
 
     async def get_subscription_state(self, user_id: str) -> SubscriptionState | None:
         row = await self.subscriptions.get_by_user_id(user_id)
@@ -54,3 +57,33 @@ class BillingService:
             return True
         current = await self.social_accounts.count_by_platform(user_id, platform)
         return current < state.limit_per_platform
+
+    async def create_checkout(
+        self,
+        *,
+        user_id: str,
+        email: str,
+        name: str,
+        plan: str,
+    ) -> dict[str, str]:
+        if self.settings is None:
+            raise PolarNotConfiguredError("Polar is not configured")
+        product_ids = {
+            "basic": self.settings.polar_product_id_basic,
+            "business": self.settings.polar_product_id_business,
+            "enterprise": self.settings.polar_product_id_enterprise,
+        }
+        product_id = product_ids.get(plan)
+        if not product_id:
+            raise PolarNotConfiguredError("Plan is not configured")
+        return await PolarClient(self.settings).create_checkout(
+            user_id=user_id,
+            email=email,
+            name=name,
+            product_id=product_id,
+        )
+
+    async def create_portal(self, *, user_id: str) -> dict[str, str]:
+        if self.settings is None:
+            raise PolarNotConfiguredError("Polar is not configured")
+        return await PolarClient(self.settings).create_portal(user_id=user_id)
