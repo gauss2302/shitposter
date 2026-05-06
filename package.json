@@ -10,8 +10,6 @@
     "db:generate": "echo 'Database migrations are owned by backend Alembic'",
     "db:migrate": "cd backend && alembic upgrade head",
     "db:migrate:prod": "./scripts/run-migrations.sh",
-    "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio",
     "worker": "cd backend && arq app.worker.publisher_worker.WorkerSettings",
     "worker:dev": "cd backend && arq app.worker.publisher_worker.WorkerSettings",
     "docker:up": "docker-compose up -d",
