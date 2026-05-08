@@ -3,16 +3,12 @@ import Link from "next/link";
 import { PostsNotification } from "./notification";
 import { PostsClient } from "./posts-client";
 import { PostsViewClient } from "./posts-view-client";
-import { ApiUnauthorizedError, getBackendSession, getDashboardPosts } from "@/lib/api/server";
-
-const platformIcons: Record<string, string> = {
-  twitter: "𝕏",
-  instagram: "📸",
-  tiktok: "🎵",
-  linkedin: "💼",
-  facebook: "📘",
-  threads: "🧵",
-};
+import { PlatformIcon, platformLabel } from "@/app/ui/platform-icon";
+import {
+  ApiUnauthorizedError,
+  getBackendSession,
+  getDashboardPosts,
+} from "@/lib/api/server";
 
 const headerMenu = [
   { label: "Overview", href: "/dashboard/posts" },
@@ -36,7 +32,8 @@ export default async function PostsPage() {
 
   const postsWithTargets = data.posts;
   const composeAccounts = data.accounts.filter(
-    (account) => account.platform === "twitter" || account.platform === "linkedin"
+    (account) =>
+      account.platform === "twitter" || account.platform === "linkedin"
   );
 
   const totalPosts = postsWithTargets.length;
@@ -94,52 +91,55 @@ export default async function PostsPage() {
   );
 
   return (
-    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-      {/* Header Section - Compact */}
-      <div className="rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-gradient-to-r from-violet-600/5 via-white to-fuchsia-600/5 dark:from-violet-500/10 dark:via-zinc-950 dark:to-fuchsia-500/10 p-4 sm:p-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-white">
-                Posts & Performance
+    <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
+      {/* Header */}
+      <div className="rounded-lg border border-border-subtle bg-surface-2 p-5 sm:p-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0 flex-1">
+            <div className="mb-2 flex items-center gap-3">
+              <h1 className="text-2xl font-semibold tracking-[-0.02em] text-ink">
+                Posts &amp; performance
               </h1>
-              <span className="hidden sm:inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
-                <span className="text-sm font-semibold text-zinc-900 dark:text-white">
+              <span className="hidden items-center gap-2 rounded-pill border border-border-subtle bg-surface-1 px-3 py-1 sm:inline-flex">
+                <span className="text-sm font-semibold text-ink nums">
                   {successRate}%
                 </span>
-                <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                  success
-                </span>
+                <span className="text-xs text-muted">success</span>
               </span>
             </div>
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              Track performance across platforms and manage your content
+            <p className="text-sm text-muted">
+              Track performance across platforms and manage your content.
             </p>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex shrink-0 items-center gap-2">
             <PostsClient accounts={composeAccounts} />
             <Link
               href="/dashboard"
-              className="inline-flex items-center gap-2 rounded-lg bg-zinc-900 px-3 py-1.5 text-white text-sm transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
+              className="inline-flex items-center gap-2 rounded-md border border-border bg-surface-2 px-3 py-1.5 text-sm font-semibold text-ink transition-colors hover:bg-surface-1"
             >
-              <span>Dashboard</span>
-              <span className="text-base">🗂️</span>
+              Dashboard
             </Link>
           </div>
         </div>
 
-        {/* Navigation Tabs - Compact */}
-        <div className="mt-4 flex flex-wrap gap-1.5">
+        {/* Tabs */}
+        <div
+          role="tablist"
+          aria-label="Posts views"
+          className="mt-4 flex flex-wrap gap-1.5"
+        >
           {headerMenu.map((item) => {
             const isActive = item.href === "/dashboard/posts";
             return (
               <Link
+                role="tab"
+                aria-selected={isActive}
                 key={item.href}
                 href={item.href}
-                className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition ${
+                className={`rounded-md border px-3 py-1.5 text-sm font-medium transition-colors ${
                   isActive
-                    ? "border-violet-500 bg-white text-violet-600 shadow-sm dark:bg-zinc-900 dark:text-violet-300"
-                    : "border-transparent text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
+                    ? "border-border bg-surface-2 text-ink shadow-sm"
+                    : "border-transparent text-muted hover:text-ink"
                 }`}
               >
                 {item.label}
@@ -151,8 +151,8 @@ export default async function PostsPage() {
 
       <PostsNotification />
 
-      {/* Stats Grid - Compact */}
-      <section className="grid gap-3 grid-cols-2 sm:grid-cols-4">
+      {/* Stats grid */}
+      <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
           {
             label: "Total posts",
@@ -170,9 +170,7 @@ export default async function PostsPage() {
             helper:
               failedPosts === 0
                 ? "All clear"
-                : `${failedPosts} post${
-                    failedPosts === 1 ? "" : "s"
-                  } need attention`,
+                : `${failedPosts} post${failedPosts === 1 ? "" : "s"} need attention`,
           },
           {
             label: "Avg. platforms/post",
@@ -182,38 +180,37 @@ export default async function PostsPage() {
         ].map((card) => (
           <div
             key={card.label}
-            className="rounded-lg border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900"
+            className="rounded-md border border-border-subtle bg-surface-2 p-3"
           >
-            <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-faint">
               {card.label}
             </p>
-            <p className="mt-1 text-xl sm:text-2xl font-semibold text-zinc-900 dark:text-white">
+            <p className="mt-1 text-2xl font-semibold text-ink nums tracking-[-0.02em]">
               {card.value}
             </p>
-            <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
-              {card.helper}
-            </p>
+            <p className="mt-0.5 text-xs text-muted">{card.helper}</p>
           </div>
         ))}
       </section>
 
-      {/* Analytics Section - Grouped */}
+      {/* Analytics */}
       <section className="grid gap-4 lg:grid-cols-3">
-        <div className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900 lg:col-span-2">
-          <div className="flex items-center justify-between mb-4">
+        <div className="rounded-md border border-border-subtle bg-surface-2 p-4 lg:col-span-2">
+          <div className="mb-4 flex items-center justify-between">
             <div>
-              <h2 className="text-base font-semibold text-zinc-900 dark:text-white">
-                Platform Performance
+              <h2 className="text-base font-semibold tracking-[-0.01em] text-ink">
+                Platform performance
               </h2>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-              {totalTargets} total targets
-            </p>
+              <p className="mt-0.5 text-xs text-muted nums">
+                {totalTargets} total targets
+              </p>
             </div>
           </div>
-          <div className="space-y-3">
+          <div className="space-y-4">
             {platformEntries.length === 0 && (
-              <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                Connect a social account to start collecting platform insights.
+              <p className="text-sm text-muted">
+                Connect a social account to start collecting platform
+                insights.
               </p>
             )}
             {platformEntries.slice(0, 6).map(([platform, stats]) => {
@@ -224,21 +221,21 @@ export default async function PostsPage() {
               return (
                 <div key={platform}>
                   <div className="flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg">
-                        {platformIcons[platform] || "🌐"}
-                      </span>
-                      <span className="capitalize text-zinc-900 dark:text-white">
-                        {platform === "unknown" ? "Unknown platform" : platform}
+                    <div className="flex items-center gap-2 text-ink">
+                      <PlatformIcon platform={platform} size={16} />
+                      <span className="capitalize">
+                        {platform === "unknown"
+                          ? "Unknown platform"
+                          : platformLabel(platform)}
                       </span>
                     </div>
-                    <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                    <span className="text-xs text-muted nums">
                       {completion}% success • {stats.count} posts
                     </span>
                   </div>
-                  <div className="mt-2 h-2 rounded-full bg-zinc-100 dark:bg-zinc-800">
+                  <div className="mt-2 h-1.5 rounded-pill bg-surface-1">
                     <div
-                      className="h-2 rounded-full bg-violet-500"
+                      className="h-1.5 rounded-pill bg-primary"
                       style={{ width: `${completion}%` }}
                     />
                   </div>
@@ -247,52 +244,48 @@ export default async function PostsPage() {
             })}
           </div>
         </div>
-        <div className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-          <h3 className="text-base font-semibold text-zinc-900 dark:text-white mb-4">
-            Status Distribution
+        <div className="rounded-md border border-border-subtle bg-surface-2 p-4">
+          <h3 className="mb-4 text-base font-semibold tracking-[-0.01em] text-ink">
+            Status distribution
           </h3>
-          <div className="space-y-3">
-            {["published", "scheduled", "publishing", "failed"].map(
-              (status) => {
-                const count = targetStatusCounts[status] || 0;
-                const percentage =
-                  totalTargets === 0
-                    ? 0
-                    : Math.round((count / totalTargets) * 100);
-                const barColor =
-                  status === "published"
-                    ? "bg-green-500"
-                    : status === "failed"
-                    ? "bg-red-500"
+          <div className="space-y-4">
+            {["published", "scheduled", "publishing", "failed"].map((status) => {
+              const count = targetStatusCounts[status] || 0;
+              const percentage =
+                totalTargets === 0
+                  ? 0
+                  : Math.round((count / totalTargets) * 100);
+              const barClass =
+                status === "published"
+                  ? "bg-success"
+                  : status === "failed"
+                    ? "bg-danger"
                     : status === "publishing"
-                    ? "bg-yellow-500"
-                    : "bg-blue-500";
-                return (
-                  <div key={status}>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="capitalize text-zinc-900 dark:text-white">
-                        {status}
-                      </span>
-                      <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                        {count} targets • {percentage}%
-                      </span>
-                    </div>
-                    <div className="mt-2 h-2 rounded-full bg-zinc-100 dark:bg-zinc-800">
-                      <div
-                        className={`h-2 rounded-full ${barColor}`}
-                        style={{ width: `${percentage}%` }}
-                      />
-                    </div>
+                      ? "bg-warning"
+                      : "bg-primary";
+              return (
+                <div key={status}>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="capitalize text-ink">{status}</span>
+                    <span className="text-xs text-muted nums">
+                      {count} targets • {percentage}%
+                    </span>
                   </div>
-                );
-              }
-            )}
+                  <div className="mt-2 h-1.5 rounded-pill bg-surface-1">
+                    <div
+                      className={`h-1.5 rounded-pill ${barClass}`}
+                      style={{ width: `${percentage}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
           </div>
-          <div className="mt-4 rounded-lg border border-dashed border-zinc-200 p-3 text-xs text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
+          <div className="mt-5 rounded-md border border-dashed border-border-subtle p-3 text-xs text-muted">
             Need higher success rates? Check{" "}
             <Link
               href="/dashboard/accounts"
-              className="font-medium text-violet-600 hover:underline dark:text-violet-400"
+              className="font-medium text-primary hover:underline"
             >
               Accounts
             </Link>{" "}
@@ -301,24 +294,37 @@ export default async function PostsPage() {
         </div>
       </section>
 
-      {/* Posts Section */}
-      <div className="rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900 p-4 sm:p-6">
+      {/* Posts list */}
+      <div className="rounded-md border border-border-subtle bg-surface-2 p-4 sm:p-6">
         {postsWithTargets.length === 0 ? (
-          <div className="text-center py-8 sm:py-12">
-            <div className="w-12 h-12 bg-zinc-100 dark:bg-zinc-800 rounded-full mx-auto mb-3 flex items-center justify-center">
-              <span className="text-2xl">📝</span>
+          <div className="py-10 text-center">
+            <div className="mx-auto mb-3 grid h-10 w-10 place-items-center rounded-md bg-surface-1 text-muted">
+              <svg
+                viewBox="0 0 24 24"
+                width="20"
+                height="20"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden
+              >
+                <path d="M4 4h16v16H4z" />
+                <path d="M4 9h16M9 4v16" />
+              </svg>
             </div>
-            <h2 className="text-base font-semibold text-zinc-900 dark:text-white mb-2">
+            <h2 className="mb-1 text-base font-semibold text-ink">
               No posts yet
             </h2>
-            <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">
-              Create your first post to get started
+            <p className="mb-5 text-sm text-muted">
+              Create your first post to get started.
             </p>
             <Link
               href="/dashboard"
-              className="inline-flex px-4 py-2 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white text-sm font-medium rounded-lg transition"
+              className="inline-flex items-center justify-center rounded-md bg-primary px-5 py-2.5 text-sm font-semibold text-primary-on transition-colors hover:bg-primary-hover"
             >
-              Go to Dashboard
+              Go to dashboard
             </Link>
           </div>
         ) : (

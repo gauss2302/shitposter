@@ -38,13 +38,14 @@ export function PostsClient({ accounts }: PostsClientProps) {
     <>
       <button
         onClick={() => setIsModalOpen(true)}
-        className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 px-4 py-2 text-white font-medium transition shadow-lg shadow-violet-500/30"
+        className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-on transition-colors hover:bg-primary-hover"
       >
         <svg
-          className="w-5 h-5"
+          className="h-4 w-4"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
+          aria-hidden
         >
           <path
             strokeLinecap="round"
@@ -53,7 +54,7 @@ export function PostsClient({ accounts }: PostsClientProps) {
             d="M12 4v16m8-8H4"
           />
         </svg>
-        <span>Create Post</span>
+        <span>Create post</span>
       </button>
 
       <ComposeModal

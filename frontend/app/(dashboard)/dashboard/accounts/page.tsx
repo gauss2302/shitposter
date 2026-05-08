@@ -24,27 +24,27 @@ export default async function AccountsPage() {
   const needsAttention = accounts.filter((account) => !account.isActive).length;
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
       <BillingBanner subscriptionState={subscriptionState} />
-      <div className="rounded-3xl border border-zinc-200/70 bg-gradient-to-br from-white via-white to-violet-50 p-6 shadow-sm">
+      <div className="rounded-lg border border-border-subtle bg-surface-2 p-5 sm:p-6">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-wider text-violet-600">
+            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-primary">
               Accounts
             </p>
-            <h1 className="text-3xl font-bold text-zinc-900">
-              Connected Platforms
+            <h1 className="mt-1 text-3xl font-semibold tracking-[-0.02em] text-ink">
+              Connected platforms
             </h1>
-            <p className="text-zinc-500">
+            <p className="mt-1 text-sm text-muted">
               Add, audit, and disconnect social profiles in one tidy view.
             </p>
           </div>
           <LogoutButton />
         </div>
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {[
             {
-              label: "Total Accounts",
+              label: "Total accounts",
               value: totalAccounts,
               helper: `${platformsConnected} platforms`,
             },
@@ -76,13 +76,15 @@ export default async function AccountsPage() {
           ].map((card) => (
             <div
               key={card.label}
-              className="rounded-2xl border border-zinc-200 bg-white p-4 text-sm text-zinc-500 shadow-xs"
+              className="rounded-md border border-border-subtle bg-surface-1 p-4"
             >
-              <p className="font-semibold text-zinc-900">{card.label}</p>
-              <p className="mt-2 text-2xl font-bold text-zinc-900">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-faint">
+                {card.label}
+              </p>
+              <p className="mt-1 text-2xl font-semibold text-ink nums tracking-[-0.02em]">
                 {card.value}
               </p>
-              <p className="mt-1">{card.helper}</p>
+              <p className="mt-0.5 text-xs text-muted">{card.helper}</p>
             </div>
           ))}
         </div>
