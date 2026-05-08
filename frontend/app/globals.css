@@ -1,32 +1,236 @@
 @import "tailwindcss";
 
+/* =========================================================================
+   Design tokens — see /DESIGN.md for the contract.
+   Components reference these via Tailwind theme keys (e.g. bg-paper,
+   text-ink, border-border) — no raw hex in components.
+   ========================================================================= */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-  --app-font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
-    "Segoe UI", sans-serif;
+  /* Surfaces */
+  --color-paper: #fafaf7;
+  --color-surface-1: #f4f4ee;
+  --color-surface-2: #ffffff;
+
+  /* Text */
+  --color-ink: #0f0f12;
+  --color-muted: #5c5a53;
+  --color-faint: #8e8c84;
+
+  /* Borders */
+  --color-border-subtle: #e8e6df;
+  --color-border: #d1cfc7;
+  --color-border-strong: #0f0f12;
+
+  /* Brand */
+  --color-primary: #ff5a1f;
+  --color-primary-hover: #e64a0f;
+  --color-primary-tint: #ffeee6;
+  --color-primary-on: #ffffff;
+
+  /* Semantic */
+  --color-success: #0f8a4f;
+  --color-warning: #b7791f;
+  --color-danger: #c53030;
+
+  /* Radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-pill: 9999px;
+
+  /* Shadows — neutral, no color tints */
+  --shadow-sm: 0 1px 2px rgb(15 15 18 / 0.04);
+  --shadow-md: 0 2px 6px rgb(15 15 18 / 0.06),
+    0 1px 2px rgb(15 15 18 / 0.04);
+  --shadow-lg: 0 12px 32px rgb(15 15 18 / 0.08),
+    0 4px 8px rgb(15 15 18 / 0.04);
+  --shadow-focus: 0 0 0 3px rgb(255 90 31 / 0.35);
+
+  /* Motion */
+  --ease-default: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-out: cubic-bezier(0.2, 0, 0, 1);
+  --duration-micro: 90ms;
+  --duration-default: 180ms;
+  --duration-page: 360ms;
+  --duration-hero: 560ms;
+
+  /* Font fallbacks (overridden by next/font in layout.tsx) */
+  --app-font-sans: ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, "Segoe UI", sans-serif;
   --app-font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco,
     Consolas, "Liberation Mono", "Courier New", monospace;
-}
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--app-font-sans);
-  --font-mono: var(--app-font-mono);
+  color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --color-paper: #0a0a0c;
+    --color-surface-1: #161618;
+    --color-surface-2: #1f1f22;
+
+    --color-ink: #e5e5dd;
+    --color-muted: #a0a097;
+    --color-faint: #6b6a63;
+
+    --color-border-subtle: #26262a;
+    --color-border: #34343a;
+    --color-border-strong: #e5e5dd;
+
+    --color-primary: #ff7a45;
+    --color-primary-hover: #ff8f60;
+    --color-primary-tint: #3a1a0e;
+    --color-primary-on: #0a0a0c;
+
+    --color-success: #34d399;
+    --color-warning: #fbbf24;
+    --color-danger: #f87171;
+
+    --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.5);
+    --shadow-md: 0 2px 6px rgb(0 0 0 / 0.55),
+      0 1px 2px rgb(0 0 0 / 0.4);
+    --shadow-lg: 0 12px 32px rgb(0 0 0 / 0.6),
+      0 4px 8px rgb(0 0 0 / 0.4);
+    --shadow-focus: 0 0 0 3px rgb(255 122 69 / 0.45);
+
+    color-scheme: dark;
   }
 }
 
+/* Manual override hook for a future toggle (`<html class="dark">`).
+   Reuses the same dark token block. Kept identical to the media query
+   so adding the toggle later is one line of JS, not a refactor. */
+.dark {
+  --color-paper: #0a0a0c;
+  --color-surface-1: #161618;
+  --color-surface-2: #1f1f22;
+  --color-ink: #e5e5dd;
+  --color-muted: #a0a097;
+  --color-faint: #6b6a63;
+  --color-border-subtle: #26262a;
+  --color-border: #34343a;
+  --color-border-strong: #e5e5dd;
+  --color-primary: #ff7a45;
+  --color-primary-hover: #ff8f60;
+  --color-primary-tint: #3a1a0e;
+  --color-primary-on: #0a0a0c;
+  --color-success: #34d399;
+  --color-warning: #fbbf24;
+  --color-danger: #f87171;
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.5);
+  --shadow-md: 0 2px 6px rgb(0 0 0 / 0.55), 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-lg: 0 12px 32px rgb(0 0 0 / 0.6), 0 4px 8px rgb(0 0 0 / 0.4);
+  --shadow-focus: 0 0 0 3px rgb(255 122 69 / 0.45);
+  color-scheme: dark;
+}
+
+/* Tailwind 4 inline theme — exposes tokens as Tailwind utilities.
+   Use bg-paper, text-ink, border-border, bg-primary, etc. */
+@theme inline {
+  --color-paper: var(--color-paper);
+  --color-surface-1: var(--color-surface-1);
+  --color-surface-2: var(--color-surface-2);
+  --color-ink: var(--color-ink);
+  --color-muted: var(--color-muted);
+  --color-faint: var(--color-faint);
+  --color-border-subtle: var(--color-border-subtle);
+  --color-border: var(--color-border);
+  --color-border-strong: var(--color-border-strong);
+  --color-primary: var(--color-primary);
+  --color-primary-hover: var(--color-primary-hover);
+  --color-primary-tint: var(--color-primary-tint);
+  --color-primary-on: var(--color-primary-on);
+  --color-success: var(--color-success);
+  --color-warning: var(--color-warning);
+  --color-danger: var(--color-danger);
+
+  --color-background: var(--color-paper);
+  --color-foreground: var(--color-ink);
+
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+  --radius-pill: var(--radius-pill);
+
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-focus: var(--shadow-focus);
+
+  --font-sans: var(--app-font-sans);
+  --font-mono: var(--app-font-mono);
+}
+
+/* =========================================================================
+   Base
+   ========================================================================= */
+
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--color-paper);
+  color: var(--color-ink);
   font-family: var(--app-font-sans);
+  font-feature-settings: "ss01", "cv11"; /* Geist stylistic sets */
+}
+
+::selection {
+  background: var(--color-primary);
+  color: var(--color-primary-on);
+}
+
+:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+  border-radius: var(--radius-sm);
+}
+
+/* Tabular numerals helper (used on stats, prices, table cells) */
+.nums {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum", "ss01";
+}
+
+/* =========================================================================
+   Marketing-only animations
+   Real keyframes for the references the landing page already uses.
+   Reduced-motion users get static, decorative-only versions removed.
+   ========================================================================= */
+
+@keyframes fade-in-up {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes blob-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  33% {
+    transform: translate3d(20px, -10px, 0) scale(1.05);
+  }
+  66% {
+    transform: translate3d(-15px, 12px, 0) scale(0.95);
+  }
+}
+
+@keyframes gradient-shimmer {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
 }
 
 @keyframes float-up {
@@ -34,9 +238,7 @@ body {
     transform: translateY(100vh) scale(0.9);
     opacity: 0;
   }
-  10% {
-    opacity: 1;
-  }
+  10%,
   90% {
     opacity: 1;
   }
@@ -46,14 +248,50 @@ body {
   }
 }
 
+.animate-fade-in-up {
+  animation: fade-in-up var(--duration-hero) var(--ease-out) both;
+}
+
+.animate-blob {
+  animation: blob-drift 18s ease-in-out infinite;
+}
+
+.animation-delay-2000 {
+  animation-delay: 2s;
+}
+
+.animation-delay-4000 {
+  animation-delay: 4s;
+}
+
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradient-shimmer 8s ease-in-out infinite;
+}
+
+/* Legacy float-up utilities (used in some marketing decor) */
 .animate-float-slow {
   animation: float-up 15s linear infinite;
 }
-
 .animate-float-medium {
   animation: float-up 12s linear infinite;
 }
-
 .animate-float-fast {
   animation: float-up 10s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in-up,
+  .animate-blob,
+  .animate-gradient,
+  .animate-float-slow,
+  .animate-float-medium,
+  .animate-float-fast {
+    animation: none !important;
+  }
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+  }
 }
