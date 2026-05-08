@@ -5,19 +5,12 @@ import Link from "next/link";
 import { CalendarView } from "./calendar-view";
 import { ViewToggle } from "./view-toggle";
 import { EmptyState } from "./empty-state";
+import { PlatformIcon } from "@/app/ui/platform-icon";
 import type { Post, SocialAccount } from "@/lib/api/types";
 
 interface DashboardContentProps {
   posts: Post[];
   accounts: SocialAccount[];
-}
-
-function platformIcon(platform: string) {
-  if (platform === "twitter") return "𝕏";
-  if (platform === "instagram") return "📸";
-  if (platform === "tiktok") return "🎵";
-  if (platform === "linkedin") return "💼";
-  return "🌐";
 }
 
 export function DashboardContent({ posts, accounts }: DashboardContentProps) {
@@ -110,7 +103,7 @@ export function DashboardContent({ posts, accounts }: DashboardContentProps) {
                     key={account.id}
                     className="flex items-center gap-2 md:gap-3 rounded-lg md:rounded-xl border border-[#EEF2FF] bg-[#FBFBFF] p-2 md:p-2.5 shadow-sm"
                   >
-                    <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-white border border-[#E8F0FF] flex items-center justify-center text-base md:text-lg shrink-0">
+                    <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-white border border-[#E8F0FF] flex items-center justify-center shrink-0 text-zinc-700">
                       {account.profileImageUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
@@ -119,7 +112,7 @@ export function DashboardContent({ posts, accounts }: DashboardContentProps) {
                           className="w-full h-full rounded-lg object-cover"
                         />
                       ) : (
-                        platformIcon(account.platform)
+                        <PlatformIcon platform={account.platform} size={18} />
                       )}
                     </div>
                     <div className="flex-1 min-w-0">

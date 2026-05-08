@@ -2,15 +2,7 @@
 
 import Link from "next/link";
 import type { Post, PostTarget, SocialAccount } from "@/lib/api/types";
-
-const platformIcons: Record<string, string> = {
-  twitter: "𝕏",
-  instagram: "📸",
-  tiktok: "🎵",
-  linkedin: "💼",
-  facebook: "📘",
-  threads: "🧵",
-};
+import { PlatformIcon } from "@/app/ui/platform-icon";
 
 const statusColors: Record<string, string> = {
   draft: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
@@ -101,10 +93,15 @@ export function PostsTableView({ posts }: PostsTableViewProps) {
                       className="flex items-center gap-1"
                       title={`${target.account?.platformUsername || "Unknown"}: ${target.status}`}
                     >
-                      <span className="text-sm">
-                        {target.account
-                          ? platformIcons[target.account.platform] || "🌐"
-                          : "❓"}
+                      <span className="inline-flex text-zinc-700 dark:text-zinc-300">
+                        {target.account ? (
+                          <PlatformIcon
+                            platform={target.account.platform}
+                            size={14}
+                          />
+                        ) : (
+                          <span aria-label="unknown platform">·</span>
+                        )}
                       </span>
                       {target.platformPostId && target.account && (
                         <a

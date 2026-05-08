@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import type { SocialAccount } from "@/lib/api/types";
 import { apiUrl } from "@/lib/api/browser";
 import { apiEndpoints } from "@/lib/api/endpoints";
+import { PlatformIcon } from "@/app/ui/platform-icon";
 
 interface TikTokModalProps {
   accounts: SocialAccount[];
@@ -244,7 +245,9 @@ export function TikTokModal({
         {/* Header */}
         <div className="sticky top-0 z-10 flex items-center justify-between p-6 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
           <div className="flex items-center gap-3">
-            <span className="text-2xl">🎵</span>
+            <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">
+              <PlatformIcon platform="tiktok" size={18} />
+            </span>
             <h2 className="text-xl font-bold text-zinc-900 dark:text-white">
               Create TikTok Post
             </h2>
@@ -304,7 +307,9 @@ export function TikTokModal({
                         : "border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:border-zinc-300 dark:hover:border-zinc-600"
                     } disabled:opacity-50 disabled:cursor-not-allowed`}
                   >
-                    <span className="text-lg">🎵</span>
+                    <span className="inline-flex">
+                      <PlatformIcon platform="tiktok" size={16} />
+                    </span>
                     @{account.platformUsername}
                     {selectedAccounts.includes(account.id) && (
                       <svg

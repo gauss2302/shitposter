@@ -4,15 +4,8 @@ import { useState, useEffect } from "react";
 import type { SocialAccount } from "@/lib/api/types";
 import { apiUrl } from "@/lib/api/browser";
 import { apiEndpoints } from "@/lib/api/endpoints";
-
-const platformIcons: Record<string, string> = {
-  twitter: "𝕏",
-  instagram: "📸",
-  tiktok: "🎵",
-  linkedin: "💼",
-  facebook: "📘",
-  threads: "🧵",
-};
+import { PlatformIcon } from "@/app/ui/platform-icon";
+import { SparklesIcon } from "@/app/ui/dashboard-icons";
 
 const platformLimits: Record<string, number> = {
   twitter: 280,
@@ -372,8 +365,8 @@ export function ComposeModal({
                         : "border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:border-zinc-300 dark:hover:border-zinc-600"
                     } disabled:opacity-50 disabled:cursor-not-allowed`}
                   >
-                    <span className="text-base md:text-lg">
-                      {platformIcons[account.platform]}
+                    <span className="inline-flex">
+                      <PlatformIcon platform={account.platform} size={16} />
                     </span>
                     <span className="hidden sm:inline">@</span>
                     <span className="truncate max-w-[80px] md:max-w-none">{account.platformUsername}</span>
@@ -510,7 +503,14 @@ export function ComposeModal({
                     disabled={loading || processingMedia || aiLoading}
                     className="h-8 md:h-9 rounded-full border border-violet-200 bg-white px-3 text-xs font-semibold text-violet-700 hover:bg-violet-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-violet-800 dark:bg-zinc-900 dark:text-violet-300"
                   >
-                    {aiLoading ? "Generating…" : "✨ Generate"}
+                    {aiLoading ? (
+                      "Generating…"
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5">
+                        <SparklesIcon size={14} />
+                        Generate
+                      </span>
+                    )}
                   </button>
                   {mediaFiles.length > 0 && (
                     <div className="flex items-center gap-1.5 md:gap-2 text-[10px] md:text-xs text-zinc-500 dark:text-zinc-400">

@@ -4,6 +4,12 @@ import { getDashboardSummary, isApiUnauthorizedError } from "@/lib/api/server";
 import { DashboardHeader } from "./components/dashboard-header";
 import { QuickActions } from "./components/quick-actions";
 import { DashboardContent } from "./components/dashboard-content";
+import {
+  LinkIcon,
+  CalendarIcon,
+  TrendingUpIcon,
+  BarChartIcon,
+} from "@/app/ui/dashboard-icons";
 
 export default async function DashboardPage() {
   let summary;
@@ -32,58 +38,52 @@ export default async function DashboardPage() {
             {
               title: "Connected Accounts",
               value: stats.connectedAccounts,
-              icon: "🔗",
+              Icon: LinkIcon,
               href: "/dashboard/accounts",
-              accent: "from-[#D8E6FF] to-white",
             },
             {
               title: "Scheduled Posts",
               value: stats.scheduledPosts,
-              icon: "📅",
-              href: null, // Will open modal instead
-              accent: "from-[#FFEBD3] to-white",
+              Icon: CalendarIcon,
+              href: null,
             },
             {
               title: "Published This Week",
               value: stats.publishedPosts,
-              icon: "📊",
+              Icon: BarChartIcon,
               href: "/dashboard/posts",
-              accent: "from-[#E8FFF4] to-white",
             },
             {
               title: "Twitter Analytics",
               value: accounts.filter(
                 (a) => a.platform === "twitter" && a.isActive
               ).length,
-              icon: "📈",
+              Icon: TrendingUpIcon,
               href: "/dashboard/analytics",
-              accent: "from-[#E0E7FF] to-white",
             },
           ].map((card) => (
             <div
               key={card.title}
-              className="flex flex-col justify-between rounded-xl md:rounded-2xl border border-[#E8F0FF] bg-white p-3 md:p-4 shadow-sm hover:shadow-md transition-shadow"
+              className="flex flex-col justify-between rounded-md md:rounded-lg border border-border-subtle bg-surface-2 p-3 md:p-4 shadow-sm hover:shadow-md transition-shadow"
             >
               <div>
                 <div className="flex items-center justify-between mb-2 md:mb-3">
-                  <div
-                    className={`w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl bg-linear-to-br ${card.accent} flex items-center justify-center text-base md:text-lg`}
-                  >
-                    {card.icon}
+                  <div className="w-8 h-8 md:w-10 md:h-10 rounded-md bg-surface-1 text-ink flex items-center justify-center">
+                    <card.Icon size={18} />
                   </div>
                   {card.href && (
                     <Link
                       href={card.href}
-                      className="text-[10px] md:text-xs font-bold text-[#566BFF] hover:text-[#3947ff] transition-colors"
+                      className="text-[10px] md:text-xs font-semibold text-primary hover:text-primary-hover transition-colors"
                     >
                       Manage
                     </Link>
                   )}
                 </div>
-                <p className="text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+                <p className="text-[10px] md:text-[11px] font-semibold uppercase tracking-[0.08em] text-faint">
                   {card.title}
                 </p>
-                <p className="mt-0.5 md:mt-1 text-2xl md:text-3xl font-black text-zinc-900">
+                <p className="mt-0.5 md:mt-1 text-2xl md:text-3xl font-semibold text-ink nums">
                   {card.value}
                 </p>
               </div>
@@ -104,12 +104,4 @@ export default async function DashboardPage() {
       </div>
     </div>
   );
-}
-
-function platformIcon(platform: string) {
-  if (platform === "twitter") return "𝕏";
-  if (platform === "instagram") return "📸";
-  if (platform === "tiktok") return "🎵";
-  if (platform === "linkedin") return "💼";
-  return "🌐";
 }

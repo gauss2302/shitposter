@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { MarketingHeader } from "@/app/ui/marketing-header";
+import { PlatformIcon, platformLabel } from "@/app/ui/platform-icon";
 
 export default async function HomePage() {
   return (
@@ -193,8 +194,21 @@ export default async function HomePage() {
               <div className="relative bg-white p-10 rounded-3xl border border-[#E8F9FF] shadow-xl">
                 <div className="flex flex-col items-center gap-8">
                   {/* User Node */}
-                  <div className="w-20 h-20 bg-[#C5BAFF] rounded-2xl flex items-center justify-center shadow-lg shadow-[#C5BAFF]/30 z-10">
-                    <span className="text-3xl">😎</span>
+                  <div className="w-20 h-20 bg-[#C5BAFF] rounded-2xl flex items-center justify-center shadow-lg shadow-[#C5BAFF]/30 z-10 text-white">
+                    <svg
+                      viewBox="0 0 24 24"
+                      width="32"
+                      height="32"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.6"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden
+                    >
+                      <circle cx="12" cy="8" r="4" />
+                      <path d="M4 21a8 8 0 0 1 16 0" />
+                    </svg>
                   </div>
 
                   {/* Connection Lines */}
@@ -217,22 +231,19 @@ export default async function HomePage() {
 
                   {/* Destination Nodes */}
                   <div className="grid grid-cols-2 gap-3 w-full pt-4 sm:grid-cols-4">
-                    {[
-                      { icon: "📸", label: "Instagram" },
-                      { icon: "🎵", label: "TikTok" },
-                      { icon: "💼", label: "LinkedIn" },
-                      { icon: "𝕏", label: "X / Twitter" },
-                    ].map((item) => (
-                      <div
-                        key={item.label}
-                        className="flex flex-col items-center gap-1 rounded-xl border border-[#E8F9FF] bg-[#FBFBFB] px-3 py-4 text-center text-sm shadow-sm hover:-translate-y-1 transition-transform"
-                      >
-                        <span className="text-2xl">{item.icon}</span>
-                        <span className="text-xs text-zinc-500">
-                          {item.label}
-                        </span>
-                      </div>
-                    ))}
+                    {(["instagram", "tiktok", "linkedin", "x"] as const).map(
+                      (platform) => (
+                        <div
+                          key={platform}
+                          className="flex flex-col items-center gap-2 rounded-xl border border-[#E8F9FF] bg-[#FBFBFB] px-3 py-4 text-center text-sm shadow-sm hover:-translate-y-1 transition-transform text-zinc-700"
+                        >
+                          <PlatformIcon platform={platform} size={22} />
+                          <span className="text-xs text-zinc-500">
+                            {platformLabel(platform)}
+                          </span>
+                        </div>
+                      )
+                    )}
                   </div>
                   <div className="mt-6 flex flex-wrap items-center justify-center gap-3 text-xs font-medium text-zinc-600">
                     <span className="rounded-full border border-[#E8F9FF] px-3 py-1">
