@@ -15,3 +15,5 @@ def test_agent_capabilities_route_is_registered(client: TestClient) -> None:
     assert "/api/v1/agent/social/accounts" in routes
     assert "/api/v1/agent/posts/{post_id}" in routes
     assert "/api/v1/agent/ai/generate" in routes
+    assert "/api/v1/agent/ai/providers" in routes
+    assert "/api/v1/agent/ai/providers/{credential_id}" in routes

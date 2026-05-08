@@ -10,6 +10,8 @@ const AVAILABLE_SCOPES = [
   "posts:read",
   "posts:write",
   "ai:generate",
+  "ai:providers:read",
+  "ai:providers:write",
 ];
 
 export function ApiKeysClient({ initialKeys }: { initialKeys: ApiKey[] }) {

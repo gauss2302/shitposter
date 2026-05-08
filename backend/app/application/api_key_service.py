@@ -22,6 +22,8 @@ API_KEY_SCOPES = [
     "posts:read",
     "posts:write",
     "ai:generate",
+    "ai:providers:read",
+    "ai:providers:write",
 ]
 
 

@@ -18,8 +18,21 @@ export default async function DeveloperPage() {
         </h1>
         <p className="mt-2 max-w-3xl text-zinc-500">
           Create scoped API keys for external agents and automation systems.
-          Keys can schedule posts, read account capabilities, and request AI
-          generated content without using browser cookies.
+          Keys can schedule posts, read connected social accounts, register
+          encrypted Claude or OpenAI credentials, generate copy, and publish
+          over HTTPS using{" "}
+          <code className="rounded bg-zinc-100 px-1.5 py-0.5 font-mono text-sm">
+            Authorization: Bearer
+          </code>{" "}
+          or{" "}
+          <code className="rounded bg-zinc-100 px-1.5 py-0.5 font-mono text-sm">
+            X-API-Key
+          </code>{" "}
+          on the{" "}
+          <code className="rounded bg-zinc-100 px-1.5 py-0.5 font-mono text-sm">
+            /api/v1/agent
+          </code>{" "}
+          routes.
         </p>
       </div>
       <ApiKeysClient initialKeys={apiKeys} />
