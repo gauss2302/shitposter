@@ -1,0 +1,54 @@
+services:
+  postgres:
+    ports:
+      - "${POSTGRES_PORT:-5444}:5432"
+
+  redis:
+    ports:
+      - "${REDIS_PORT:-6344}:6379"
+
+  backend:
+    build:
+      target: runtime
+    environment:
+      NODE_ENV: development
+      ENABLE_DOCS: ${ENABLE_DOCS:-true}
+      REDIS_URL: redis://redis:6379/0
+      DATABASE_URL: postgresql+asyncpg://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-socialposter}
+      FRONTEND_PUBLIC_URL: ${FRONTEND_PUBLIC_URL:-http://localhost:3000}
+      BACKEND_PUBLIC_URL: ${BACKEND_PUBLIC_URL:-http://localhost:8000}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:3010,http://localhost}
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
+      LOG_FORMAT: ${LOG_FORMAT:-text}
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    volumes:
+      - ./backend:/app
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
+  backend-worker:
+    build:
+      target: runtime
+    environment:
+      NODE_ENV: development
+      REDIS_URL: redis://redis:6379/0
+      DATABASE_URL: postgresql+asyncpg://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-socialposter}
+      LOG_FORMAT: ${LOG_FORMAT:-text}
+    volumes:
+      - ./backend:/app
+    command: ["arq", "app.worker.publisher_worker.WorkerSettings", "--watch", "."]
+
+  web:
+    build:
+      args:
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}
+    environment:
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3010}
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}
+      INTERNAL_API_BASE_URL: ${INTERNAL_API_BASE_URL:-http://backend:8000}
+    ports:
+      - "${WEB_PORT:-3010}:3000"
+
+  nginx:
+    ports:
+      - "${NGINX_HTTP_PORT:-8080}:80"
