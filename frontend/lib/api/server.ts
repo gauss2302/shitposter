@@ -27,9 +27,15 @@ export function isApiUnauthorizedError(error: unknown): boolean {
   return error instanceof BackendUnauthorizedError;
 }
 
+function normalizedEnvUrl(value: string | undefined): string | null {
+  const normalized = value?.trim().replace(/\/$/, "");
+  return normalized ? normalized : null;
+}
+
 function apiBaseUrl(): string {
   return (
-    process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") ??
+    normalizedEnvUrl(process.env.INTERNAL_API_BASE_URL) ??
+    normalizedEnvUrl(process.env.NEXT_PUBLIC_API_BASE_URL) ??
     DEFAULT_API_BASE_URL
   );
 }

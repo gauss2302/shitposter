@@ -7,12 +7,30 @@ through backend Alembic revisions.
 
 ## Running migrations
 
+Production migrations run through the root Docker Compose `migrate` service:
+
 ```bash
-DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5444/socialposter \
-  ./scripts/run-migrations.sh
+./scripts/run-migrations.sh
 ```
 
-The production deploy script runs this before restarting services.
+The script loads `.env.production` or `.env.local` when present, starts the
+Compose `postgres` dependency, builds the migration image, and runs:
+
+```bash
+alembic upgrade head
+```
+
+The production deploy script also runs migrations indirectly because
+`docker-compose.yml` wires `backend` to depend on the one-off `migrate` service
+completing successfully.
+
+For local host-Python development, you can still run Alembic directly:
+
+```bash
+cd backend
+DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5444/socialposter \
+  alembic upgrade head
+```
 
 ## Creating migrations
 
