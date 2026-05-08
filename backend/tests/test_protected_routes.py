@@ -19,6 +19,7 @@ def test_expected_route_groups_are_registered(client: TestClient) -> None:
     assert "/api/v1/ai/providers" in routes
     assert "/api/v1/ai/generate" in routes
     assert "/api/v1/dashboard/summary" in routes
+    assert "/api/v1/dashboard/agent-readiness" in routes
     assert "/api/v1/posts" in routes
     assert "/api/v1/social/connect/twitter-oauth1" in routes
     assert "/api/v1/billing/webhook/polar" in routes

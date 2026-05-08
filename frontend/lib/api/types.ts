@@ -130,3 +130,25 @@ export interface AiGenerateResponse {
   provider: string;
   model: string;
 }
+
+export interface AgentReadinessCheck {
+  id: string;
+  title: string;
+  ok: boolean;
+  required: boolean;
+  detail: string;
+}
+
+export interface AgentReadiness {
+  readyToAutomate: boolean;
+  summary: string;
+  hasPostableSocialAccount: boolean;
+  postableSocialAccountCount: number;
+  hasAiConfiguration: boolean;
+  aiConfigurationSource: string;
+  hasOperationalApiKey: boolean;
+  operationalApiKeyCount: number;
+  canManageAiProvidersViaApi: boolean;
+  providerApiCapableKeyCount: number;
+  checks: AgentReadinessCheck[];
+}

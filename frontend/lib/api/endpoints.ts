@@ -18,6 +18,7 @@ export const apiEndpoints = {
     posts: `${API_V1}/dashboard/posts`,
     subscription: `${API_V1}/dashboard/subscription`,
     summary: `${API_V1}/dashboard/summary`,
+    agentReadiness: `${API_V1}/dashboard/agent-readiness`,
   },
   posts: {
     collection: `${API_V1}/posts`,
