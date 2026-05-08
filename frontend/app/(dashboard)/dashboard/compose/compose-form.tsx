@@ -242,9 +242,6 @@ export function ComposeForm({ accounts }: ComposeFormProps) {
       formData.append("socialAccountIds", JSON.stringify(selectedAccounts));
       if (scheduledFor) {
         formData.append("scheduledFor", scheduledFor);
-        if (timezone) {
-          formData.append("timezone", timezone);
-        }
       }
 
       // Append media files

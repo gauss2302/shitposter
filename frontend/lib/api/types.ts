@@ -74,7 +74,7 @@ export interface SessionResponse {
 export interface DashboardSummary {
   user: UserDto;
   accounts: SocialAccount[];
-  posts: PostWithTargets[];
+  posts: Post[];
   stats: {
     connectedAccounts: number;
     scheduledPosts: number;

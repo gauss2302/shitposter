@@ -71,7 +71,7 @@ export function AccountsSidebar({
 
   const handleConnect = async (platform: string) => {
     setLoading(true);
-    window.location.href = apiUrl(apiEndpoints.socialConnect(platform));
+    window.location.href = apiUrl(apiEndpoints.social.connect(platform));
   };
 
   const handleDisconnect = async (accountId: string) => {
@@ -79,7 +79,7 @@ export function AccountsSidebar({
 
     setLoading(true);
     try {
-      const res = await fetch(apiUrl(apiEndpoints.socialAccount(accountId)), {
+      const res = await fetch(apiUrl(apiEndpoints.social.account(accountId)), {
         method: "DELETE",
         credentials: "include",
       });

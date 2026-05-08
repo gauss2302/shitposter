@@ -265,19 +265,10 @@ export function ComposeModal({
 
     try {
       let scheduledFor: string | undefined;
-      let timezone: string | undefined;
 
       if (scheduleDate && scheduleTime) {
-        // Get user's timezone
-        timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-        // Create date string in user's local timezone
         const localDateTimeString = `${scheduleDate}T${scheduleTime}`;
-
-        // Create a date object - this will interpret the string in the user's local timezone
         const localDate = new Date(localDateTimeString);
-
-        // Convert to UTC ISO string for storage
         scheduledFor = localDate.toISOString();
       }
 
@@ -287,9 +278,6 @@ export function ComposeModal({
       formData.append("socialAccountIds", JSON.stringify(selectedAccounts));
       if (scheduledFor) {
         formData.append("scheduledFor", scheduledFor);
-        if (timezone) {
-          formData.append("timezone", timezone);
-        }
       }
 
       // Append media files

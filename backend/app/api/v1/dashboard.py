@@ -23,7 +23,6 @@ class SocialAccountResponse(BaseModel):
     platform: str
     platformUserId: str
     platformUsername: str
-    accessToken: str = ""
     refreshToken: str | None = None
     tokenExpiresAt: str | None = None
     oauth1AccessToken: str | None = None

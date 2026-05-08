@@ -44,12 +44,6 @@ export const apiEndpoints = {
       return `${API_V1}/social/accounts/${accountId}`;
     },
   },
-  socialConnect(platform: string) {
-    return `${API_V1}/social/connect/${platform}`;
-  },
-  socialAccount(accountId: string) {
-    return `${API_V1}/social/accounts/${accountId}`;
-  },
   analytics: {
     twitter(accountId: string, tweetLimit: number) {
       return `${API_V1}/analytics/twitter/${accountId}?limit=${tweetLimit}`;

@@ -94,7 +94,12 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
   return {
     ...summary,
     accounts: summary.accounts.map(normalizeAccount),
-    posts: summary.posts.map(normalizePost),
+    posts: summary.posts.map((post) => ({
+      ...post,
+      scheduledFor: toDate(post.scheduledFor),
+      createdAt: toDate(post.createdAt) ?? new Date(0),
+      updatedAt: toDate(post.updatedAt) ?? new Date(0),
+    })),
   };
 }
 

@@ -33,7 +33,9 @@ async def connect_twitter_oauth1(
     try:
         url = await SocialService(db, settings).build_twitter_oauth1_connect_url(current.id)
     except ValidationError as exc:
-        return RedirectResponse(f"/dashboard/accounts?error={str(exc)}")
+        return RedirectResponse(
+            f"{settings.frontend_public_url}/dashboard/accounts?error={str(exc)}"
+        )
     return RedirectResponse(url)
 
 
@@ -45,7 +47,9 @@ async def callback_twitter_oauth1(
 ) -> RedirectResponse:
     denied = request.query_params.get("denied")
     if denied:
-        return RedirectResponse("/dashboard/accounts?error=oauth1_denied")
+        return RedirectResponse(
+            f"{settings.frontend_public_url}/dashboard/accounts?error=oauth1_denied"
+        )
     try:
         await SocialService(db, settings).handle_twitter_oauth1_callback(
             oauth_token=request.query_params.get("oauth_token"),
@@ -55,8 +59,12 @@ async def callback_twitter_oauth1(
         await db.commit()
     except ValidationError as exc:
         await db.rollback()
-        return RedirectResponse(f"/dashboard/accounts?error={str(exc)}")
-    return RedirectResponse("/dashboard/accounts?success=oauth1_connected")
+        return RedirectResponse(
+            f"{settings.frontend_public_url}/dashboard/accounts?error={str(exc)}"
+        )
+    return RedirectResponse(
+        f"{settings.frontend_public_url}/dashboard/accounts?success=oauth1_connected"
+    )
 
 
 @router.get("/connect/{platform}")
@@ -72,7 +80,9 @@ async def connect_platform(
             platform=platform,
         )
     except ValidationError as exc:
-        return RedirectResponse(f"/dashboard/accounts?error={str(exc)}")
+        return RedirectResponse(
+            f"{settings.frontend_public_url}/dashboard/accounts?error={str(exc)}"
+        )
     return RedirectResponse(url)
 
 
@@ -93,8 +103,12 @@ async def callback_platform(
         await db.commit()
     except ValidationError as exc:
         await db.rollback()
-        return RedirectResponse(f"/dashboard/accounts?error={str(exc)}")
-    return RedirectResponse("/dashboard/accounts?success=connected")
+        return RedirectResponse(
+            f"{settings.frontend_public_url}/dashboard/accounts?error={str(exc)}"
+        )
+    return RedirectResponse(
+        f"{settings.frontend_public_url}/dashboard/accounts?success=connected"
+    )
 
 
 @router.delete("/accounts/{account_id}")

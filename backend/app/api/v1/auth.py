@@ -155,7 +155,7 @@ async def get_session(
     token = request.cookies.get(settings.session_cookie_name)
     if not token:
         return SessionResponse(user=None)
-    authenticated = await AuthService(db, settings).get_authenticated_user(token)
+    authenticated = await AuthService(db, settings).get_user_for_session(token)
     if authenticated is None:
         return SessionResponse(user=None)
     return _to_response(authenticated)

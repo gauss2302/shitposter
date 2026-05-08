@@ -188,10 +188,8 @@ export function TikTokModal({
 
     try {
       let scheduledFor: string | undefined;
-      let timezone: string | undefined;
 
       if (scheduleDate && scheduleTime) {
-        timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
         const localDateTimeString = `${scheduleDate}T${scheduleTime}`;
         const localDate = new Date(localDateTimeString);
         scheduledFor = localDate.toISOString();
@@ -202,9 +200,6 @@ export function TikTokModal({
       formData.append("socialAccountIds", JSON.stringify(selectedAccounts));
       if (scheduledFor) {
         formData.append("scheduledFor", scheduledFor);
-        if (timezone) {
-          formData.append("timezone", timezone);
-        }
       }
       formData.append("media", videoFile);
 
