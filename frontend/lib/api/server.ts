@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 
 import type {
+  AgentReadiness,
   DashboardSummary,
   AiProviderCredential,
   ApiKey,
@@ -129,6 +130,10 @@ export async function getDashboardPosts(): Promise<{
   accounts: SocialAccount[];
 }> {
   return getPostsPageData();
+}
+
+export async function getAgentReadiness(): Promise<AgentReadiness> {
+  return backendFetch<AgentReadiness>(apiPaths.dashboard.agentReadiness);
 }
 
 export async function getApiKeys(): Promise<ApiKey[]> {

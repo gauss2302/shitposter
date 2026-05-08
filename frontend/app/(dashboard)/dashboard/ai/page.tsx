@@ -1,11 +1,12 @@
 import { redirect } from "next/navigation";
-import { getAiProviders, getBackendSession } from "@/lib/api/server";
+import { getAgentReadiness, getAiProviders, getBackendSession } from "@/lib/api/server";
+import { AgentReadinessPanel } from "../components/agent-readiness-panel";
 import { AiSettingsClient } from "./ai-settings-client";
 
 export default async function AiSettingsPage() {
   const session = await getBackendSession();
   if (!session.user) redirect("/sign-in");
-  const providers = await getAiProviders();
+  const [providers, readiness] = await Promise.all([getAiProviders(), getAgentReadiness()]);
 
   return (
     <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-8 space-y-6">
@@ -20,7 +21,13 @@ export default async function AiSettingsPage() {
           Add OpenAI, Claude/Anthropic, or OpenAI-compatible provider keys so the
           app and external agents can generate social content.
         </p>
+        <p className="mt-3 text-sm text-zinc-600">
+          Once an API key has the right scopes, any compatible model you configure
+          here can drive automated posts to X and LinkedIn through the Agent API.
+        </p>
       </div>
+
+      <AgentReadinessPanel readiness={readiness} context="ai" />
 
       <AiSettingsClient initialProviders={providers} />
     </div>

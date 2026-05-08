@@ -1,11 +1,12 @@
 import { redirect } from "next/navigation";
-import { getApiKeys, getBackendSession } from "@/lib/api/server";
+import { getAgentReadiness, getApiKeys, getBackendSession } from "@/lib/api/server";
+import { AgentReadinessPanel } from "../components/agent-readiness-panel";
 import { ApiKeysClient } from "./api-keys-client";
 
 export default async function DeveloperPage() {
   const session = await getBackendSession();
   if (!session.user) redirect("/sign-in");
-  const apiKeys = await getApiKeys();
+  const [apiKeys, readiness] = await Promise.all([getApiKeys(), getAgentReadiness()]);
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 space-y-6">
@@ -32,9 +33,13 @@ export default async function DeveloperPage() {
           <code className="rounded bg-zinc-100 px-1.5 py-0.5 font-mono text-sm">
             /api/v1/agent
           </code>{" "}
-          routes.
+          routes. The readiness card below confirms the full model-to-post path
+          for your account—no guesswork.
         </p>
       </div>
+
+      <AgentReadinessPanel readiness={readiness} context="developer" />
+
       <ApiKeysClient initialKeys={apiKeys} />
     </div>
   );
