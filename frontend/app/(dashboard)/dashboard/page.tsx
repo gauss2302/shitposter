@@ -23,7 +23,7 @@ export default async function DashboardPage() {
   const { user: sessionUser, accounts, posts: recentPosts, stats } = summary;
 
   return (
-    <div className="min-h-screen bg-[#F5F7FF]">
+    <div className="min-h-screen bg-paper">
       <div className="mx-auto max-w-7xl px-2 md:px-4 py-4 md:py-6 space-y-4 md:space-y-6">
         <DashboardHeader
           name={sessionUser.name}

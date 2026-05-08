@@ -15,11 +15,12 @@ interface DashboardContentProps {
 
 export function DashboardContent({ posts, accounts }: DashboardContentProps) {
   const [view, setView] = useState<"list" | "calendar">("calendar");
-  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
+  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(
+    null
+  );
 
   return (
     <section className="space-y-4">
-      {/* Calendar View - Full Width when in Calendar mode */}
       {view === "calendar" ? (
         <CalendarView
           posts={posts}
@@ -28,15 +29,15 @@ export function DashboardContent({ posts, accounts }: DashboardContentProps) {
           onAccountSelect={setSelectedAccountId}
         />
       ) : (
-        <div className="grid gap-3 md:gap-4 lg:grid-cols-[2fr,1fr]">
-          {/* Latest Activity List */}
-          <div className="rounded-2xl md:rounded-3xl border border-[#E8F0FF] bg-white p-3 md:p-4 lg:p-6 shadow-xl shadow-[#C4D9FF]/15">
-            <div className="flex items-center justify-between gap-2 md:gap-4 mb-3 md:mb-4">
+        <div className="grid gap-3 md:gap-4 lg:grid-cols-[2fr_1fr]">
+          {/* Latest Activity */}
+          <div className="rounded-lg border border-border-subtle bg-surface-2 p-4 md:p-6 shadow-sm">
+            <div className="mb-4 flex items-center justify-between gap-3">
               <div>
-                <h2 className="text-base md:text-lg font-bold text-zinc-900">
-                  Latest Activity
+                <h2 className="text-base md:text-lg font-semibold tracking-[-0.01em] text-ink">
+                  Latest activity
                 </h2>
-                <p className="text-xs md:text-sm text-zinc-500">
+                <p className="text-xs md:text-sm text-muted">
                   Track drafts, scheduled drops, and published wins.
                 </p>
               </div>
@@ -44,104 +45,104 @@ export function DashboardContent({ posts, accounts }: DashboardContentProps) {
                 <ViewToggle view={view} onViewChange={setView} />
                 <Link
                   href="/dashboard/posts"
-                  className="text-xs md:text-sm font-semibold text-[#566BFF] hover:text-[#3947ff]"
+                  className="text-xs md:text-sm font-semibold text-primary transition-colors hover:text-primary-hover"
                 >
                   View all
                 </Link>
               </div>
             </div>
             {posts.length ? (
-              <div className="space-y-2 md:space-y-2.5">
+              <ul className="divide-y divide-border-subtle">
                 {posts.slice(0, 15).map((recentPost) => (
-                  <div
+                  <li
                     key={recentPost.id}
-                    className="rounded-lg md:rounded-xl border border-[#EEF2FF] bg-[#F9FAFF] p-2.5 md:p-3 hover:border-[#d4dcff] transition-colors"
+                    className="flex items-start justify-between gap-3 py-3 first:pt-0 last:pb-0"
                   >
-                    <div className="flex items-start justify-between gap-2 md:gap-3">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[10px] md:text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-                          {recentPost.status}
-                        </p>
-                        <p className="mt-0.5 md:mt-1 font-bold text-zinc-900 text-xs md:text-sm leading-snug line-clamp-2">
-                          {recentPost.content}
-                        </p>
-                      </div>
-                      <span className="shrink-0 rounded-full bg-white px-2 md:px-2.5 py-0.5 md:py-1 text-[9px] md:text-[10px] font-bold text-[#566BFF] shadow-sm border border-[#EEF2FF]">
-                        {recentPost.scheduledFor
-                          ? `Scheduled ${recentPost.scheduledFor.toLocaleDateString()}`
-                          : `Posted ${recentPost.createdAt.toLocaleDateString()}`}
-                      </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] md:text-xs font-semibold uppercase tracking-[0.08em] text-faint">
+                        {recentPost.status}
+                      </p>
+                      <p className="mt-1 text-sm md:text-[15px] font-medium text-ink leading-snug line-clamp-2">
+                        {recentPost.content}
+                      </p>
                     </div>
-                  </div>
+                    <span className="shrink-0 rounded-pill border border-border-subtle bg-surface-1 px-2.5 py-0.5 text-[10px] font-semibold text-muted nums">
+                      {recentPost.scheduledFor
+                        ? `Scheduled ${recentPost.scheduledFor.toLocaleDateString()}`
+                        : `Posted ${recentPost.createdAt.toLocaleDateString()}`}
+                    </span>
+                  </li>
                 ))}
-              </div>
+              </ul>
             ) : (
               <EmptyState accounts={accounts} />
             )}
           </div>
 
-          {/* Connected Accounts List */}
-          <div className="rounded-2xl md:rounded-3xl border border-[#E8F0FF] bg-white p-3 md:p-4 lg:p-6 shadow-xl shadow-[#C4D9FF]/15 h-fit">
-            <div className="flex items-center justify-between gap-2 md:gap-4 mb-3 md:mb-4">
+          {/* Connected accounts */}
+          <div className="h-fit rounded-lg border border-border-subtle bg-surface-2 p-4 md:p-6 shadow-sm">
+            <div className="mb-4 flex items-center justify-between gap-3">
               <div>
-                <h2 className="text-base md:text-lg font-bold text-zinc-900">
-                  Connected Accounts
+                <h2 className="text-base md:text-lg font-semibold tracking-[-0.01em] text-ink">
+                  Connected accounts
                 </h2>
-                <p className="text-xs md:text-sm text-zinc-500">Your active megaphones.</p>
+                <p className="text-xs md:text-sm text-muted">
+                  Your active megaphones.
+                </p>
               </div>
               <Link
                 href="/dashboard/accounts"
-                className="text-xs md:text-sm font-semibold text-[#566BFF] hover:text-[#3947ff]"
+                className="text-xs md:text-sm font-semibold text-primary transition-colors hover:text-primary-hover"
               >
                 Manage
               </Link>
             </div>
             {accounts.length > 0 ? (
-              <div className="space-y-2 md:space-y-2.5">
+              <ul className="divide-y divide-border-subtle">
                 {accounts.map((account) => (
-                  <div
+                  <li
                     key={account.id}
-                    className="flex items-center gap-2 md:gap-3 rounded-lg md:rounded-xl border border-[#EEF2FF] bg-[#FBFBFF] p-2 md:p-2.5 shadow-sm"
+                    className="flex items-center gap-3 py-3 first:pt-0 last:pb-0"
                   >
-                    <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-white border border-[#E8F0FF] flex items-center justify-center shrink-0 text-zinc-700">
+                    <div className="grid h-9 w-9 place-items-center shrink-0 overflow-hidden rounded-md border border-border-subtle bg-surface-1 text-ink">
                       {account.profileImageUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
                           src={account.profileImageUrl}
                           alt={`${account.platform} avatar`}
-                          className="w-full h-full rounded-lg object-cover"
+                          className="h-full w-full rounded-md object-cover"
                         />
                       ) : (
-                        <PlatformIcon platform={account.platform} size={18} />
+                        <PlatformIcon platform={account.platform} size={16} />
                       )}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-bold text-zinc-900 text-xs md:text-sm truncate">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-ink">
                         @{account.platformUsername}
                       </p>
-                      <p className="text-[10px] md:text-xs text-zinc-500 capitalize">
+                      <p className="text-xs capitalize text-muted">
                         {account.platform}
                       </p>
                     </div>
                     <div
-                      className={`w-2 h-2 md:w-2.5 md:h-2.5 rounded-full ${
-                        account.isActive ? "bg-[#0FAD5B]" : "bg-[#B91C1C]"
+                      className={`h-2 w-2 rounded-full ${
+                        account.isActive ? "bg-success" : "bg-danger"
                       }`}
-                      title={account.isActive ? "Active" : "Offline"}
+                      aria-label={account.isActive ? "Active" : "Offline"}
                     />
-                  </div>
+                  </li>
                 ))}
-              </div>
+              </ul>
             ) : (
-              <div className="text-center py-4 md:py-6">
-                <p className="text-xs md:text-sm text-zinc-500 mb-3 md:mb-4">
+              <div className="py-6 text-center">
+                <p className="mb-4 text-sm text-muted">
                   No accounts connected yet.
                 </p>
                 <Link
                   href="/dashboard/accounts"
-                  className="inline-flex px-3 md:px-4 py-1.5 md:py-2 rounded-lg md:rounded-xl bg-[#566BFF] text-white text-xs md:text-sm font-semibold shadow-lg shadow-[#566BFF]/30"
+                  className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-on transition-colors hover:bg-primary-hover"
                 >
-                  Connect Account
+                  Connect account
                 </Link>
               </div>
             )}
@@ -149,14 +150,13 @@ export function DashboardContent({ posts, accounts }: DashboardContentProps) {
         </div>
       )}
 
-      {/* View Toggle for Calendar mode */}
       {view === "calendar" && (
         <div className="flex justify-center">
           <button
             onClick={() => setView("list")}
-            className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 bg-white border border-slate-300 hover:border-slate-400 rounded-lg transition-colors"
+            className="rounded-md border border-border bg-surface-2 px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-surface-1"
           >
-            Switch to List View
+            Switch to list view
           </button>
         </div>
       )}
