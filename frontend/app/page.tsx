@@ -5,200 +5,193 @@ import { PlatformIcon, platformLabel } from "@/app/ui/platform-icon";
 
 export default async function HomePage() {
   return (
-    <div className="min-h-screen bg-[#FBFBFB] text-zinc-900 selection:bg-[#C5BAFF] selection:text-white overflow-x-hidden">
+    <div className="min-h-screen bg-paper text-ink overflow-x-hidden">
       <MarketingHeader />
 
-      {/* Hero Section */}
-      <section className="relative pt-40 pb-20 lg:pt-52 lg:pb-32 px-6 overflow-hidden">
-        {/* Background Blobs */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full max-w-7xl pointer-events-none">
-          <div className="absolute top-20 left-10 w-96 h-96 bg-[#E8F9FF] rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob"></div>
-          <div className="absolute top-20 right-10 w-96 h-96 bg-[#C4D9FF] rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob animation-delay-2000"></div>
-          <div className="absolute -bottom-32 left-1/2 -translate-x-1/2 w-96 h-96 bg-[#C5BAFF] rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob animation-delay-4000"></div>
-        </div>
-
-        <div className="relative z-10 mx-auto flex max-w-7xl flex-col items-center gap-12 lg:flex-row lg:text-left">
-          <div className="flex-1 text-center lg:text-left">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-[#E8F9FF] shadow-sm mb-8 animate-fade-in-up">
-              <span className="w-2 h-2 rounded-full bg-[#C5BAFF]"></span>
-              <span className="text-sm font-medium text-zinc-600">
-                The new era of posting is here!
+      {/* =====================================================================
+          Hero — single composition, brand-loud, one CTA group, one image.
+          One purposeful halo behind the hero image (not three blurred blobs).
+          ===================================================================== */}
+      <section className="relative pt-32 pb-24 lg:pt-44 lg:pb-32 px-6 overflow-hidden">
+        <div className="relative z-10 mx-auto grid max-w-7xl gap-16 lg:grid-cols-[1.1fr_1fr] lg:items-center">
+          <div className="animate-fade-in-up">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-pill bg-surface-2 border border-border-subtle shadow-sm mb-8">
+              <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+              <span className="text-xs font-medium tracking-wide text-muted">
+                Now booking your first post
               </span>
             </div>
 
-            <h1 className="text-6xl lg:text-8xl font-black tracking-tighter mb-8 leading-[1.1]">
-              One place to <br className="hidden md:block" />
-              <span className="text-transparent bg-clip-text bg-linear-to-r from-[#C5BAFF] via-[#C4D9FF] to-[#C5BAFF] animate-gradient bg-300%">
-                shitpost everywhere
+            <h1 className="text-[clamp(3rem,6vw,5.5rem)] font-bold tracking-[-0.025em] leading-[1.02] mb-8 text-balance">
+              Post more.{" "}
+              <span className="bg-clip-text text-transparent bg-linear-to-r from-primary via-primary-hover to-primary animate-gradient">
+                Make it big.
               </span>
             </h1>
 
-            <p className="text-xl lg:text-2xl text-zinc-500 max-w-2xl mb-12 leading-relaxed">
-              Manage your chaos. Schedule, analyze, and dominate every social
-              platform from a single, beautiful dashboard.
+            <p className="text-lg lg:text-xl text-muted max-w-xl mb-10 leading-relaxed text-pretty">
+              Schedule, analyze, and publish across every platform from one
+              calm dashboard. Many accounts, one queue, zero spreadsheets.
             </p>
 
-            <div className="flex flex-col sm:flex-row items-center gap-4">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
               <Link
                 href="/sign-up"
-                className="w-full sm:w-auto px-8 py-4 bg-[#C5BAFF] hover:bg-[#b4a5ff] text-white text-lg font-bold rounded-2xl transition-all shadow-xl shadow-[#C5BAFF]/30 hover:shadow-[#C5BAFF]/50 hover:-translate-y-1"
+                className="inline-flex items-center justify-center px-6 py-3.5 rounded-md bg-primary text-primary-on text-base font-semibold transition-colors hover:bg-primary-hover focus-visible:outline-none"
               >
-                Start Shitposting Free
+                Start free
               </Link>
               <Link
                 href="#demo"
-                className="w-full sm:w-auto px-8 py-4 bg-white hover:bg-zinc-50 text-zinc-900 border border-zinc-200 text-lg font-bold rounded-2xl transition-all hover:-translate-y-1"
+                className="inline-flex items-center justify-center px-6 py-3.5 rounded-md border border-border bg-surface-2 text-ink text-base font-semibold transition-colors hover:bg-surface-1"
               >
-                View Demo
+                See how it works
               </Link>
             </div>
+
+            <p className="mt-6 text-sm text-faint">
+              No credit card. Cancel from the dashboard.
+            </p>
           </div>
 
-          <div className="flex-1">
-            <div className="relative mx-auto max-w-lg rounded-3xl border border-[#E8F9FF] bg-white p-4 shadow-2xl shadow-[#C4D9FF]/20">
+          <div className="relative">
+            <div className="absolute -inset-12 -z-10 rounded-pill bg-primary-tint blur-3xl opacity-90" />
+            <div className="relative rounded-xl border border-border-subtle bg-surface-2 p-3 shadow-lg">
               <Image
                 src="/hero_main_sm.png"
-                alt="shitpost.art dashboard preview"
+                alt="Shitposter dashboard preview"
                 width={800}
                 height={600}
                 priority
-                className="rounded-2xl border border-[#E8F9FF]/50 object-cover"
+                className="rounded-lg object-cover"
               />
             </div>
           </div>
         </div>
       </section>
 
-      {/* Functionality Section */}
-      <section id="features" className="py-32 px-6 bg-white relative">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-20">
-            <h2 className="text-4xl lg:text-5xl font-black tracking-tight mb-6">
-              Everything you need to <br />
-              <span className="text-[#C5BAFF]">go viral</span>
-            </h2>
-            <p className="text-lg text-zinc-500 max-w-2xl mx-auto">
-              Powerful tools wrapped in a design so clean you will actually want
-              to use them.
-            </p>
-          </div>
+      {/* =====================================================================
+          Narrative — asymmetric, cardless. One job: tell what the product
+          does in three named capabilities. No icon-in-circle grid.
+          ===================================================================== */}
+      <section
+        id="features"
+        className="py-24 px-6 border-t border-border-subtle bg-surface-2"
+      >
+        <div className="mx-auto max-w-7xl">
+          <div className="grid gap-16 lg:grid-cols-[5fr_7fr] lg:gap-24">
+            <div className="lg:sticky lg:top-28 lg:self-start">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-primary mb-5">
+                What you get
+              </p>
+              <h2 className="text-4xl lg:text-5xl font-semibold tracking-[-0.02em] leading-[1.05] text-balance">
+                Three things, done with care.
+              </h2>
+              <p className="mt-6 text-base text-muted leading-relaxed text-pretty">
+                Most schedulers bolt on features. Shitposter does fewer
+                things, properly: connect the accounts you actually post
+                from, queue the posts you actually publish, and read the
+                numbers that actually move.
+              </p>
+            </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
-            {[
-              {
-                title: "Multi-Account Control",
-                desc: "Connect multiple accounts per platform. Switch between personas instantly. Plans from 1 to unlimited accounts per platform.",
-                color: "bg-[#E8F9FF]",
-                accent: "bg-[#C4D9FF]",
-              },
-              {
-                title: "Smart Scheduling",
-                desc: "Queue your brilliance. Auto-post at peak times when your audience is awake.",
-                color: "bg-[#FBFBFB]",
-                accent: "bg-[#C5BAFF]",
-              },
-              {
-                title: "Unified Analytics",
-                desc: "Track your growth across all platforms in one view. Numbers go up, dopamine hits.",
-                color: "bg-[#E8F9FF]",
-                accent: "bg-[#C4D9FF]",
-              },
-            ].map((feature, i) => (
-              <div
-                key={i}
-                className="group relative p-8 rounded-3xl bg-[#FBFBFB] border border-zinc-100 hover:border-[#C4D9FF] transition-all duration-300 hover:shadow-xl hover:shadow-[#C4D9FF]/10"
-              >
-                <div
-                  className={`w-14 h-14 ${feature.color} rounded-2xl mb-6 flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}
-                >
-                  <div
-                    className={`w-6 h-6 ${feature.accent} rounded-full`}
-                  ></div>
-                </div>
-                <h3 className="text-2xl font-bold mb-4">{feature.title}</h3>
-                <p className="text-zinc-500 leading-relaxed">{feature.desc}</p>
-              </div>
-            ))}
+            <ol className="divide-y divide-border-subtle">
+              {[
+                {
+                  num: "01",
+                  title: "Multi-account, real personas",
+                  desc: "Connect multiple accounts per platform — handle agencies, brands, and alter-egos from one login. Plans from 1 to unlimited accounts per platform.",
+                },
+                {
+                  num: "02",
+                  title: "A queue that knows the rate limits",
+                  desc: "Per-platform throttling, retries on transient errors, delivery tracking, timezone-aware slots. Posts go out while you sleep — without waking you when something breaks.",
+                },
+                {
+                  num: "03",
+                  title: "Numbers in one place",
+                  desc: "Cross-platform analytics that don't lie about what worked. Engagement, reach, growth, all on the same axes. Skip the dashboard tabs.",
+                },
+              ].map((item) => (
+                <li key={item.num} className="flex gap-6 py-8 first:pt-0">
+                  <span className="text-sm font-semibold text-faint nums shrink-0 w-10 mt-1">
+                    {item.num}
+                  </span>
+                  <div className="flex-1">
+                    <h3 className="text-xl font-semibold tracking-[-0.01em] mb-2">
+                      {item.title}
+                    </h3>
+                    <p className="text-base text-muted leading-relaxed text-pretty">
+                      {item.desc}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ol>
           </div>
         </div>
       </section>
 
-      {/* System Structure Section */}
-      <section id="demo" className="py-32 px-6 bg-[#FBFBFB] overflow-hidden">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid lg:grid-cols-2 gap-20 items-center">
+      {/* =====================================================================
+          How it works — diagram of the actual data flow. Cardless on the
+          left, single visual on the right.
+          ===================================================================== */}
+      <section
+        id="demo"
+        className="py-24 px-6 border-t border-border-subtle"
+      >
+        <div className="mx-auto max-w-7xl">
+          <div className="grid gap-16 lg:grid-cols-2 lg:gap-24 items-center">
             <div>
-              <h2 className="text-4xl lg:text-5xl font-black tracking-tight mb-8">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-primary mb-5">
                 How it works
+              </p>
+              <h2 className="text-4xl lg:text-5xl font-semibold tracking-[-0.02em] leading-[1.05] text-balance mb-10">
+                Connect, plan, publish.
               </h2>
-              <div className="space-y-8">
+              <div className="space-y-7">
                 {[
                   {
                     step: "01",
-                    title: "Connect everything",
-                    text: "Securely add Instagram, TikTok, LinkedIn, X and more in seconds. Choose a plan that fits: 1, 4, or unlimited accounts per platform.",
+                    title: "Connect",
+                    text: "Add Instagram, TikTok, LinkedIn, X, and more in seconds. OAuth handles the keys; we just hold the door.",
                   },
                   {
                     step: "02",
-                    title: "Plan visually",
-                    text: "Drag and drop content on the universal calendar, preview per-network tweaks, and keep an eye on the posting queue before it fires.",
+                    title: "Plan",
+                    text: "Drag posts onto the universal calendar. Per-platform tweaks live next to the original. Queue conflicts surface before they ship.",
                   },
                   {
                     step: "03",
-                    title: "Queue & automate",
-                    text: "Posts enter a smart queue with per-platform throttling, retries, and delivery tracking so campaigns run while you sleep.",
+                    title: "Publish",
+                    text: "The queue handles throttling, retries, and per-platform quirks. You see what shipped, what slipped, and why.",
                   },
-                ].map((item, i) => (
-                  <div key={i} className="flex gap-6">
-                    <span className="text-2xl font-black text-[#C4D9FF]">
+                ].map((item) => (
+                  <div key={item.step} className="flex gap-5">
+                    <span className="text-sm font-semibold text-faint nums shrink-0 w-8 mt-1">
                       {item.step}
                     </span>
-                    <div>
-                      <h3 className="text-xl font-bold mb-2">{item.title}</h3>
-                      <p className="text-zinc-500">{item.text}</p>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold mb-1">
+                        {item.title}
+                      </h3>
+                      <p className="text-base text-muted leading-relaxed text-pretty">
+                        {item.text}
+                      </p>
                     </div>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-10 grid gap-4 text-sm text-zinc-600 sm:grid-cols-3">
-                {[
-                  {
-                    title: "Many accounts",
-                    desc: "Handle agencies, brands, and alter-egos from a single login.",
-                  },
-                  {
-                    title: "Useful calendar",
-                    desc: "Smart reminders, conflict warnings, and timezone-aware slots.",
-                  },
-                  {
-                    title: "Queue intelligence",
-                    desc: "Automatic retries and pacing so no post is left behind.",
-                  },
-                ].map((card) => (
-                  <div
-                    key={card.title}
-                    className="rounded-2xl border border-[#E8F9FF] bg-white/60 p-4 shadow-sm"
-                  >
-                    <p className="text-sm font-semibold text-zinc-900">
-                      {card.title}
-                    </p>
-                    <p className="mt-1 text-zinc-500">{card.desc}</p>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Visual Flow Diagram */}
             <div className="relative">
-              <div className="absolute inset-0 bg-linear-to-r from-[#C5BAFF]/20 to-[#C4D9FF]/20 blur-3xl rounded-full"></div>
-              <div className="relative bg-white p-10 rounded-3xl border border-[#E8F9FF] shadow-xl">
-                <div className="flex flex-col items-center gap-8">
-                  {/* User Node */}
-                  <div className="w-20 h-20 bg-[#C5BAFF] rounded-2xl flex items-center justify-center shadow-lg shadow-[#C5BAFF]/30 z-10 text-white">
+              <div className="rounded-xl border border-border-subtle bg-surface-2 p-10 shadow-sm">
+                <div className="flex flex-col items-center gap-6">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-md bg-ink text-paper">
                     <svg
                       viewBox="0 0 24 24"
-                      width="32"
-                      height="32"
+                      width="26"
+                      height="26"
                       fill="none"
                       stroke="currentColor"
                       strokeWidth="1.6"
@@ -210,51 +203,27 @@ export default async function HomePage() {
                       <path d="M4 21a8 8 0 0 1 16 0" />
                     </svg>
                   </div>
-
-                  {/* Connection Lines */}
-                  <div className="h-16 w-0.5 bg-linear-to-b from-[#C5BAFF] to-[#C4D9FF]"></div>
-
-                  {/* Platform Node */}
-                  <div className="w-64 p-4 bg-white border-2 border-[#C4D9FF] rounded-2xl text-center shadow-sm z-10">
-                    <span className="font-bold text-zinc-900">
-                      shitpost.art Core
+                  <div className="h-12 w-px bg-border-subtle" />
+                  <div className="rounded-md border border-border bg-paper px-5 py-3 text-center">
+                    <span className="font-semibold text-ink text-sm">
+                      shitpost.art core
                     </span>
                   </div>
-
-                  {/* Branching Lines */}
-                  <div className="relative w-full h-12">
-                    <div className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-[#C4D9FF] -translate-x-1/2"></div>
-                    <div className="absolute top-1/2 left-10 right-10 h-0.5 bg-[#C4D9FF]"></div>
-                    <div className="absolute top-1/2 left-10 h-full w-0.5 bg-[#C4D9FF]"></div>
-                    <div className="absolute top-1/2 right-10 h-full w-0.5 bg-[#C4D9FF]"></div>
-                  </div>
-
-                  {/* Destination Nodes */}
-                  <div className="grid grid-cols-2 gap-3 w-full pt-4 sm:grid-cols-4">
+                  <div className="h-12 w-px bg-border-subtle" />
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full">
                     {(["instagram", "tiktok", "linkedin", "x"] as const).map(
                       (platform) => (
                         <div
                           key={platform}
-                          className="flex flex-col items-center gap-2 rounded-xl border border-[#E8F9FF] bg-[#FBFBFB] px-3 py-4 text-center text-sm shadow-sm hover:-translate-y-1 transition-transform text-zinc-700"
+                          className="flex flex-col items-center gap-2 rounded-md border border-border-subtle bg-surface-1 px-3 py-3 text-center text-ink"
                         >
-                          <PlatformIcon platform={platform} size={22} />
-                          <span className="text-xs text-zinc-500">
+                          <PlatformIcon platform={platform} size={20} />
+                          <span className="text-xs text-muted">
                             {platformLabel(platform)}
                           </span>
                         </div>
                       )
                     )}
-                  </div>
-                  <div className="mt-6 flex flex-wrap items-center justify-center gap-3 text-xs font-medium text-zinc-600">
-                    <span className="rounded-full border border-[#E8F9FF] px-3 py-1">
-                      Calendar view
-                    </span>
-                    <span className="rounded-full border border-[#E8F9FF] px-3 py-1">
-                      Queue management
-                    </span>
-                    <span className="rounded-full border border-[#E8F9FF] px-3 py-1">
-                      Token-safe accounts
-                    </span>
                   </div>
                 </div>
               </div>
@@ -263,38 +232,77 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Pricing Section */}
-      <section id="pricing" className="py-24 px-6 bg-white">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-14">
-            <h2 className="text-4xl lg:text-5xl font-black tracking-tight mb-4">
-              Simple pricing
+      {/* =====================================================================
+          Pricing — compact, three columns is justified here (each is a
+          distinct purchasable plan, not decorative).
+          ===================================================================== */}
+      <section
+        id="pricing"
+        className="py-24 px-6 border-t border-border-subtle bg-surface-2"
+      >
+        <div className="mx-auto max-w-5xl">
+          <div className="text-center mb-12 max-w-2xl mx-auto">
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-primary mb-5">
+              Pricing
+            </p>
+            <h2 className="text-4xl lg:text-5xl font-semibold tracking-[-0.02em] leading-[1.05] text-balance">
+              Subscribe once. Use it daily.
             </h2>
-            <p className="text-lg text-zinc-500 max-w-xl mx-auto">
-              Subscribe once. Connect accounts per your plan. Billed monthly.
+            <p className="mt-5 text-base text-muted">
+              Billed monthly. Plan limits are per platform.
             </p>
           </div>
-          <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+          <div className="grid md:grid-cols-3 gap-4">
             {[
-              { name: "Basic", price: "$9", accounts: "1 account per platform", plan: "basic" },
-              { name: "Business", price: "$29", accounts: "4 accounts per platform", plan: "business", highlight: true },
-              { name: "Enterprise", price: "$99", accounts: "Unlimited accounts", plan: "enterprise" },
+              {
+                name: "Basic",
+                price: "$9",
+                accounts: "1 account per platform",
+                plan: "basic",
+              },
+              {
+                name: "Business",
+                price: "$29",
+                accounts: "4 accounts per platform",
+                plan: "business",
+                highlight: true,
+              },
+              {
+                name: "Enterprise",
+                price: "$99",
+                accounts: "Unlimited accounts",
+                plan: "enterprise",
+              },
             ].map((tier) => (
               <div
                 key={tier.plan}
-                className={`rounded-2xl border p-6 text-center ${
-                  tier.highlight ? "border-[#C5BAFF] bg-[#C5BAFF]/5" : "border-zinc-200"
+                className={`rounded-lg p-6 transition-colors ${
+                  tier.highlight
+                    ? "border-2 border-ink bg-paper"
+                    : "border border-border-subtle bg-paper"
                 }`}
               >
-                <p className="font-bold text-zinc-900">{tier.name}</p>
-                <p className="mt-3 text-3xl font-black text-zinc-900">{tier.price}<span className="text-base font-normal text-zinc-500">/mo</span></p>
-                <p className="mt-1 text-sm text-zinc-500">{tier.accounts}</p>
+                <div className="flex items-baseline justify-between">
+                  <p className="font-semibold text-ink">{tier.name}</p>
+                  {tier.highlight && (
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-primary">
+                      Most picked
+                    </span>
+                  )}
+                </div>
+                <p className="mt-4 text-4xl font-semibold text-ink nums tracking-[-0.02em]">
+                  {tier.price}
+                  <span className="ml-1 text-base font-normal text-muted">
+                    /mo
+                  </span>
+                </p>
+                <p className="mt-2 text-sm text-muted">{tier.accounts}</p>
                 <Link
                   href="/sign-up"
-                  className={`mt-5 block w-full rounded-xl py-3 text-sm font-semibold transition ${
+                  className={`mt-6 block w-full rounded-md py-3 text-center text-sm font-semibold transition-colors ${
                     tier.highlight
-                      ? "bg-[#C5BAFF] text-white hover:bg-[#b4a5ff]"
-                      : "bg-zinc-900 text-white hover:bg-zinc-800"
+                      ? "bg-primary text-primary-on hover:bg-primary-hover"
+                      : "bg-ink text-paper hover:opacity-90"
                   }`}
                 >
                   Get started
@@ -305,36 +313,32 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-white border-t border-[#E8F9FF] py-12 px-6">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-[#C5BAFF] rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">S</span>
+      {/* =====================================================================
+          Footer — quiet, real links only.
+          ===================================================================== */}
+      <footer className="border-t border-border-subtle py-10 px-6">
+        <div className="mx-auto max-w-7xl flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="h-8 w-8 rounded-md bg-ink text-paper grid place-items-center">
+              <span className="font-semibold text-sm tracking-tight">S</span>
             </div>
-            <span className="font-bold text-zinc-900">shitpost.art</span>
+            <span className="font-semibold text-ink">shitpost.art</span>
           </div>
-          <div className="text-sm text-zinc-500">
+          <div className="text-sm text-muted nums">
             © {new Date().getFullYear()} shitpost.art. All rights reserved.
           </div>
-          <div className="flex gap-6">
-            <Link
-              href="#"
-              className="text-zinc-400 hover:text-[#C5BAFF] transition-colors"
-            >
-              Twitter
+          <div className="flex gap-5 text-sm text-muted">
+            <Link href="/sign-in" className="hover:text-ink transition-colors">
+              Sign in
             </Link>
             <Link
-              href="#"
-              className="text-zinc-400 hover:text-[#C5BAFF] transition-colors"
+              href="#pricing"
+              className="hover:text-ink transition-colors"
             >
-              GitHub
+              Pricing
             </Link>
-            <Link
-              href="#"
-              className="text-zinc-400 hover:text-[#C5BAFF] transition-colors"
-            >
-              Discord
+            <Link href="#demo" className="hover:text-ink transition-colors">
+              How it works
             </Link>
           </div>
         </div>
