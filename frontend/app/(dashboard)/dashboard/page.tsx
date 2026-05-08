@@ -91,9 +91,9 @@ export default async function DashboardPage() {
           ))}
 
           {/* Quick Actions Card */}
-          <div className="col-span-2 md:col-span-4 xl:col-span-1 rounded-xl md:rounded-2xl border border-[#E8F0FF] bg-white p-3 md:p-4 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-center">
-            <p className="text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-2 md:mb-3">
-              Quick Actions
+          <div className="col-span-2 md:col-span-4 xl:col-span-1 rounded-md md:rounded-lg border border-border-subtle bg-surface-2 p-3 md:p-4 shadow-sm flex flex-col justify-center">
+            <p className="mb-3 text-[10px] md:text-[11px] font-semibold uppercase tracking-[0.08em] text-faint">
+              Quick actions
             </p>
             <QuickActions />
           </div>

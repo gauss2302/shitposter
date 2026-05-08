@@ -45,7 +45,6 @@ export default function SignUpPage() {
     setError("");
 
     try {
-      // Use signIn.social for both sign-in and sign-up (Better Auth handles it)
       await signIn.social({
         provider,
         callbackURL: "/dashboard",
@@ -58,119 +57,110 @@ export default function SignUpPage() {
 
   return (
     <AuthLayout
-      title="Create Account"
-      subtitle="Enter your details to get started"
+      title="Create your account"
+      subtitle="Two minutes to your first scheduled post."
       isSignIn={false}
     >
-      <div className="space-y-6 w-full max-w-sm mx-auto">
-        <form onSubmit={handleSubmit} className="space-y-6">
-        {error && (
-          <div className="p-4 rounded-xl bg-red-50 text-red-600 text-sm font-medium border border-red-100">
-            {error}
-          </div>
-        )}
+      <div className="mx-auto w-full max-w-sm space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-5">
+          {error && (
+            <div
+              role="alert"
+              className="rounded-md border border-danger/30 bg-danger/10 p-3 text-sm font-medium text-danger"
+            >
+              {error}
+            </div>
+          )}
 
-        <div className="space-y-1.5">
-          <label
-            htmlFor="name"
-            className="text-xs font-bold text-zinc-500 uppercase tracking-wider ml-1"
-          >
-            Full Name
-          </label>
-          <div className="relative">
+          <div className="space-y-1.5">
+            <label
+              htmlFor="name"
+              className="ml-0.5 text-xs font-semibold uppercase tracking-[0.08em] text-muted"
+            >
+              Full name
+            </label>
             <input
               id="name"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
-              className="w-full px-5 py-3.5 rounded-2xl border-2 border-[#E8F9FF] bg-[#FBFBFB] text-zinc-900 focus:border-[#C5BAFF] focus:ring-4 focus:ring-[#C5BAFF]/10 outline-none transition-all font-medium placeholder:text-zinc-300"
+              className="w-full rounded-md border border-border bg-surface-1 px-4 py-3 text-ink placeholder:text-faint outline-none transition-colors focus:border-primary focus-visible:shadow-focus"
               placeholder="Elon Musk"
             />
-            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-green-400 pointer-events-none opacity-0 peer-valid:opacity-100 transition-opacity">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-                className="w-5 h-5"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            </div>
           </div>
-        </div>
 
-        <div className="space-y-1.5">
-          <label
-            htmlFor="email"
-            className="text-xs font-bold text-zinc-500 uppercase tracking-wider ml-1"
-          >
-            Email Address
-          </label>
-          <input
-            id="email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            className="w-full px-5 py-3.5 rounded-2xl border-2 border-[#E8F9FF] bg-[#FBFBFB] text-zinc-900 focus:border-[#C5BAFF] focus:ring-4 focus:ring-[#C5BAFF]/10 outline-none transition-all font-medium placeholder:text-zinc-300"
-            placeholder="elon@twitter.com"
-          />
-        </div>
+          <div className="space-y-1.5">
+            <label
+              htmlFor="email"
+              className="ml-0.5 text-xs font-semibold uppercase tracking-[0.08em] text-muted"
+            >
+              Email
+            </label>
+            <input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="w-full rounded-md border border-border bg-surface-1 px-4 py-3 text-ink placeholder:text-faint outline-none transition-colors focus:border-primary focus-visible:shadow-focus"
+              placeholder="elon@twitter.com"
+            />
+          </div>
 
-        <div className="space-y-1.5">
-          <label
-            htmlFor="password"
-            className="text-xs font-bold text-zinc-500 uppercase tracking-wider ml-1"
-          >
-            Password
-          </label>
-          <input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            minLength={8}
-            className="w-full px-5 py-3.5 rounded-2xl border-2 border-[#E8F9FF] bg-[#FBFBFB] text-zinc-900 focus:border-[#C5BAFF] focus:ring-4 focus:ring-[#C5BAFF]/10 outline-none transition-all font-medium placeholder:text-zinc-300"
-            placeholder="••••••••"
-          />
-        </div>
+          <div className="space-y-1.5">
+            <label
+              htmlFor="password"
+              className="ml-0.5 text-xs font-semibold uppercase tracking-[0.08em] text-muted"
+            >
+              Password
+            </label>
+            <input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={8}
+              className="w-full rounded-md border border-border bg-surface-1 px-4 py-3 text-ink placeholder:text-faint outline-none transition-colors focus:border-primary focus-visible:shadow-focus"
+              placeholder="••••••••"
+            />
+            <p className="ml-0.5 text-xs text-faint">
+              At least 8 characters.
+            </p>
+          </div>
 
           <button
             type="submit"
             disabled={loading || oauthLoading !== null}
-            className="w-full py-4 px-6 bg-[#C5BAFF] hover:bg-[#b4a5ff] text-white font-bold rounded-2xl transition-all shadow-lg shadow-[#C5BAFF]/30 hover:shadow-[#C5BAFF]/50 hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 mt-4"
+            className="mt-2 w-full rounded-md bg-primary px-6 py-3.5 text-base font-semibold text-primary-on transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {loading ? "Creating account..." : "Continue"}
+            {loading ? "Creating account…" : "Continue"}
           </button>
         </form>
 
-        <div className="mt-8 relative">
+        <div className="relative">
           <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-zinc-100"></div>
+            <div className="w-full border-t border-border-subtle" />
           </div>
           <div className="relative flex justify-center text-sm">
-            <span className="px-4 bg-white text-zinc-400 font-medium">
-              Or Continue With
+            <span className="bg-surface-2 px-4 font-medium text-faint">
+              Or continue with
             </span>
           </div>
         </div>
 
-        <div className="mt-6 flex gap-4 justify-center">
+        <div className="flex justify-center gap-4">
           <button
             onClick={handleOAuthSignIn}
             disabled={loading || oauthLoading !== null}
-            className="w-12 h-12 rounded-full border border-zinc-200 flex items-center justify-center hover:bg-zinc-50 transition-colors bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+            aria-label="Continue with Google"
+            className="grid h-12 w-12 place-items-center rounded-pill border border-border bg-surface-2 transition-colors hover:bg-surface-1 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {oauthLoading === "google" ? (
-              <div className="w-5 h-5 border-2 border-zinc-400 border-t-transparent rounded-full animate-spin"></div>
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-faint border-t-transparent" />
             ) : (
-              <svg className="w-5 h-5" viewBox="0 0 24 24">
+              <svg className="h-5 w-5" viewBox="0 0 24 24" aria-hidden>
                 <path
                   d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
                   fill="#4285F4"

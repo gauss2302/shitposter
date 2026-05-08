@@ -55,14 +55,17 @@ export default function SignInPage() {
 
   return (
     <AuthLayout
-      title="Welcome Back"
-      subtitle="Enter your details to continue"
+      title="Welcome back"
+      subtitle="Sign in to your shitpost.art account."
       isSignIn={true}
     >
       <div className="space-y-6 w-full max-w-sm mx-auto">
         <form onSubmit={handleSubmit} className="space-y-6">
         {error && (
-          <div className="p-4 rounded-xl bg-red-50 text-red-600 text-sm font-medium border border-red-100">
+          <div
+            role="alert"
+            className="rounded-md border border-danger/30 bg-danger/10 p-3 text-sm font-medium text-danger"
+          >
             {error}
           </div>
         )}
@@ -70,9 +73,9 @@ export default function SignInPage() {
         <div className="space-y-1.5">
           <label
             htmlFor="email"
-            className="text-xs font-bold text-zinc-500 uppercase tracking-wider ml-1"
+            className="ml-0.5 text-xs font-semibold uppercase tracking-[0.08em] text-muted"
           >
-            Email Address
+            Email
           </label>
           <input
             id="email"
@@ -80,7 +83,7 @@ export default function SignInPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="w-full px-5 py-3.5 rounded-2xl border-2 border-[#E8F9FF] bg-[#FBFBFB] text-zinc-900 focus:border-[#C5BAFF] focus:ring-4 focus:ring-[#C5BAFF]/10 outline-none transition-all font-medium placeholder:text-zinc-300"
+            className="w-full rounded-md border border-border bg-surface-1 px-4 py-3 text-ink placeholder:text-faint outline-none transition-colors focus:border-primary focus-visible:shadow-focus"
             placeholder="elon@twitter.com"
           />
         </div>
@@ -88,7 +91,7 @@ export default function SignInPage() {
         <div className="space-y-1.5">
           <label
             htmlFor="password"
-            className="text-xs font-bold text-zinc-500 uppercase tracking-wider ml-1"
+            className="ml-0.5 text-xs font-semibold uppercase tracking-[0.08em] text-muted"
           >
             Password
           </label>
@@ -98,7 +101,7 @@ export default function SignInPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            className="w-full px-5 py-3.5 rounded-2xl border-2 border-[#E8F9FF] bg-[#FBFBFB] text-zinc-900 focus:border-[#C5BAFF] focus:ring-4 focus:ring-[#C5BAFF]/10 outline-none transition-all font-medium placeholder:text-zinc-300"
+            className="w-full rounded-md border border-border bg-surface-1 px-4 py-3 text-ink placeholder:text-faint outline-none transition-colors focus:border-primary focus-visible:shadow-focus"
             placeholder="••••••••"
           />
         </div>
@@ -106,31 +109,32 @@ export default function SignInPage() {
           <button
             type="submit"
             disabled={loading || oauthLoading !== null}
-            className="w-full py-4 px-6 bg-[#C5BAFF] hover:bg-[#b4a5ff] text-white font-bold rounded-2xl transition-all shadow-lg shadow-[#C5BAFF]/30 hover:shadow-[#C5BAFF]/50 hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 mt-4"
+            className="mt-4 w-full rounded-md bg-primary px-6 py-3.5 text-base font-semibold text-primary-on transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {loading ? "Logging in..." : "Continue"}
+            {loading ? "Signing in…" : "Continue"}
           </button>
         </form>
 
-        <div className="mt-8 relative">
+        <div className="relative mt-8">
           <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-zinc-100"></div>
+            <div className="w-full border-t border-border-subtle" />
           </div>
           <div className="relative flex justify-center text-sm">
-            <span className="px-4 bg-white text-zinc-400 font-medium">
-              Or Continue With
+            <span className="bg-surface-2 px-4 font-medium text-faint">
+              Or continue with
             </span>
           </div>
         </div>
 
-        <div className="mt-6 flex gap-4 justify-center">
+        <div className="mt-6 flex justify-center gap-4">
           <button
             onClick={handleOAuthSignIn}
             disabled={loading || oauthLoading !== null}
-            className="w-12 h-12 rounded-full border border-zinc-200 flex items-center justify-center hover:bg-zinc-50 transition-colors bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+            aria-label="Continue with Google"
+            className="grid h-12 w-12 place-items-center rounded-pill border border-border bg-surface-2 transition-colors hover:bg-surface-1 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {oauthLoading === "google" ? (
-              <div className="w-5 h-5 border-2 border-zinc-400 border-t-transparent rounded-full animate-spin"></div>
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-faint border-t-transparent" />
             ) : (
               <svg className="w-5 h-5" viewBox="0 0 24 24">
                 <path
