@@ -15,7 +15,16 @@ from app.api.deps import (
     get_settings,
     require_api_scope,
 )
-from app.application.ai_service import AiGenerationCandidate, AiService
+from app.api.v1.ai import (
+    AiProviderCredentialRequest,
+    AiProviderCredentialResponse,
+    UpdateAiProviderCredentialRequest,
+)
+from app.application.ai_service import (
+    AiGenerationCandidate,
+    AiService,
+    PublicAiCredential,
+)
 from app.application.posts_service import (
     SUPPORTED_PUBLISHING_PLATFORMS,
     MediaInput,
@@ -34,6 +43,12 @@ AccountsReadPrincipal = Annotated[ApiPrincipal, Depends(require_api_scope("accou
 PostsReadPrincipal = Annotated[ApiPrincipal, Depends(require_api_scope("posts:read"))]
 PostsWritePrincipal = Annotated[ApiPrincipal, Depends(require_api_scope("posts:write"))]
 AiGeneratePrincipal = Annotated[ApiPrincipal, Depends(require_api_scope("ai:generate"))]
+AiProvidersReadPrincipal = Annotated[
+    ApiPrincipal, Depends(require_api_scope("ai:providers:read"))
+]
+AiProvidersWritePrincipal = Annotated[
+    ApiPrincipal, Depends(require_api_scope("ai:providers:write"))
+]
 
 PLATFORM_LIMITS = {
     "twitter": 280,
@@ -220,6 +235,19 @@ def _ai_candidate(candidate: AiGenerationCandidate) -> AgentAiCandidateResponse:
     )
 
 
+def _ai_provider_credential(row: PublicAiCredential) -> AiProviderCredentialResponse:
+    return AiProviderCredentialResponse(
+        id=row.id,
+        provider=row.provider,
+        displayName=row.display_name,
+        baseUrl=row.base_url,
+        defaultModel=row.default_model,
+        isActive=row.is_active,
+        createdAt=row.created_at.isoformat(),
+        updatedAt=row.updated_at.isoformat(),
+    )
+
+
 @router.get("/me", response_model=AgentMeResponse)
 async def me(
     principal: Annotated[ApiPrincipal, Depends(get_current_api_principal)],
@@ -315,6 +343,86 @@ async def create_post(
         targetCount=created.target_count,
         mediaCount=created.media_count,
     )
+
+
+@router.get("/ai/providers", response_model=list[AiProviderCredentialResponse])
+async def list_ai_providers(
+    principal: AiProvidersReadPrincipal,
+    db: DbSessionDep,
+    settings: SettingsDep,
+) -> list[AiProviderCredentialResponse]:
+    rows = await AiService(db, settings).list_credentials(principal.user_id)
+    return [_ai_provider_credential(row) for row in rows]
+
+
+@router.post(
+    "/ai/providers",
+    response_model=AiProviderCredentialResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_ai_provider(
+    payload: AiProviderCredentialRequest,
+    principal: AiProvidersWritePrincipal,
+    db: DbSessionDep,
+    settings: SettingsDep,
+) -> AiProviderCredentialResponse:
+    try:
+        row = await AiService(db, settings).create_credential(
+            user_id=principal.user_id,
+            provider=payload.provider,
+            display_name=payload.displayName,
+            api_key=payload.apiKey,
+            base_url=payload.baseUrl,
+            default_model=payload.defaultModel,
+        )
+        await db.commit()
+    except ValidationError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    return _ai_provider_credential(row)
+
+
+@router.patch(
+    "/ai/providers/{credential_id}",
+    response_model=AiProviderCredentialResponse,
+)
+async def update_ai_provider(
+    credential_id: str,
+    payload: UpdateAiProviderCredentialRequest,
+    principal: AiProvidersWritePrincipal,
+    db: DbSessionDep,
+    settings: SettingsDep,
+) -> AiProviderCredentialResponse:
+    try:
+        row = await AiService(db, settings).update_credential(
+            user_id=principal.user_id,
+            credential_id=credential_id,
+            display_name=payload.displayName,
+            api_key=payload.apiKey,
+            base_url=payload.baseUrl,
+            default_model=payload.defaultModel,
+            is_active=payload.isActive,
+        )
+        await db.commit()
+    except NotFoundError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return _ai_provider_credential(row)
+
+
+@router.delete("/ai/providers/{credential_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_ai_provider(
+    credential_id: str,
+    principal: AiProvidersWritePrincipal,
+    db: DbSessionDep,
+    settings: SettingsDep,
+) -> None:
+    try:
+        await AiService(db, settings).delete_credential(principal.user_id, credential_id)
+        await db.commit()
+    except NotFoundError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
 
 @router.post("/ai/generate", response_model=AgentAiGenerateResponse)
