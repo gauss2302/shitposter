@@ -9,7 +9,11 @@ from app.application.api_key_service import decode_scopes
 from app.application.posts_service import SUPPORTED_PUBLISHING_PLATFORMS
 from app.core.config import Settings
 from app.infrastructure.db import models
-from app.infrastructure.db.repositories import AiCredentialRepository, ApiKeyRepository, SocialAccountRepository
+from app.infrastructure.db.repositories import (
+    AiCredentialRepository,
+    ApiKeyRepository,
+    SocialAccountRepository,
+)
 
 AGENT_AUTOMATION_SCOPES = frozenset(
     {
