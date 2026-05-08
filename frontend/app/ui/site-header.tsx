@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useSession } from "@/lib/api/auth";
 import { LogoutButton } from "@/app/ui/logout-button";
@@ -15,9 +14,8 @@ const authedLinks = [
 ];
 
 const marketingLinks = [
-  { label: "Home", href: "/" },
   { label: "Features", href: "/#features" },
-  { label: "Demo", href: "/#demo" },
+  { label: "How it works", href: "/#demo" },
 ];
 
 export function SiteHeader() {
@@ -30,71 +28,62 @@ export function SiteHeader() {
     "S";
 
   return (
-    <header className="sticky top-0 z-50 border-b border-zinc-200/80 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60 dark:border-zinc-800/60 dark:bg-zinc-950/70">
+    <header className="sticky top-0 z-50 border-b border-border-subtle bg-paper/85 backdrop-blur supports-[backdrop-filter]:bg-paper/70">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <Link href="/" className="flex items-center gap-2 font-semibold">
-          <div className="relative h-10 w-10 overflow-hidden rounded-2xl border border-zinc-100 shadow-md shadow-violet-500/20">
-            <Image
-              src="/hero_main_sm.png"
-              alt="shitpost.art logo"
-              fill
-              className="object-cover"
-              sizes="40px"
-              priority
-            />
+        <Link href="/" className="flex items-center gap-2.5 group">
+          <div className="grid h-8 w-8 place-items-center rounded-md bg-ink text-paper transition-colors group-hover:bg-primary">
+            <span className="font-semibold text-sm tracking-tight">S</span>
           </div>
-          <span className="text-lg tracking-tight text-zinc-900 dark:text-white">
+          <span className="font-semibold tracking-[-0.01em] text-ink">
             shitpost.art
           </span>
         </Link>
 
-        <nav className="hidden items-center gap-6 text-sm font-medium text-zinc-500 md:flex dark:text-zinc-400">
+        <nav className="hidden items-center gap-7 text-sm text-muted md:flex">
           {links.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className="transition hover:text-zinc-900 dark:hover:text-white"
+              className="transition-colors hover:text-ink"
             >
               {link.label}
             </Link>
           ))}
         </nav>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {user ? (
             <>
-              <div className="flex items-center gap-2 rounded-full border border-zinc-200 px-3 py-1 text-sm text-zinc-600 dark:border-zinc-700 dark:text-zinc-300">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-violet-100 text-violet-700 dark:bg-violet-900/50 dark:text-violet-200">
+              <div className="hidden sm:flex items-center gap-2 rounded-pill border border-border-subtle bg-surface-2 pl-1 pr-3 py-1 text-sm">
+                <div className="grid h-7 w-7 place-items-center rounded-pill bg-primary-tint text-primary font-semibold">
                   {initials}
                 </div>
-                <div className="hidden flex-col leading-tight sm:flex">
-                  <span className="font-semibold text-zinc-900 dark:text-white">
+                <div className="flex flex-col leading-tight">
+                  <span className="text-xs font-semibold text-ink">
                     {user.name || user.email}
                   </span>
-                  <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                    {user.email}
-                  </span>
+                  <span className="text-[10px] text-muted">{user.email}</span>
                 </div>
               </div>
-              <LogoutButton className="rounded-full border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-transparent dark:text-zinc-200">
+              <LogoutButton className="rounded-md border border-border-subtle bg-surface-2 px-3 py-2 text-sm font-semibold text-ink transition-colors hover:bg-surface-1">
                 Sign out
               </LogoutButton>
             </>
           ) : (
-            <div className="flex items-center gap-3 text-sm font-semibold">
+            <>
               <Link
                 href="/sign-in"
-                className="text-zinc-600 transition hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white"
+                className="px-3 py-2 text-sm text-muted transition-colors hover:text-ink"
               >
                 Log in
               </Link>
               <Link
                 href="/sign-up"
-                className="rounded-full bg-zinc-900 px-4 py-2 text-white transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-900"
+                className="rounded-md bg-ink px-4 py-2 text-sm font-semibold text-paper transition-colors hover:bg-primary"
               >
                 Get started
               </Link>
-            </div>
+            </>
           )}
         </div>
       </div>
