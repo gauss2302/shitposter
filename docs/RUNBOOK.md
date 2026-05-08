@@ -3,6 +3,7 @@
 ## Logs
 
 - **All services**: `docker compose logs -f`
+- **Nginx**: `docker compose logs -f nginx`
 - **Frontend**: `docker compose logs -f web`
 - **Backend**: `docker compose logs -f backend`
 - **Worker**: `docker compose logs -f backend-worker`
@@ -12,6 +13,7 @@ Set `LOG_LEVEL` on the backend to `debug`, `info`, `warn`, or `error`.
 ## Health endpoints
 
 - **Frontend process**: `GET /`
+- **Nginx**: `GET /nginx-health`
 - **Backend lightweight**: `GET /api/v1/health`
 - **Backend deep**: `GET /api/v1/health?deep=1` checks PostgreSQL and Redis.
 - **Backend ready**: `GET /api/v1/ready`
@@ -28,6 +30,17 @@ The Python worker is an ARQ worker. It should be supervised by Docker Compose; i
 1. Check DB: `docker compose exec postgres pg_isready -U postgres`.
 2. Check Redis: `docker compose exec redis redis-cli ping`.
 3. Check backend logs: `docker compose logs --tail=100 backend`.
+
+### Domain loads Nginx health but app/API fail
+
+1. Check proxy logs: `docker compose logs --tail=100 nginx`.
+2. Check service health: `docker compose ps`.
+3. Verify internal routes from the VPS:
+   - `curl -fsS http://localhost/nginx-health`
+   - `curl -fsS http://localhost/api/v1/health`
+   - `curl -fsS http://localhost/`
+4. Ensure only Nginx is exposed publicly in production; web/backend should be
+   reachable through the Docker network, not direct public ports.
 
 ### Worker errors
 
@@ -48,7 +61,7 @@ The Python worker is an ARQ worker. It should be supervised by Docker Compose; i
 ## Restarting services
 
 ```bash
-docker compose up -d --no-deps web backend backend-worker
+docker compose up -d --no-deps nginx web backend backend-worker
 
 docker compose down && docker compose up -d
 ```

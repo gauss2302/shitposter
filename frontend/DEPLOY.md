@@ -18,7 +18,7 @@ backend, Python ARQ worker, Postgres, Redis) to [Dokploy](https://dokploy.com).
 2. Create a new **Project**
 3. Add a **Compose** service, type: **Docker Compose**
 4. Connect your Git repository (GitHub, GitLab, etc.)
-5. Set **Compose Path** to: `./docker-compose.dokploy.yml`
+5. Set **Compose Path** to: `./docker-compose.dokploy.yml` from the repository root
 6. Select branch (e.g. `main`)
 
 ### 2. Configure environment variables
@@ -28,7 +28,6 @@ In **Environment** tab, add variables from `.env.dokploy.example`. Required:
 | Variable | Description |
 |----------|-------------|
 | `NEXT_PUBLIC_APP_URL` | Frontend URL, e.g. `https://shitposter.yourdomain.com` |
-| `NEXT_PUBLIC_API_BASE_URL` | Public backend URL, e.g. `https://api.shitposter.yourdomain.com` |
 | `FRONTEND_PUBLIC_URL` | Same as frontend URL |
 | `BACKEND_PUBLIC_URL` | Same as backend URL |
 | `DB_PASSWORD` | Strong Postgres password |
@@ -42,7 +41,10 @@ In **Domains** tab:
 1. **Frontend**: Add domain (e.g. `shitposter.yourdomain.com`) → select **web** service.
 2. **Backend**: Add domain (e.g. `api.shitposter.yourdomain.com`) → select **backend** service.
 
-Dokploy will add Traefik labels and HTTPS (Let's Encrypt) automatically.
+Dokploy will add Traefik labels and HTTPS (Let's Encrypt) automatically. The
+generic VPS stack uses its own `nginx` service in `docker-compose.yml`; the
+Dokploy compose file does not include that service because Traefik handles
+public routing.
 
 ### 4. Deploy
 

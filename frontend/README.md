@@ -39,8 +39,8 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 The app is split into three runtime services:
 
-- `web`: Next.js frontend. It renders UI and calls the backend through
-  `NEXT_PUBLIC_API_BASE_URL`.
+- `web`: Next.js frontend. Browser requests can use same-origin `/api` through
+  Nginx; server-side rendering uses `INTERNAL_API_BASE_URL` inside Docker.
 - `backend`: FastAPI service. It owns auth/session cookies, PostgreSQL access,
   Redis access, OAuth/social integrations, Polar billing, post scheduling,
   analytics, health checks, and migrations.
@@ -57,6 +57,7 @@ routes or frontend components.
 npm run dev
 
 # Full stack
+cd ..
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up
 
 # Backend checks
@@ -72,31 +73,29 @@ python -m pytest
 To run the full stack (web, backend, backend-worker, postgres, redis) with Docker:
 
 ```bash
-# Run migrations before first start (from host, with DB reachable)
-./scripts/run-migrations.sh
-
-# Start all services
+# From the repository root; starts Nginx, web, backend, worker, Postgres, Redis,
+# and the one-off migration service.
 docker compose up -d
 ```
 
-**Full production deploy** (pull, migrate, build, restart web + worker):
+**Full production deploy** (pull, build, migrate, start, health-check):
 
 ```bash
 ./scripts/deploy-production.sh
 ```
 
-See **[docs/DEPLOY.md](docs/DEPLOY.md)** for production env vars, TLS, and CI/CD setup.
+See **[../docs/DEPLOY.md](../docs/DEPLOY.md)** for production env vars, Nginx, TLS, and CI/CD setup.
 
 **Before deploying:**
 
-1. **Migrations** — Run before starting or updating backend/worker. Use `./scripts/run-migrations.sh`. See [docs/MIGRATIONS.md](docs/MIGRATIONS.md).
-2. **App URLs** — Set `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_API_BASE_URL`, and `BACKEND_PUBLIC_URL` to the public frontend/backend URLs.
+1. **Migrations** — The Compose `migrate` service runs automatically; manual runs use `./scripts/run-migrations.sh`. See [../docs/MIGRATIONS.md](../docs/MIGRATIONS.md).
+2. **App URLs** — Set `NEXT_PUBLIC_APP_URL`, `FRONTEND_PUBLIC_URL`, and `BACKEND_PUBLIC_URL`; leave `NEXT_PUBLIC_API_BASE_URL` empty for same-origin Nginx `/api` routing.
 3. **Secrets** — Use strong values for `TOKEN_ENCRYPTION_KEY`, DB passwords, and OAuth credentials.
-4. **Reverse proxy** — Put nginx, Caddy, or Traefik in front for TLS and domain routing.
+4. **Reverse proxy** — The Docker stack includes Nginx for HTTP routing. Terminate HTTPS at the VPS edge or extend the Nginx container with mounted certificates.
 
 ### Health and monitoring
 
 - **Backend**: `GET /api/v1/health` (lightweight) or `GET /api/v1/health?deep=1` (checks DB + Redis).
 - **Worker**: ARQ worker process; inspect via backend logs and Redis/ARQ queue keys.
 
-See **[docs/RUNBOOK.md](docs/RUNBOOK.md)** for logs and common issues, and **[docs/METRICS.md](docs/METRICS.md)** for Prometheus and alerting.
+See **[../docs/RUNBOOK.md](../docs/RUNBOOK.md)** for logs and common issues, and **[../docs/METRICS.md](../docs/METRICS.md)** for Prometheus and alerting.
