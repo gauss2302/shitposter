@@ -29,7 +29,10 @@ if [ -f .env.production ]; then
   echo "Loaded .env.production"
 fi
 
-echo "🔨 Building and starting services..."
+echo "📦 Resetting one-off migration container..."
+compose rm -sf migrate >/dev/null 2>&1 || true
+
+echo "🔨 Building, migrating, and starting services..."
 compose up -d --build
 
 echo "⏳ Waiting for health checks..."
