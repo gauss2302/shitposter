@@ -38,3 +38,21 @@ async def enqueue_publish_job(
             await pool.enqueue_job("publish_post", payload, _defer_by=1)
     finally:
         await pool.aclose()
+
+
+async def enqueue_poll_video_job(
+    payload: dict[str, Any],
+    *,
+    defer_seconds: int = 1,
+) -> None:
+    """Enqueue (or re-enqueue) a video generation polling job.
+
+    The job re-enqueues itself with a longer delay each time the provider is
+    still processing, so we don't burn an ARQ slot in a tight loop.
+    """
+
+    pool = await get_queue_pool()
+    try:
+        await pool.enqueue_job("poll_video_job", payload, _defer_by=defer_seconds)
+    finally:
+        await pool.aclose()

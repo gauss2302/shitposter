@@ -9,8 +9,11 @@ from app.api.v1 import (
     billing,
     dashboard,
     health,
+    media,
     posts,
+    recipes,
     social,
+    videos,
 )
 
 api_router = APIRouter()
@@ -22,8 +25,11 @@ api_router.include_router(analytics.router)
 api_router.include_router(billing.router)
 api_router.include_router(dashboard.router)
 api_router.include_router(health.router, tags=["health"])
+api_router.include_router(media.router)
 api_router.include_router(posts.router)
+api_router.include_router(recipes.router)
 api_router.include_router(social.router)
+api_router.include_router(videos.router)
 
 
 @api_router.get("/ready", tags=["health"])

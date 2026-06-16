@@ -23,3 +23,19 @@ class Platform(StrEnum):
     LINKEDIN = "linkedin"
     FACEBOOK = "facebook"
     THREADS = "threads"
+
+
+class VideoProvider(StrEnum):
+    REPLICATE = "replicate"
+    RUNWAY = "runway"
+    FALAI = "falai"
+
+
+class VideoJobStatus(StrEnum):
+    QUEUED = "queued"
+    SUBMITTING = "submitting"
+    PROCESSING = "processing"
+    DOWNLOADING = "downloading"
+    UPLOADED = "uploaded"
+    FAILED = "failed"
+    CANCELED = "canceled"

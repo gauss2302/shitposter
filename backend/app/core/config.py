@@ -51,6 +51,12 @@ class Settings(BaseSettings):
     twitter_client_secret: str = ""
     linkedin_client_id: str = ""
     linkedin_client_secret: str = ""
+    tiktok_client_key: str = ""
+    tiktok_client_secret: str = ""
+    instagram_client_id: str = ""
+    instagram_client_secret: str = ""
+
+    replicate_api_token: str = ""
 
     openai_api_key: str = ""
     openai_default_model: str = "gpt-4o-mini"
@@ -66,6 +72,17 @@ class Settings(BaseSettings):
     polar_product_id_basic: str = ""
     polar_product_id_business: str = ""
     polar_product_id_enterprise: str = ""
+
+    r2_account_id: str = ""
+    r2_access_key_id: str = ""
+    r2_secret_access_key: str = ""
+    r2_bucket: str = ""
+    # Optional: when set (e.g. via R2 Custom Domain), uploads return non-expiring
+    # public URLs at `<base>/<key>`. Leave empty to default to presigned URLs.
+    r2_public_base_url: str = ""
+    # Default lifetime for presigned GET URLs. 24h covers TikTok Inbox + IG
+    # container fetch windows; max R2 allows is 7d (604800).
+    r2_signed_url_expires: int = 86400
 
     sentry_dsn: str = ""
     sentry_environment: str = ""

@@ -31,6 +31,7 @@ async def create_post(
     socialAccountIds: Annotated[str, Form()] = "[]",
     scheduledFor: Annotated[str | None, Form()] = None,
     media: Annotated[list[UploadFile] | None, File()] = None,
+    mediaUrls: Annotated[str | None, Form()] = None,
 ) -> CreatedPostResponse:
     try:
         account_ids = json.loads(socialAccountIds)
@@ -46,6 +47,22 @@ async def create_post(
             detail="At least one account is required",
         )
 
+    media_url_list: list[str] = []
+    if mediaUrls:
+        try:
+            parsed = json.loads(mediaUrls)
+        except json.JSONDecodeError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid mediaUrls format",
+            ) from exc
+        if not isinstance(parsed, list) or not all(isinstance(item, str) for item in parsed):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid mediaUrls format",
+            )
+        media_url_list = parsed
+
     try:
         media_inputs = [await file_to_media(file) for file in media or []]
         created = await PostsService(db).create_post(
@@ -54,6 +71,7 @@ async def create_post(
             social_account_ids=account_ids,
             scheduled_for_raw=scheduledFor,
             media=media_inputs,
+            media_urls=media_url_list,
         )
     except NotFoundError as exc:
         await db.rollback()

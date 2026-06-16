@@ -150,6 +150,7 @@ class SocialAccountModel(Base):
     token_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=False))
     oauth1_access_token: Mapped[str | None] = mapped_column(Text)
     access_token_secret: Mapped[str | None] = mapped_column(Text)
+    granted_scopes: Mapped[str | None] = mapped_column(Text)
     profile_image_url: Mapped[str | None] = mapped_column(Text)
     follower_count: Mapped[int | None] = mapped_column(Integer)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
@@ -254,6 +255,65 @@ class PostTargetModel(Base):
     social_account: Mapped[SocialAccountModel] = relationship(back_populates="targets")
 
 
+class VideoGenerationJobModel(Base):
+    __tablename__ = "video_generation_job"
+
+    id: Mapped[str] = mapped_column(Text, primary_key=True)
+    user_id: Mapped[str] = mapped_column(
+        Text, ForeignKey("user.id", ondelete="CASCADE"), nullable=False
+    )
+    provider: Mapped[str] = mapped_column(Text, nullable=False)
+    model: Mapped[str] = mapped_column(Text, nullable=False)
+    prompt: Mapped[str] = mapped_column(Text, nullable=False)
+    params_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+    provider_job_id: Mapped[str | None] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(Text, nullable=False, default="queued")
+    provider_output_url: Mapped[str | None] = mapped_column(Text)
+    output_url: Mapped[str | None] = mapped_column(Text)
+    output_key: Mapped[str | None] = mapped_column(Text)
+    error_message: Mapped[str | None] = mapped_column(Text)
+    # Free-form JSON metadata: e.g. {recipeId, targetSocialAccountIds, caption}
+    # for recipe-driven jobs; blank otherwise.
+    metadata_json: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=False), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=False), nullable=False, server_default=func.now()
+    )
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=False))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=False))
+
+
+class VideoRecipeModel(Base):
+    __tablename__ = "video_recipe"
+
+    id: Mapped[str] = mapped_column(Text, primary_key=True)
+    user_id: Mapped[str] = mapped_column(
+        Text, ForeignKey("user.id", ondelete="CASCADE"), nullable=False
+    )
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    provider: Mapped[str] = mapped_column(Text, nullable=False)
+    model: Mapped[str] = mapped_column(Text, nullable=False)
+    prompt: Mapped[str] = mapped_column(Text, nullable=False)
+    caption_template: Mapped[str | None] = mapped_column(Text)
+    params_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+    target_social_account_ids_json: Mapped[str] = mapped_column(
+        Text, nullable=False, default="[]"
+    )
+    frequency: Mapped[str] = mapped_column(Text, nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    next_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=False))
+    last_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=False))
+    last_run_job_id: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=False), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=False), nullable=False, server_default=func.now()
+    )
+
+
 User = UserModel
 Session = SessionModel
 Account = AccountModel
@@ -264,3 +324,5 @@ ApiKey = ApiKeyModel
 AiProviderCredential = AiProviderCredentialModel
 Post = PostModel
 PostTarget = PostTargetModel
+VideoGenerationJob = VideoGenerationJobModel
+VideoRecipe = VideoRecipeModel

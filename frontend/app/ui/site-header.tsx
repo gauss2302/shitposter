@@ -10,6 +10,7 @@ const authedLinks = [
   { label: "Accounts", href: "/dashboard/accounts" },
   { label: "Analytics", href: "/dashboard/analytics" },
   { label: "AI", href: "/dashboard/ai" },
+  { label: "Videos", href: "/dashboard/videos" },
   { label: "API", href: "/dashboard/developer" },
 ];
 

@@ -67,6 +67,22 @@ export const apiEndpoints = {
     checkout: `${API_V1}/billing/checkout`,
     portal: `${API_V1}/billing/portal`,
   },
+  media: {
+    upload: `${API_V1}/media/upload`,
+  },
+  videos: {
+    generate: `${API_V1}/videos/generate`,
+    jobs: `${API_V1}/videos/jobs`,
+    job(jobId: string) {
+      return `${API_V1}/videos/jobs/${jobId}`;
+    },
+  },
+  recipes: {
+    collection: `${API_V1}/recipes`,
+    item(recipeId: string) {
+      return `${API_V1}/recipes/${recipeId}`;
+    },
+  },
 } as const;
 
 export const apiPaths = apiEndpoints;

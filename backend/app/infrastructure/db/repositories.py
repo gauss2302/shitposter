@@ -330,6 +330,99 @@ class PostRepository:
             await self.session.flush()
 
 
+class VideoGenerationJobRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def add(self, job: models.VideoGenerationJob) -> models.VideoGenerationJob:
+        self.session.add(job)
+        await self.session.flush()
+        return job
+
+    async def get_owned(
+        self, job_id: str, user_id: str
+    ) -> models.VideoGenerationJob | None:
+        result = await self.session.execute(
+            select(models.VideoGenerationJob).where(
+                and_(
+                    models.VideoGenerationJob.id == job_id,
+                    models.VideoGenerationJob.user_id == user_id,
+                )
+            )
+        )
+        return result.scalar_one_or_none()
+
+    async def get(self, job_id: str) -> models.VideoGenerationJob | None:
+        return await self.session.get(models.VideoGenerationJob, job_id)
+
+    async def list_for_user(
+        self, user_id: str, *, limit: int = 50
+    ) -> Sequence[models.VideoGenerationJob]:
+        result = await self.session.execute(
+            select(models.VideoGenerationJob)
+            .where(models.VideoGenerationJob.user_id == user_id)
+            .order_by(desc(models.VideoGenerationJob.created_at))
+            .limit(limit)
+        )
+        return result.scalars().all()
+
+    async def flush(self) -> None:
+        await self.session.flush()
+
+
+class VideoRecipeRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def add(self, recipe: models.VideoRecipe) -> models.VideoRecipe:
+        self.session.add(recipe)
+        await self.session.flush()
+        return recipe
+
+    async def get_owned(
+        self, recipe_id: str, user_id: str
+    ) -> models.VideoRecipe | None:
+        result = await self.session.execute(
+            select(models.VideoRecipe).where(
+                and_(
+                    models.VideoRecipe.id == recipe_id,
+                    models.VideoRecipe.user_id == user_id,
+                )
+            )
+        )
+        return result.scalar_one_or_none()
+
+    async def list_for_user(
+        self, user_id: str, *, limit: int = 100
+    ) -> Sequence[models.VideoRecipe]:
+        result = await self.session.execute(
+            select(models.VideoRecipe)
+            .where(models.VideoRecipe.user_id == user_id)
+            .order_by(desc(models.VideoRecipe.created_at))
+            .limit(limit)
+        )
+        return result.scalars().all()
+
+    async def list_due(self, *, now: datetime) -> Sequence[models.VideoRecipe]:
+        result = await self.session.execute(
+            select(models.VideoRecipe).where(
+                and_(
+                    models.VideoRecipe.is_active.is_(True),
+                    models.VideoRecipe.next_run_at.is_not(None),
+                    models.VideoRecipe.next_run_at <= now,
+                )
+            )
+        )
+        return result.scalars().all()
+
+    async def delete(self, recipe: models.VideoRecipe) -> None:
+        await self.session.delete(recipe)
+        await self.session.flush()
+
+    async def flush(self) -> None:
+        await self.session.flush()
+
+
 def base_select(model: type[models.Base]) -> Select[tuple[models.Base]]:
     """Small helper used by tests and future repositories."""
     return select(model)

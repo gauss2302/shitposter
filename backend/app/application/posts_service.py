@@ -14,7 +14,7 @@ from app.infrastructure.db import models
 from app.infrastructure.db.repositories import PostRepository, SocialAccountRepository
 from app.infrastructure.queue import enqueue_publish_job
 
-SUPPORTED_PUBLISHING_PLATFORMS = {"twitter", "linkedin"}
+SUPPORTED_PUBLISHING_PLATFORMS = {"twitter", "linkedin", "tiktok", "instagram"}
 
 
 @dataclass(frozen=True)
@@ -69,10 +69,11 @@ class PostsService:
         content: str,
         social_account_ids: Sequence[str],
         scheduled_for_raw: str | None,
-        media: Sequence[MediaInput],
+        media: Sequence[MediaInput] = (),
+        media_urls: Sequence[str] = (),
     ) -> CreatedPost:
         content = content or ""
-        if not content.strip() and not media:
+        if not content.strip() and not media and not media_urls:
             raise ValidationError("Content or media is required")
         if not social_account_ids:
             raise ValidationError("At least one account is required")
@@ -94,7 +95,7 @@ class PostsService:
         if unsupported:
             names = ", ".join(account.platform_username for account in unsupported)
             raise ValidationError(
-                f"Posting is currently limited to X and LinkedIn. Unsupported accounts: {names}"
+                f"Posting is not yet supported for these accounts: {names}"
             )
 
         scheduled_for = self._parse_scheduled_for(scheduled_for_raw)
@@ -104,7 +105,7 @@ class PostsService:
                 id=post_id,
                 user_id=user_id,
                 content=content,
-                media_urls=[],
+                media_urls=list(media_urls),
                 scheduled_for=scheduled_for,
                 status="scheduled" if scheduled_for else "publishing",
             )
@@ -122,22 +123,27 @@ class PostsService:
         await self.session.commit()
 
         for target, account in zip(targets, accounts, strict=True):
-            await enqueue_publish_job(
-                {
-                    "post_id": post_id,
-                    "user_id": user_id,
-                    "target_id": target.id,
-                    "social_account_id": account.id,
-                    "content": content,
-                    "media_data": [
-                        {"data": item.data, "mimeType": item.mime_type}
-                        for item in media
-                    ],
-                },
-                scheduled_for=scheduled_for,
-            )
+            payload: dict[str, object] = {
+                "post_id": post_id,
+                "user_id": user_id,
+                "target_id": target.id,
+                "social_account_id": account.id,
+                "content": content,
+                "media_data": [
+                    {"data": item.data, "mimeType": item.mime_type} for item in media
+                ],
+            }
+            if media_urls:
+                # Worker prefers the URL path: avoids re-hosting and keeps
+                # ARQ payloads small for video posts.
+                payload["media_url"] = media_urls[0]
+            await enqueue_publish_job(payload, scheduled_for=scheduled_for)
 
-        return CreatedPost(post=post, target_count=len(targets), media_count=len(media))
+        return CreatedPost(
+            post=post,
+            target_count=len(targets),
+            media_count=len(media) + len(media_urls),
+        )
 
     def _parse_scheduled_for(self, value: str | None) -> datetime | None:
         if not value:

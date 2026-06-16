@@ -13,6 +13,17 @@ from app.domain.exceptions import NotFoundError, ValidationError
 from app.infrastructure.crypto import encrypt
 from app.infrastructure.db import models
 from app.infrastructure.db.repositories import SocialAccountRepository
+from app.infrastructure.external.instagram import (
+    InstagramApiError,
+    exchange_for_long_lived_token,
+    exchange_instagram_code,
+    fetch_instagram_user_info,
+)
+from app.infrastructure.external.tiktok import (
+    TikTokApiError,
+    exchange_tiktok_code,
+    fetch_tiktok_user_info,
+)
 from app.infrastructure.external.twitter_oauth1 import (
     exchange_twitter_oauth1_access_token,
     generate_twitter_oauth1_auth_link,
@@ -68,6 +79,28 @@ class SocialService:
                 scopes=["openid", "profile", "w_member_social", "email"],
                 callback_path="/api/v1/social/callback/linkedin",
             ),
+            "tiktok": OAuthConfig(
+                auth_url="https://www.tiktok.com/v2/auth/authorize/",
+                client_id=self.settings.tiktok_client_key,
+                client_secret=self.settings.tiktok_client_secret,
+                # video.publish is the gated scope for Direct Post; we still
+                # request it so audited apps can use it. Inbox publish only
+                # needs video.upload.
+                scopes=["user.info.basic", "video.upload", "video.publish"],
+                callback_path="/api/v1/social/callback/tiktok",
+            ),
+            "instagram": OAuthConfig(
+                auth_url="https://api.instagram.com/oauth/authorize",
+                client_id=self.settings.instagram_client_id,
+                client_secret=self.settings.instagram_client_secret,
+                # The 2024 Instagram Login scope names. content_publish is
+                # gated on Meta App Review.
+                scopes=[
+                    "instagram_business_basic",
+                    "instagram_business_content_publish",
+                ],
+                callback_path="/api/v1/social/callback/instagram",
+            ),
         }
         try:
             return configs[platform]
@@ -106,6 +139,14 @@ class SocialService:
             challenge = base64.urlsafe_b64encode(digest).decode().rstrip("=")
             params["code_challenge"] = challenge
             params["code_challenge_method"] = "S256"
+        elif platform == "tiktok":
+            # TikTok uses `client_key` (not `client_id`) and comma-separated
+            # scopes; everything else is standard OAuth2.
+            params["client_key"] = params.pop("client_id")
+            params["scope"] = ",".join(config.scopes)
+        elif platform == "instagram":
+            # Instagram Login uses comma-separated scopes.
+            params["scope"] = ",".join(config.scopes)
 
         return str(httpx.URL(config.auth_url, params=params))
 
@@ -137,10 +178,15 @@ class SocialService:
         user_id = data["userId"]
         code_verifier = data.get("codeVerifier")
 
+        granted_scopes: str | None = None
         if platform == "twitter":
             tokens, platform_user = await self._exchange_twitter_code(code, code_verifier)
         elif platform == "linkedin":
             tokens, platform_user = await self._exchange_linkedin_code(code)
+        elif platform == "tiktok":
+            tokens, platform_user, granted_scopes = await self._exchange_tiktok_code(code)
+        elif platform == "instagram":
+            tokens, platform_user, granted_scopes = await self._exchange_instagram_code(code)
         else:
             raise ValidationError(f"Unsupported platform: {platform}")
 
@@ -151,6 +197,7 @@ class SocialService:
             access_token=tokens["access_token"],
             refresh_token=tokens.get("refresh_token"),
             expires_in=tokens.get("expires_in"),
+            granted_scopes=granted_scopes,
         )
 
     async def _exchange_twitter_code(
@@ -184,6 +231,92 @@ class SocialService:
             platform_user_id=user["id"],
             username=user["username"],
             profile_image_url=user.get("profile_image_url"),
+        )
+
+    async def _exchange_tiktok_code(
+        self, code: str
+    ) -> tuple[dict[str, object], ConnectedPlatformUser, str]:
+        config = self.oauth_config("tiktok")
+        redirect_uri = f"{self.settings.backend_public_url}{config.callback_path}"
+        try:
+            tokens = await exchange_tiktok_code(
+                code=code,
+                redirect_uri=redirect_uri,
+                client_key=config.client_id,
+                client_secret=config.client_secret,
+            )
+            access_token = str(tokens.get("access_token") or "")
+            if not access_token:
+                raise ValidationError("connection_failed")
+            user = await fetch_tiktok_user_info(access_token=access_token)
+        except TikTokApiError as exc:
+            raise ValidationError("connection_failed") from exc
+        open_id = str(tokens.get("open_id") or user.get("open_id") or "")
+        if not open_id:
+            raise ValidationError("connection_failed")
+        return (
+            tokens,
+            ConnectedPlatformUser(
+                platform_user_id=open_id,
+                username=str(
+                    user.get("username") or user.get("display_name") or "TikTok User"
+                ),
+                profile_image_url=user.get("avatar_url"),
+            ),
+            str(tokens.get("scope") or ""),
+        )
+
+    async def _exchange_instagram_code(
+        self, code: str
+    ) -> tuple[dict[str, object], ConnectedPlatformUser, str]:
+        config = self.oauth_config("instagram")
+        redirect_uri = f"{self.settings.backend_public_url}{config.callback_path}"
+        try:
+            short = await exchange_instagram_code(
+                code=code,
+                redirect_uri=redirect_uri,
+                client_id=config.client_id,
+                client_secret=config.client_secret,
+            )
+            short_token = str(short.get("access_token") or "")
+            permissions = short.get("permissions")
+            if not short_token:
+                raise ValidationError("connection_failed")
+            long = await exchange_for_long_lived_token(
+                short_lived_token=short_token,
+                client_secret=config.client_secret,
+            )
+            access_token = str(long.get("access_token") or "")
+            if not access_token:
+                raise ValidationError("connection_failed")
+            user = await fetch_instagram_user_info(access_token=access_token)
+        except InstagramApiError as exc:
+            raise ValidationError("connection_failed") from exc
+        ig_user_id = str(short.get("user_id") or user.get("id") or "")
+        if not ig_user_id:
+            raise ValidationError("connection_failed")
+        # Surface the long-lived token + expiry to the caller; expires_in
+        # comes back in seconds (~5184000 = 60d).
+        tokens: dict[str, object] = {
+            "access_token": access_token,
+            "expires_in": long.get("expires_in"),
+            # Instagram Login long-lived tokens are refreshed via
+            # ig_refresh_token, not a refresh_token field. We persist the
+            # access_token itself in refresh_token so the worker has it
+            # available; refresh just rotates the access_token.
+            "refresh_token": access_token,
+        }
+        granted_scopes = (
+            ",".join(permissions) if isinstance(permissions, list) else ""
+        )
+        return (
+            tokens,
+            ConnectedPlatformUser(
+                platform_user_id=ig_user_id,
+                username=str(user.get("username") or "Instagram User"),
+                profile_image_url=user.get("profile_picture_url"),
+            ),
+            granted_scopes,
         )
 
     async def _exchange_linkedin_code(
@@ -341,6 +474,7 @@ class SocialService:
         access_token: str,
         refresh_token: str | None,
         expires_in: int | None,
+        granted_scopes: str | None = None,
     ) -> models.SocialAccount:
         from datetime import datetime, timedelta
 
@@ -362,6 +496,7 @@ class SocialService:
                 access_token=encrypt(access_token),
                 refresh_token=encrypt(refresh_token) if refresh_token else None,
                 token_expires_at=token_expires_at,
+                granted_scopes=granted_scopes,
                 profile_image_url=platform_user.profile_image_url,
                 is_active=True,
             )
@@ -370,6 +505,8 @@ class SocialService:
         existing.access_token = encrypt(access_token)
         existing.refresh_token = encrypt(refresh_token) if refresh_token else None
         existing.token_expires_at = token_expires_at
+        if granted_scopes is not None:
+            existing.granted_scopes = granted_scopes
         existing.platform_username = platform_user.username
         existing.profile_image_url = platform_user.profile_image_url
         existing.is_active = True

@@ -196,13 +196,30 @@ export function TikTokModal({
         scheduledFor = localDate.toISOString();
       }
 
+      // Upload to R2 first via the dedicated media endpoint. TikTok pulls
+      // from a stable URL, so this is the most efficient path (no base64
+      // round-trip through ARQ).
+      const uploadForm = new FormData();
+      uploadForm.append("file", videoFile);
+      const uploadRes = await fetch(apiUrl(apiEndpoints.media.upload), {
+        method: "POST",
+        credentials: "include",
+        body: uploadForm,
+      });
+      const uploadData = await uploadRes.json();
+      if (!uploadRes.ok) {
+        throw new Error(
+          uploadData.detail || uploadData.error || "Failed to upload video"
+        );
+      }
+
       const formData = new FormData();
       formData.append("content", caption);
       formData.append("socialAccountIds", JSON.stringify(selectedAccounts));
       if (scheduledFor) {
         formData.append("scheduledFor", scheduledFor);
       }
-      formData.append("media", videoFile);
+      formData.append("mediaUrls", JSON.stringify([uploadData.url]));
 
       const res = await fetch(apiUrl(apiEndpoints.posts.create), {
         method: "POST",
