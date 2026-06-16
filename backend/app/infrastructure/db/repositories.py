@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from datetime import datetime
 
-from sqlalchemy import Select, and_, desc, select
+from sqlalchemy import Select, and_, desc, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infrastructure.db import models
@@ -283,6 +283,36 @@ class PostRepository:
             .order_by(desc(models.Post.created_at))
             .limit(limit)
         )
+        return result.scalars().all()
+
+    async def list_for_user_paginated(
+        self,
+        user_id: str,
+        *,
+        limit: int,
+        cursor: tuple[datetime, str] | None = None,
+        status: str | None = None,
+    ) -> Sequence[models.Post]:
+        stmt = select(models.Post).where(models.Post.user_id == user_id)
+        if status is not None:
+            stmt = stmt.where(models.Post.status == status)
+        if cursor is not None:
+            cursor_created, cursor_id = cursor
+            # Keyset pagination: emit rows strictly older than the cursor,
+            # tie-broken by id to keep the order stable when created_at ties.
+            stmt = stmt.where(
+                or_(
+                    models.Post.created_at < cursor_created,
+                    and_(
+                        models.Post.created_at == cursor_created,
+                        models.Post.id < cursor_id,
+                    ),
+                )
+            )
+        stmt = stmt.order_by(desc(models.Post.created_at), desc(models.Post.id)).limit(
+            limit
+        )
+        result = await self.session.execute(stmt)
         return result.scalars().all()
 
     async def get_owned(self, post_id: str, user_id: str) -> models.Post | None:

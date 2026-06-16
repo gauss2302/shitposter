@@ -90,6 +90,18 @@ class Settings(BaseSettings):
     log_level: str = "info"
     log_format: Annotated[str, Field(pattern="^(text|json)$")] = "text"
 
+    # Public API per-key rate limits (requests per window) — split by
+    # read/write and scaled by subscription plan. Window length is
+    # ``public_api_rate_window_seconds``. The values below are sane
+    # defaults; tune via env in prod.
+    public_api_rate_window_seconds: int = 60
+    public_api_read_limit_basic: int = 60
+    public_api_write_limit_basic: int = 10
+    public_api_read_limit_business: int = 300
+    public_api_write_limit_business: int = 60
+    public_api_read_limit_enterprise: int = 1500
+    public_api_write_limit_enterprise: int = 300
+
     @field_validator("cors_origins", mode="before")
     @classmethod
     def parse_cors_origins(cls, value: str | list[str]) -> list[str]:

@@ -250,6 +250,10 @@ class PostTargetModel(Base):
     platform_post_id: Mapped[str | None] = mapped_column(Text)
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=False))
     error_message: Mapped[str | None] = mapped_column(Text)
+    # Rotates whenever the publish dispatch is (re)scheduled; the worker
+    # compares the payload token against this value and skips stale jobs
+    # so PATCHing scheduled_for doesn't double-post.
+    dispatch_token: Mapped[str | None] = mapped_column(Text)
 
     post: Mapped[PostModel] = relationship(back_populates="targets")
     social_account: Mapped[SocialAccountModel] = relationship(back_populates="targets")

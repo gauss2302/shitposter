@@ -17,7 +17,6 @@ when we publish.
 
 from __future__ import annotations
 
-import secrets
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
@@ -25,15 +24,16 @@ from pydantic import BaseModel
 
 from app.api.deps import SettingsDep, get_current_user
 from app.application.auth_service import AuthenticatedUser
+from app.application.media_limits import (
+    ALLOWED_MIME_PREFIXES,
+    MAX_UPLOAD_BYTES,
+    build_storage_key,
+)
 from app.infrastructure.storage import StorageNotConfigured, get_storage
 
 router = APIRouter(prefix="/media", tags=["media"])
 
 CurrentUserDep = Annotated[AuthenticatedUser, Depends(get_current_user)]
-
-# 4GB matches TikTok's hard ceiling and Instagram's Reels max.
-MAX_UPLOAD_BYTES = 4 * 1024 * 1024 * 1024
-ALLOWED_MIME_PREFIXES = ("video/", "image/")
 
 
 class UploadedMediaResponse(BaseModel):
@@ -82,7 +82,7 @@ async def upload_media(
             detail="storage_not_configured",
         ) from exc
 
-    key = _build_key(user_id=current.id, mime_type=mime_type)
+    key = build_storage_key(user_id=current.id, mime_type=mime_type)
     stored = await storage.upload_bytes(data=data, key=key, content_type=mime_type)
     return UploadedMediaResponse(
         success=True,
@@ -91,24 +91,3 @@ async def upload_media(
         mimeType=stored.content_type,
         sizeBytes=stored.size_bytes,
     )
-
-
-_EXTENSION_BY_MIME_FRAGMENT = (
-    ("mp4", ".mp4"),
-    ("quicktime", ".mov"),
-    ("mov", ".mov"),
-    ("webm", ".webm"),
-    ("jpeg", ".jpg"),
-    ("jpg", ".jpg"),
-    ("png", ".png"),
-    ("gif", ".gif"),
-)
-
-
-def _build_key(*, user_id: str, mime_type: str) -> str:
-    extension = ".bin"
-    for fragment, ext in _EXTENSION_BY_MIME_FRAGMENT:
-        if fragment in mime_type:
-            extension = ext
-            break
-    return f"uploads/{user_id}/{secrets.token_urlsafe(12)}{extension}"

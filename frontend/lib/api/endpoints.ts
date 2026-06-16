@@ -30,19 +30,6 @@ export const apiEndpoints = {
       return `${API_V1}/api-keys/${apiKeyId}`;
     },
   },
-  agent: {
-    me: `${API_V1}/agent/me`,
-    socialAccounts: `${API_V1}/agent/social/accounts`,
-    posts: `${API_V1}/agent/posts`,
-    post(postId: string) {
-      return `${API_V1}/agent/posts/${postId}`;
-    },
-    aiProviders: `${API_V1}/agent/ai/providers`,
-    aiProvider(credentialId: string) {
-      return `${API_V1}/agent/ai/providers/${credentialId}`;
-    },
-    aiGenerate: `${API_V1}/agent/ai/generate`,
-  },
   ai: {
     providers: `${API_V1}/ai/providers`,
     provider(providerId: string) {

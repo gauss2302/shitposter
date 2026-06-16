@@ -61,7 +61,33 @@ async def publish_post(ctx: dict[str, Any], payload: dict[str, Any]) -> dict[str
     async with async_session_factory() as session:
         target = await session.get(models.PostTarget, payload["target_id"])
         if target is None:
-            raise RuntimeError(f"Post target {payload['target_id']} not found")
+            # Post was hard-deleted between enqueue and execution; nothing
+            # left to do.
+            return {"status": "skipped:target_missing"}
+
+        post = await session.get(models.Post, payload["post_id"])
+        if post is None:
+            return {"status": "skipped:post_missing"}
+
+        # Cancellation guard — set by ``PostsService.cancel_scheduled_post``.
+        if post.status == "cancelled" or target.status == "cancelled":
+            if target.status != "cancelled":
+                target.status = "cancelled"
+                await session.commit()
+            return {"status": "skipped:cancelled"}
+
+        # Stale-dispatch guard — public-API PATCH rotates dispatch_token
+        # when scheduled_for changes, so the previously enqueued job no
+        # longer matches the row and must no-op. Legacy rows with NULL
+        # token + missing payload token still publish (back-compat).
+        payload_token = payload.get("dispatch_token")
+        if target.dispatch_token and payload_token and payload_token != target.dispatch_token:
+            return {"status": "skipped:stale_dispatch"}
+
+        # Idempotency — re-firing a job (manual retry, ARQ duplicate) for a
+        # target that already succeeded should not double-post.
+        if target.status == "published":
+            return {"status": "already_published"}
 
         target.status = "publishing"
         await session.flush()
@@ -211,7 +237,21 @@ async def _publish_twitter(
     settings: Settings,
 ) -> str:
     media_ids: list[str] = []
-    media_payload = payload.get("media_data") or []
+    media_payload = list(payload.get("media_data") or [])
+    # Public API uploads media to R2 and passes a URL instead of base64.
+    # Twitter's image-upload endpoint needs bytes, so fetch them on demand.
+    if not media_payload:
+        media_url = payload.get("media_url")
+        if isinstance(media_url, str) and media_url:
+            async with httpx.AsyncClient(timeout=httpx.Timeout(60.0, connect=10.0)) as client:
+                response = await client.get(media_url, follow_redirects=True)
+                response.raise_for_status()
+                media_payload = [
+                    {
+                        "data": base64.b64encode(response.content).decode(),
+                        "mimeType": response.headers.get("content-type") or "image/jpeg",
+                    }
+                ]
     if media_payload:
         if not account.access_token_secret:
             raise RuntimeError("OAuth 1.0a credentials are required for Twitter media")
@@ -510,6 +550,7 @@ async def _maybe_chain_recipe_publish(
             post_id=post_id,
             social_account_id=account_id,
             status="pending",
+            dispatch_token=secrets.token_urlsafe(16),
         )
         targets.append(target)
         session.add(target)
@@ -524,6 +565,7 @@ async def _maybe_chain_recipe_publish(
                 "social_account_id": target.social_account_id,
                 "content": caption,
                 "media_url": job.output_url,
+                "dispatch_token": target.dispatch_token,
             },
             scheduled_for=None,
         )
@@ -635,15 +677,21 @@ async def _update_post_status(session: Any, post_id: str) -> None:
     post = await session.get(models.Post, post_id)
     if post is None:
         return
+    if post.status == "cancelled":
+        # A user-initiated cancellation outranks any worker reconciliation.
+        return
     result = await session.execute(
         select(models.PostTarget).where(models.PostTarget.post_id == post_id)
     )
     statuses = [target.status for target in result.scalars().all()]
-    if statuses and all(status == "published" for status in statuses):
+    active = [status for status in statuses if status != "cancelled"]
+    if not active:
+        return
+    if all(status == "published" for status in active):
         post.status = "published"
-    elif any(status == "failed" for status in statuses):
-        post.status = "published" if any(status == "published" for status in statuses) else "failed"
-    elif any(status == "publishing" for status in statuses):
+    elif any(status == "failed" for status in active):
+        post.status = "published" if any(status == "published" for status in active) else "failed"
+    elif any(status == "publishing" for status in active):
         post.status = "publishing"
     else:
         post.status = "scheduled"

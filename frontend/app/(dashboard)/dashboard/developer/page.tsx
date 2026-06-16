@@ -15,13 +15,12 @@ export default async function DeveloperPage() {
           Developer
         </p>
         <h1 className="mt-1 text-3xl font-bold text-zinc-900">
-          Agent API access
+          Public API access
         </h1>
         <p className="mt-2 max-w-3xl text-zinc-500">
-          Create scoped API keys for external agents and automation systems.
-          Keys can schedule posts, read connected social accounts, register
-          encrypted Claude or OpenAI credentials, generate copy, and publish
-          over HTTPS using{" "}
+          Create scoped API keys for external automations. Keys can schedule
+          posts, read connected social accounts, register encrypted Claude or
+          OpenAI credentials, generate copy, and publish over HTTPS using{" "}
           <code className="rounded bg-zinc-100 px-1.5 py-0.5 font-mono text-sm">
             Authorization: Bearer
           </code>{" "}
@@ -31,7 +30,7 @@ export default async function DeveloperPage() {
           </code>{" "}
           on the{" "}
           <code className="rounded bg-zinc-100 px-1.5 py-0.5 font-mono text-sm">
-            /api/v1/agent
+            /api/public/v1
           </code>{" "}
           routes. The readiness card below confirms the full model-to-post path
           for your account—no guesswork.

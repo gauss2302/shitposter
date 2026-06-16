@@ -6,6 +6,7 @@ from uuid import uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.application.platforms import PLATFORM_TEXT_LIMITS as PLATFORM_LIMITS
 from app.core.config import Settings
 from app.domain.exceptions import NotFoundError, ValidationError
 from app.infrastructure.crypto import decrypt, encrypt
@@ -15,14 +16,6 @@ from app.infrastructure.external.ai_anthropic import generate_anthropic_content
 from app.infrastructure.external.ai_openai import generate_openai_content
 
 AI_PROVIDERS = ["openai", "anthropic", "openai_compatible"]
-PLATFORM_LIMITS = {
-    "twitter": 280,
-    "threads": 500,
-    "instagram": 2200,
-    "tiktok": 2200,
-    "linkedin": 3000,
-    "facebook": 63206,
-}
 
 
 @dataclass(frozen=True, slots=True)

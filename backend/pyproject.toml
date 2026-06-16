@@ -29,6 +29,7 @@ dependencies = [
 dev = [
   "asgi-lifespan>=2.1.0",
   "aiosqlite>=0.21.0",
+  "fakeredis>=2.20.0",
   "mypy>=1.18.0",
   "pytest>=9.0.0",
   "pytest-asyncio>=1.2.0",
