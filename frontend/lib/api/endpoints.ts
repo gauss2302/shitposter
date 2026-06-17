@@ -23,6 +23,9 @@ export const apiEndpoints = {
   posts: {
     collection: `${API_V1}/posts`,
     create: `${API_V1}/posts`,
+    item(postId: string) {
+      return `${API_V1}/posts/${postId}`;
+    },
   },
   apiKeys: {
     collection: `${API_V1}/api-keys`,

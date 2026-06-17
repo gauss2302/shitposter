@@ -3,14 +3,24 @@ from __future__ import annotations
 import json
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import (
+    APIRouter,
+    Body,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Response,
+    UploadFile,
+    status,
+)
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db_session
 from app.application.auth_service import AuthenticatedUser
 from app.application.posts_service import PostsService, file_to_media
-from app.domain.exceptions import NotFoundError, ValidationError
+from app.domain.exceptions import ConflictError, NotFoundError, ValidationError
 
 router = APIRouter(prefix="/posts", tags=["posts"])
 
@@ -19,6 +29,16 @@ CurrentUserDep = Annotated[AuthenticatedUser, Depends(get_current_user)]
 
 
 class CreatedPostResponse(BaseModel):
+    success: bool
+    post: dict[str, object]
+
+
+class UpdatePostRequest(BaseModel):
+    content: str | None = None
+    scheduledFor: str | None = None
+
+
+class UpdatedPostResponse(BaseModel):
     success: bool
     post: dict[str, object]
 
@@ -92,3 +112,59 @@ async def create_post(
             "mediaCount": created.media_count,
         },
     )
+
+
+@router.patch("/{post_id}", response_model=UpdatedPostResponse)
+async def update_post(
+    post_id: str,
+    current: CurrentUserDep,
+    db: DbSessionDep,
+    payload: Annotated[UpdatePostRequest, Body()],
+) -> UpdatedPostResponse:
+    try:
+        updated = await PostsService(db).update_scheduled_post(
+            user_id=current.id,
+            post_id=post_id,
+            content=payload.content,
+            scheduled_for_raw=payload.scheduledFor,
+        )
+    except NotFoundError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except ConflictError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    except ValidationError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    return UpdatedPostResponse(
+        success=True,
+        post={
+            "id": updated.id,
+            "status": updated.status,
+            "content": updated.content,
+            "scheduledFor": updated.scheduled_for.isoformat()
+            if updated.scheduled_for
+            else None,
+        },
+    )
+
+
+@router.delete("/{post_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def cancel_post(
+    post_id: str,
+    current: CurrentUserDep,
+    db: DbSessionDep,
+) -> Response:
+    try:
+        await PostsService(db).cancel_scheduled_post(
+            user_id=current.id, post_id=post_id
+        )
+    except NotFoundError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except ConflictError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

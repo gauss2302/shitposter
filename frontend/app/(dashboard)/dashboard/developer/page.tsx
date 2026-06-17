@@ -2,11 +2,27 @@ import { redirect } from "next/navigation";
 import { getAgentReadiness, getApiKeys, getBackendSession } from "@/lib/api/server";
 import { AgentReadinessPanel } from "../components/agent-readiness-panel";
 import { ApiKeysClient } from "./api-keys-client";
+import { DeveloperQuickStart } from "./quick-start";
+
+const DEFAULT_PUBLIC_API_BASE_URL = "http://localhost:8000";
+const API_REFERENCE_URL =
+  "https://github.com/gauss2302/shitposter/blob/main/docs/API.md";
+
+function trimTrailingSlash(value: string): string {
+  return value.replace(/\/$/, "");
+}
+
+function resolvePublicApiBaseUrl(): string {
+  return trimTrailingSlash(
+    process.env.NEXT_PUBLIC_API_BASE_URL?.trim() || DEFAULT_PUBLIC_API_BASE_URL,
+  );
+}
 
 export default async function DeveloperPage() {
   const session = await getBackendSession();
   if (!session.user) redirect("/sign-in");
   const [apiKeys, readiness] = await Promise.all([getApiKeys(), getAgentReadiness()]);
+  const baseUrl = resolvePublicApiBaseUrl();
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 space-y-6">
@@ -36,6 +52,12 @@ export default async function DeveloperPage() {
           for your account—no guesswork.
         </p>
       </div>
+
+      <DeveloperQuickStart
+        baseUrl={baseUrl}
+        openApiDocsUrl={`${baseUrl}/docs`}
+        apiReferenceUrl={API_REFERENCE_URL}
+      />
 
       <AgentReadinessPanel readiness={readiness} context="developer" />
 
